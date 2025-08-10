@@ -3,12 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Carregando...</title>
+  <title>Carregando…</title>
+
+  <!-- Favicon (coloque o arquivo na mesma pasta do index) -->
+  <link rel="icon" type="image/png" href="favicon.png">
+  <!-- Opcional: para iOS / atalhos -->
+  <link rel="favicon" href="favicon.png">
+
   <style>
     body{margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;font-family:Arial,sans-serif;background:#f5f5f5;color:#555}
     .card{background:#fff;padding:24px 28px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.08);text-align:center}
     .loader{width:28px;height:28px;border-radius:50%;border:3px solid #ddd;border-top-color:#007E7A;animation:spin 1s linear infinite;margin:0 auto 10px}
     @keyframes spin{to{transform:rotate(360deg)}}
+    noscript{position:fixed;bottom:12px;left:0;right:0;text-align:center;font-size:14px}
   </style>
 </head>
 <body>
@@ -17,26 +24,40 @@
     <div>Verificando sessão…</div>
   </div>
 
+  <noscript>Ative o JavaScript para continuar.</noscript>
+
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
 
-  <!-- Seu arquivo de config já existente -->
+  <!-- Seu arquivo de config (deve definir window.firebaseConfig) -->
   <script src="firebaseConfig.js"></script>
-  <script>
-    // garante inicialização
-    if (!firebase.apps.length && window.firebaseConfig) {
-      firebase.initializeApp(window.firebaseConfig);
-    }
 
-    // decide rota: logado -> menu, não logado -> login
-    firebase.auth().onAuthStateChanged((user) => {
-      if (user) {
-        window.location.replace('menu.html');
-      } else {
-        window.location.replace('login.html');
+  <script>
+    (function () {
+      // Garante inicialização segura
+      if (window.firebase && !firebase.apps.length && window.firebaseConfig) {
+        firebase.initializeApp(window.firebaseConfig);
       }
-    });
+
+      if (!window.firebase || !firebase.apps.length) {
+        console.error("Firebase não inicializado. Verifique firebaseConfig.js");
+        // fallback: manda pro login para não travar
+        return window.location.replace('login.html');
+      }
+
+      // Decide rota: logado -> menu, não logado -> login
+      firebase.auth().onAuthStateChanged(function (user) {
+        document.title = user ? "Abrindo menu…" : "Abrindo login…";
+        if (user) {
+          window.location.replace('menu.html');
+        } else {
+          window.location.replace('login.html');
+        }
+      });
+    })();
   </script>
 </body>
 </html>
+
+
