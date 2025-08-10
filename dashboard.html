@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projetos Cadastrados - Sistema Quéops</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f1f1;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        header {
+            background-color: #007E7A;
+            color: white;
+            padding: 15px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        table {
+            width: 90%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #007E7A;
+            color: white;
+        }
+
+        button {
+            background-color: #007E7A;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0ABB98;
+        }
+
+        /* Área dos filtros */
+        .filtros-container {
+            margin: 15px;
+        }
+
+        .filtros-container select {
+            padding: 6px;
+            margin-left: 5px;
+            margin-right: 10px;
+        }
+
+        a {
+            color: #007E7A;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+    <header>📑 Projetos Cadastrados</header>
+
+    <!-- Filtros -->
+    <div class="filtros-container">
+        <label for="filtroRegional">Regional:</label>
+        <select id="filtroRegional" onchange="filtrarProjetos()">
+            <option value="">Todas</option>
+            <option value="Regional 1">Regional 1</option>
+            <option value="Regional 2">Regional 2</option>
+            <option value="Regional 3">Regional 3</option>
+        </select>
+
+        <label for="filtroLocalidade">Localidade:</label>
+        <select id="filtroLocalidade" onchange="filtrarProjetos()">
+            <option value="">Todas</option>
+            <option value="Arari">Arari</option>
+            <option value="Vitória do Mearim">Vitória do Mearim</option>
+            <option value="Santa Inês">Santa Inês</option>
+            <option value="Marabá">Marabá</option>
+            <option value="Nova Vida">Nova Vida</option>
+            <option value="Açailândia">Açailândia</option>
+            <option value="São Pedro d’Água Branca">São Pedro d’Água Branca</option>
+            <option value="Itainópolis">Itainópolis</option>
+        </select>
+
+        <!-- ✅ Novo filtro de Status -->
+        <label for="filtroStatus">Status:</label>
+        <select id="filtroStatus" onchange="filtrarProjetos()">
+            <option value="">Todos</option>
+            <option value="Planejado">Planejado</option>
+            <option value="Em andamento">Em andamento</option>
+            <option value="Atrasada">Atrasada</option>
+            <option value="Concluído">Concluído</option>
+        </select>
+    </div>
+
+    <table id="tabelaProjetos">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nome do Projeto</th>
+                <th>Localidade</th>
+                <th>Regional</th>
+                <th>Apropriação</th>
+                <th>Custo orçado (R$)</th>
+                <th>Data Início</th>
+                <th>Data Término</th>
+                <th>Status</th> 
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="9">Nenhum projeto cadastrado.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Botão único -->
+    <button onclick="window.location.href='menu.html'">← Voltar ao Menu</button>
+
+<script>
+  // Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
+    authDomain: "queops-84feb.firebaseapp.com",
+    projectId: "queops-84feb",
+    storageBucket: "queops-84feb.firebasestorage.app",
+    messagingSenderId: "415710636047",
+    appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  let listaProjetos = [];
+
+  // Normaliza textos de status (ex.: "concluido" -> "Concluído")
+  function normalizarStatus(txt) {
+    if (!txt) return "";
+    const s = String(txt).trim().toLowerCase();
+    if (s.includes("conclu")) return "Concluído";
+    if (s.includes("andament")) return "Em andamento";
+    if (s.includes("atras")) return "Atrasada";
+    if (s.includes("planej")) return "Planejado";
+    if (s.includes("paralis")) return "Paralisada";
+    return txt; // mantém como veio
+  }
+
+  // Busca a ÚLTIMA atualização do projeto em "projetos_atualizados"
+  async function getUltimaAtualizacao(projetoId) {
+    try {
+      const snap = await db.collection("projetos_atualizados")
+        .where("projetoId", "==", projetoId)
+        .orderBy("dataAtualizacao", "desc")
+        .limit(1)
+        .get();
+      if (!snap.empty) return snap.docs[0].data();
+      return null;
+    } catch (e) {
+      // Fallback (sem índice composto)
+      const snap = await db.collection("projetos_atualizados")
+        .where("projetoId", "==", projetoId)
+        .get();
+      if (snap.empty) return null;
+      let ultima = null;
+      snap.forEach(doc => {
+        const d = doc.data();
+        let dt = d.dataAtualizacao;
+        if (dt && typeof dt.toDate === "function") dt = dt.toDate();
+        else if (typeof dt === "string") {
+          const t = new Date(dt);
+          if (!isNaN(t)) dt = t;
+        }
+        if (!ultima || (dt && ultima.dt && dt > ultima.dt)) {
+          ultima = { dt, dados: d };
+        }
+      });
+      return ultima ? ultima.dados : null;
+    }
+  }
+
+  // Carregar Projetos
+  async function carregarProjetos() {
+    const tbody = document.querySelector("#tabelaProjetos tbody");
+    tbody.innerHTML = "";
+    listaProjetos = [];
+
+    try {
+      const snapshot = await db.collection("projetos").get();
+      if (snapshot.empty) {
+        tbody.innerHTML = "<tr><td colspan='9'>Nenhum projeto cadastrado.</td></tr>";
+        return;
+      }
+
+      const promessas = snapshot.docs.map(async (doc) => {
+        const p = { id: doc.id, ...doc.data() };
+        const ult = await getUltimaAtualizacao(p.id);
+
+        // avanço
+        const investimento = Number(p.investimento || 0);
+        if (ult && ult.avancoFisicoNovo != null) {
+          p._avancoCalc = Number(ult.avancoFisicoNovo);
+        } else {
+          // fallback (caso queira usar investimento acumulado quando não houver avancoFisicoNovo)
+          const invAcum = ult ? Number(ult.investimentoAcumulado || 0) : 0;
+          p._avancoCalc = investimento > 0 ? (invAcum / investimento) * 100 : 0;
+        }
+
+        // status: PRIORIDADE para statusNovo da última atualização
+        if (ult && ult.statusNovo) {
+          p._statusCalc = normalizarStatus(ult.statusNovo);
+        } else {
+          // mesma lógica dos indicadores
+          const hoje = new Date();
+          const dataTermino = p.dataTermino ? new Date(p.dataTermino) : null;
+          const av = Number(p._avancoCalc || 0);
+          if (av >= 100) p._statusCalc = "Concluído";
+          else if (dataTermino && hoje > dataTermino && av < 100) p._statusCalc = "Atrasada";
+          else if (av > 0 && av < 100) p._statusCalc = "Em andamento";
+          else p._statusCalc = "Planejado";
+        }
+
+        listaProjetos.push(p);
+      });
+
+      await Promise.all(promessas);
+      atualizarTabela();
+      filtrarProjetos();
+    } catch (err) {
+      console.error("Erro ao buscar projetos:", err);
+      tbody.innerHTML = "<tr><td colspan='9'>Erro ao carregar projetos.</td></tr>";
+    }
+  }
+
+  // Atualizar tabela (usa _statusCalc calculado acima)
+  function atualizarTabela() {
+    const tbody = document.querySelector("#tabelaProjetos tbody");
+    tbody.innerHTML = "";
+
+    let contador = 1;
+    listaProjetos.forEach(p => {
+      const investimentoFmt = `R$ ${parseFloat(p.investimento || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+      const status = p._statusCalc || "Planejado";
+
+      tbody.innerHTML += `
+        <tr>
+          <td>#${String(contador).padStart(3, '0')}</td>
+          <td><a href="atualizar.html?id=${p.id}">${p.nomeProjeto || p.nome || ""}</a></td>
+          <td>${p.localidade || ""}</td>
+          <td>${p.regional || ""}</td>
+          <td>${p.centroCusto || ""}</td>
+          <td>${investimentoFmt}</td>
+          <td>${p.dataInicio || ""}</td>
+          <td>${p.dataTermino || ""}</td>
+          <td>${status}</td>
+        </tr>
+      `;
+      contador++;
+    });
+
+    if (contador === 1) {
+      tbody.innerHTML = "<tr><td colspan='9'>Nenhum projeto encontrado.</td></tr>";
+    }
+  }
+
+  // Filtros (inalterado)
+  function filtrarProjetos() {
+    const filtroRegional = document.getElementById('filtroRegional').value.toLowerCase();
+    const filtroLocalidade = document.getElementById('filtroLocalidade').value.toLowerCase();
+    const filtroStatus = document.getElementById('filtroStatus').value.toLowerCase();
+
+    document.querySelectorAll("#tabelaProjetos tbody tr").forEach(linha => {
+      const regional = linha.cells[3].textContent.toLowerCase();
+      const localidade = linha.cells[2].textContent.toLowerCase();
+      const status = linha.cells[8].textContent.toLowerCase();
+
+      linha.style.display = (
+        (filtroRegional === "" || regional.includes(filtroRegional)) &&
+        (filtroLocalidade === "" || localidade.includes(filtroLocalidade)) &&
+        (filtroStatus === "" || status.includes(filtroStatus))
+      ) ? "" : "none";
+    });
+  }
+
+  window.onload = carregarProjetos;
+</script>
+
+
+</body>
+</html>

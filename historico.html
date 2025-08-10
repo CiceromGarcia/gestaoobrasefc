@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Histórico de Atualizações - Sistema Quéops</title>
+  <link rel="stylesheet" href="menu.css"/>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 800px;
+      margin: 30px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 { text-align: center; color: #007E7A; }
+
+    .select-container {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0;
+      flex-wrap: wrap;
+    }
+    .select-container .form-group {
+      flex: 1;
+      min-width: 150px;
+      display: flex;
+      flex-direction: column;
+    }
+    .select-container label {
+      font-weight: bold;
+      font-size: 14px;
+      text-align: left;
+      margin-bottom: 3px;
+      padding-left: 3px;
+    }
+
+    select, button {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    /* Resumo do projeto */
+    .resumo-projeto{
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 8px 0 6px;
+    }
+    .info-box{
+      background:#f8f8f8;
+      border:1px solid #e5e5e5;
+      border-radius:8px;
+      padding:10px;
+      text-align:center;
+    }
+    .info-box strong{
+      color:#007E7A;
+      display:block;
+      margin-bottom:4px;
+    }
+
+    /* 🔹 Valor excedente em vermelho */
+    .over-budget {
+      color: #C62828;
+      font-weight: bold;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    th { background-color: #007E7A; color: white; }
+
+    .info { text-align: center; padding: 10px; color: #777; }
+
+    .btn-container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    button {
+      cursor: pointer;
+      background-color: #009975;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 5px;
+      font-size: 14px;
+      width: auto;
+      min-width: 140px;
+      transition: 0.3s;
+    }
+    button:hover { background-color: #007E7A; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📜 Histórico de Atualizações</h1>
+
+    <div class="select-container">
+      <div class="form-group">
+        <label for="selectRegional">Selecione a Regional:</label>
+        <select id="selectRegional">
+          <option value="">Carregando...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="selectProjeto">Selecione o Projeto:</label>
+        <select id="selectProjeto">
+          <option value="">Selecione uma regional primeiro</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- RESUMO DO PROJETO -->
+    <div class="resumo-projeto" id="resumoProjeto" hidden>
+      <div class="info-box">
+        <strong>Data de Início</strong>
+        <span id="resumoInicio">-</span>
+      </div>
+      <div class="info-box">
+        <strong>Data de Término</strong>
+        <span id="resumoTermino">-</span>
+      </div>
+      <div class="info-box">
+        <strong>Custo Orçado (R$)</strong>
+        <span id="resumoCusto">-</span>
+      </div>
+      <div class="info-box">
+        <strong>Custo Executado (R$)</strong>
+        <span id="resumoExecutado">-</span>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data da Atualização</th>
+          <th>Investimento</th>
+          <th>Avanço Físico (%)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaHistorico">
+        <tr><td colspan="4" class="info">Selecione um projeto para visualizar o histórico.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="btn-container">
+      <button id="btnVoltar">⬅ Voltar ao Menu</button>
+      <button id="btnImprimir">🖨 Imprimir Página</button>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+  <script>
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
+        authDomain: "queops-84feb.firebaseapp.com",
+        projectId: "queops-84feb",
+        storageBucket: "queops-84feb.appspot.com",
+        messagingSenderId: "415710636047",
+        appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
+      });
+    }
+    window.db = firebase.firestore();
+  </script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const db = window.db;
+
+    const selectRegional  = document.getElementById("selectRegional");
+    const selectProjeto   = document.getElementById("selectProjeto");
+    const tabelaHistorico = document.getElementById("tabelaHistorico");
+    const btnVoltar       = document.getElementById("btnVoltar");
+    const btnImprimir     = document.getElementById("btnImprimir");
+
+    const resumoWrap      = document.getElementById("resumoProjeto");
+    const resumoInicio    = document.getElementById("resumoInicio");
+    const resumoTermino   = document.getElementById("resumoTermino");
+    const resumoCusto     = document.getElementById("resumoCusto");
+    const resumoExecutado = document.getElementById("resumoExecutado");
+
+    let custoOrcadoAtual = 0;
+
+    const fmtBRL = v => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const fmtDT  = ts => ts?.toDate ? ts.toDate().toLocaleString("pt-BR") : "-";
+    const fmtPct = v => `${(Number(v || 0)).toFixed(2)}%`;
+
+    const fmtDataSimples = (val) => {
+      if (!val) return "-";
+      if (val.toDate) return val.toDate().toLocaleDateString("pt-BR");
+      if (typeof val === "string") {
+        const d = new Date(val);
+        return isNaN(d) ? val : d.toLocaleDateString("pt-BR");
+      }
+      return "-";
+    };
+
+    const toNum = (v) => {
+      if (typeof v === "number") return v;
+      if (typeof v === "string") {
+        return Number(
+          v.replace(/\s/g, "")
+          .replace("R$", "")
+          .replace(/\./g, "")
+          .replace(",", ".")
+          .replace("%", "")
+        ) || 0;
+      }
+      return 0;
+    };
+
+    async function carregarRegionais() {
+      const snap = await db.collection("projetos").get();
+      const regionais = [...new Set(snap.docs.map(d => d.data().regional).filter(Boolean))].sort();
+      selectRegional.innerHTML = regionais.length
+        ? `<option value="">Selecione a regional</option>` +
+          regionais.map(r => `<option value="${r}">${r}</option>`).join("")
+        : `<option value="">Nenhuma regional encontrada</option>`;
+    }
+
+    async function carregarProjetos() {
+      selectProjeto.innerHTML = `<option value="">Carregando...</option>`;
+      const regionalSelecionada = selectRegional.value;
+      if (!regionalSelecionada) {
+        selectProjeto.innerHTML = `<option value="">Selecione uma regional primeiro</option>`;
+        tabelaHistorico.innerHTML = `<tr><td colspan="4">Selecione um projeto para visualizar o histórico.</td></tr>`;
+        resumoWrap.hidden = true;
+        return;
+      }
+
+      const snap = await db.collection("projetos")
+        .where("regional", "==", regionalSelecionada)
+        .get();
+
+      if (snap.empty) {
+        selectProjeto.innerHTML = `<option value="">Nenhum projeto encontrado</option>`;
+        tabelaHistorico.innerHTML = `<tr><td colspan="4">Nenhum projeto nessa regional.</td></tr>`;
+        resumoWrap.hidden = true;
+        return;
+      }
+
+      let opts = `<option value="">Selecione um projeto</option>`;
+      snap.forEach(doc => {
+        const d = doc.data();
+        opts += `<option value="${doc.id}">${d.nomeProjeto || d.nome || "Sem nome"}</option>`;
+      });
+      selectProjeto.innerHTML = opts;
+      tabelaHistorico.innerHTML = `<tr><td colspan="4">Selecione um projeto para visualizar o histórico.</td></tr>`;
+      resumoWrap.hidden = true;
+    }
+
+    async function carregarResumoProjeto(projetoId) {
+      resumoInicio.textContent    = "-";
+      resumoTermino.textContent   = "-";
+      resumoCusto.textContent     = "-";
+      resumoExecutado.textContent = "-";
+      resumoExecutado.classList.remove("over-budget");
+      resumoWrap.hidden = true;
+
+      const doc = await db.collection("projetos").doc(projetoId).get();
+      if (!doc.exists) return;
+
+      const p = doc.data();
+      custoOrcadoAtual = toNum(p.investimento ?? p.custoOrcado ?? 0);
+
+      resumoInicio.textContent  = fmtDataSimples(p.dataInicio);
+      resumoTermino.textContent = fmtDataSimples(p.dataTermino);
+      resumoCusto.textContent   = fmtBRL(custoOrcadoAtual);
+      resumoWrap.hidden = false;
+    }
+
+    async function carregarHistorico() {
+      tabelaHistorico.innerHTML = `<tr><td colspan="4">Carregando histórico...</td></tr>`;
+      const projetoId = selectProjeto.value;
+      if (!projetoId) {
+        tabelaHistorico.innerHTML = `<tr><td colspan="4">Selecione um projeto para visualizar o histórico.</td></tr>`;
+        resumoWrap.hidden = true;
+        return;
+      }
+
+      await carregarResumoProjeto(projetoId);
+
+      const snap = await db.collection("projetos_atualizados")
+        .where("projetoId", "==", projetoId)
+        .orderBy("dataAtualizacao", "desc")
+        .get();
+
+      if (snap.empty) {
+        tabelaHistorico.innerHTML = `<tr><td colspan="4">Nenhuma atualização encontrada para este projeto.</td></tr>`;
+        resumoExecutado.textContent = fmtBRL(0);
+        resumoWrap.hidden = false;
+        return;
+      }
+
+      let totalExecutado = 0;
+      let html = "";
+      snap.forEach(doc => {
+        const d = doc.data();
+        totalExecutado += toNum(d.investimentoNovo);
+        html += `
+          <tr>
+            <td>${fmtDT(d.dataAtualizacao)}</td>
+            <td>${fmtBRL(d.investimentoNovo)}</td>
+            <td>${fmtPct(d.avancoFisicoNovo)}</td>
+            <td>${d.statusNovo || "-"}</td>
+          </tr>`;
+      });
+
+      tabelaHistorico.innerHTML = html;
+
+      resumoExecutado.textContent = fmtBRL(totalExecutado);
+      if (totalExecutado > custoOrcadoAtual) {
+        resumoExecutado.classList.add("over-budget");
+      }
+      resumoWrap.hidden = false;
+    }
+
+    btnVoltar.addEventListener("click", () => (window.location.href = "menu.html"));
+    btnImprimir.addEventListener("click", () => window.print());
+
+    selectRegional.addEventListener("change", carregarProjetos);
+    selectProjeto.addEventListener("change", carregarHistorico);
+
+    carregarRegionais();
+  });
+  </script>
+</body>
+</html>

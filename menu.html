@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu - Sistema Quéops</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f1f1;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            min-height: 100vh; /* altura mínima da tela */
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: #007E7A;
+            color: white;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .menu-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 40px;
+            max-width: 400px;
+            margin: 50px auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        a {
+            display: block;
+            text-decoration: none;
+            background-color: #007E7A;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        a:hover {
+            background-color: #0ABB98;
+        }
+
+        footer {
+            margin-top: auto; /* empurra para o final */
+            padding: 10px 0;
+            font-size: 14px;
+            color: #777;
+            text-align: center;
+        }
+
+        .logo-container {
+            margin-top: 5px;
+        }
+
+        .logo-container img {
+            width: 45px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+    <header> Dashboard de Projetos e Indicadores</header>
+
+    <div class="menu-container">
+        <a href="cadastrar.html">➕ Cadastrar Projeto</a>
+        <a href="dashboard.html">📊 Atualizar Projetos</a>
+        <a href="indicadores.html">💰 Indicadores</a>
+        <a href="historico.html">📜 Histórico de Atualizações</a>
+        <button onclick="window.location.href='login.html'" 
+        style="background-color:#a52950; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+            🚪 Sair
+        </button>
+    </div>
+
+    <footer>
+        Desenvolvido para Gestão de Obras - Cicero Garcia
+        <div class="logo-container">
+            <img src="logo.png" alt="logo-vale">
+        </div>
+    </footer>
+
+</body>
+
+
+</script>
+
+
+</html>
+

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastrar Projeto</title>
+    <link rel="stylesheet" href="form.css">
+    <style>
+        .btn-voltar {
+            background-color: #555;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+            margin-left: 10px;
+            transition: 0.3s;
+        }
+
+        .btn-voltar:hover {
+            background-color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Cadastrar Novo Projeto</h2>
+        <form id="formProjeto">
+          
+            <div class="form-group">
+                <label for="idProjeto">ID do Projeto:</label>
+                <input type="text" id="idProjeto" placeholder="Gerado automaticamente" disabled>
+            </div>
+
+            <div class="form-group">
+                <label for="nomeProjeto">Nome do Projeto:</label>
+                <input type="text" id="nomeProjeto" placeholder="Digite o nome do projeto" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="localidade">Localidade:</label>
+                    <select id="localidade" required>
+                        <option value="" disabled selected>Selecione a Localidade</option>
+                        <option value="Arari">Arari</option>
+                        <option value="Vitória do Mearim">Vitória do Mearim</option>
+                        <option value="Santa Inês">Santa Inês</option>
+                        <option value="Marabá">Marabá</option>
+                        <option value="Nova Vida">Nova Vida</option>
+                        <option value="Açailândia">Açailândia</option>
+                        <option value="São Pedro d’Água Branca">São Pedro d’Água Branca</option>
+                        <option value="Itainópolis">Itainópolis</option>
+                        <option value="São Luís">São Luís</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="regional">Regional:</label>
+                    <input type="text" id="regional" readonly placeholder="Será preenchido automaticamente">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="centroCusto">Centro de Custo:</label>
+                    <input type="text" id="centroCusto" placeholder="Ex: CC-001">
+                </div>
+
+                <div class="form-group">
+                    <label for="investimento">Custo da obra:</label>
+                    <input type="text" id="investimento" placeholder="R$ 0,00">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="dataInicio">Data de Início:</label>
+                    <input type="date" id="dataInicio" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="dataTermino">Data de Término:</label>
+                    <input type="date" id="dataTermino" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="emailSponsor">E-mail do Sponsor:</label>
+                <input type="email" id="emailSponsor" placeholder="exemplo@empresa.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="status">Status:</label>
+                <input type="text" id="status" value="Planejado" readonly>
+            </div>
+
+            <button type="submit" class="btn">Salvar Projeto</button>
+            <button type="button" class="btn-voltar" onclick="window.location.href='menu.html'">⬅ Voltar ao Menu</button>
+        </form>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore-compat.js"></script>
+
+    <script>
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
+            authDomain: "queops-84feb.firebaseapp.com",
+            projectId: "queops-84feb",
+            storageBucket: "queops-84feb.firebasestorage.app",
+            messagingSenderId: "415710636047",
+            appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Preencher Regional automaticamente
+        document.getElementById("localidade").addEventListener("change", function(){
+            const local = this.value;
+            let regional = "";
+
+            if (local === "São Luís") {
+        regional = "São Luís";
+    } else if (["Arari","Vitória do Mearim","Santa Inês","Alto Alegre do Pindaré"].includes(local)) {
+        regional = "Regional 1";
+    } else if (["Açailândia","Nova Vida"].includes(local)) {
+        regional = "Regional 2";
+    } else if (["Marabá","São Pedro d’Água Branca","Itainópolis"].includes(local)) {
+        regional = "Regional 3";
+    }
+    document.getElementById("regional").value = regional;
+});
+
+        // Máscara para campo de moeda
+        document.getElementById('investimento').addEventListener('input', function (e) {
+            let valor = e.target.value.replace(/\D/g, '');
+            valor = (Number(valor) / 100).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            });
+            e.target.value = valor;
+        });
+
+        // Capturar envio do formulário
+        document.getElementById("formProjeto").addEventListener("submit", async function(e){
+            e.preventDefault();
+
+            let investimentoBruto = document.getElementById("investimento").value;
+            let investimentoNumerico = investimentoBruto.replace(/\D/g, '');
+            if (investimentoNumerico === "") investimentoNumerico = 0;
+            let investimento = parseFloat(investimentoNumerico) / 100;
+
+            let projeto = {
+                nome: document.getElementById("nomeProjeto").value,
+                localidade: document.getElementById("localidade").value,
+                regional: document.getElementById("regional").value,
+                centroCusto: document.getElementById("centroCusto").value,
+                investimento: investimento,
+                dataInicio: document.getElementById("dataInicio").value,
+                dataTermino: document.getElementById("dataTermino").value,
+                emailSponsor: document.getElementById("emailSponsor").value,
+                status: "Planejado"
+            };
+
+            try {
+                const docRef = await db.collection("projetos").add(projeto);
+                document.getElementById("idProjeto").value = docRef.id;
+                alert("✅ Projeto cadastrado com sucesso!");
+
+                // ✅ Limpar os campos do formulário (mantendo o ID)
+                document.getElementById("nomeProjeto").value = "";
+                document.getElementById("localidade").value = "";
+                document.getElementById("regional").value = "";
+                document.getElementById("centroCusto").value = "";
+                document.getElementById("investimento").value = "";
+                document.getElementById("dataInicio").value = "";
+                document.getElementById("dataTermino").value = "";
+                document.getElementById("emailSponsor").value = "";
+                document.getElementById("status").value = "Planejado";
+
+            } catch (error) {
+                alert("❌ Erro ao salvar o projeto: " + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+

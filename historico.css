@@ -1,0 +1,156 @@
+/* ===========================
+   Estilo Global
+=========================== */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #007E7A;
+    color: white;
+    text-align: center;
+    padding: 15px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.container {
+    width: 90%;
+    max-width: 900px;
+    margin: 20px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08); /* 🔹 Sombra reduzida */
+}
+
+/* ===========================
+   Formulários
+=========================== */
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+/* 🔹 Selects lado a lado */
+.select-container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.select-container .form-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    background-color: #fff;
+}
+
+/* ===========================
+   Tabela
+=========================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: white;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+th, td {
+    padding: 12px;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+    font-size: 14px;
+}
+
+th {
+    background-color: #007E7A;
+    color: white;
+    font-weight: bold;
+}
+
+tr:hover {
+    background-color: #f1f1f1;
+}
+
+.info {
+    text-align: center;
+    color: #777;
+}
+
+/* ===========================
+   Botões
+=========================== */
+.btn-container {
+    text-align: center;
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+button {
+    background-color: #007E7A;
+    color: white;
+    border: none;
+    padding: 8px 14px; /* 🔹 Botões menores */
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 150px; /* 🔹 Largura fixa */
+}
+
+button:hover {
+    background-color: #005f5d;
+}
+
+#btnImprimir {
+    background-color: #0ABB98;
+    width: 150px;
+}
+
+#btnImprimir:hover {
+    background-color: #08967a;
+}
+
+/* ===========================
+   Responsividade
+=========================== */
+@media (max-width: 600px) {
+    .container {
+        padding: 15px;
+    }
+
+    .select-container {
+        flex-direction: column;
+    }
+
+    th, td {
+        font-size: 12px;
+        padding: 8px;
+    }
+
+    button {
+        width: 100%;
+    }
+}

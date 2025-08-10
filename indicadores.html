@@ -1,0 +1,298 @@
+<!DOCTYPE html> 
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indicadores - Sistema Quéops</title>
+    <link rel="stylesheet" href="indicadores.css">
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+    <style>
+        .graficos {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: nowrap;
+        }
+
+        .grafico-card {
+            background: #fff;
+            padding: 14px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            width: 48%;
+            min-width: 400px;
+            height: 380px;
+        }
+
+        .grafico-card canvas {
+            width: 100% !important;
+            height: 290px !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>📊 Indicadores de Obras</h1>
+
+    <div class="btn-voltar-container">
+        <button onclick="window.location.href='menu.html'">⬅ Voltar para o Menu</button>
+    </div>
+
+    <div class="filtros">
+        <select id="filtroStatus"></select>
+        <select id="filtroRegional"></select>
+        <select id="filtroLocalidade"></select>
+    </div>
+ 
+    <div class="cards">
+        <div class="card">Total de Obras: <span id="totalObras">0</span></div>
+        <div class="card">Planejadas: <span id="planejadas">0</span></div>
+        <div class="card">Em Andamento: <span id="andamento">0</span></div>
+        <div class="card">Paralisadas: <span id="paralisadas">0</span></div>
+        <div class="card">Concluídas: <span id="concluidas">0</span></div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Nome do Projeto</th>
+                <th>Localidade</th>
+                <th>Regional</th>
+                <th>Custo Orçado (R$)</th>      <!-- 🔹 novo -->
+                <th>Custo Executado (R$)</th>   <!-- 🔹 novo -->
+                <th>Avanço (%)</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="tabelaProjetos"></tbody>
+    </table>
+
+    <div class="graficos">
+        <div class="grafico-card">
+            <h3>Status das Obras</h3>
+            <canvas id="graficoStatus"></canvas>
+        </div>
+        <div class="grafico-card">
+            <h3>Custos por Regional</h3>
+            <canvas id="graficoCustos"></canvas>
+        </div>
+    </div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
+        authDomain: "queops-84feb.firebaseapp.com",
+        projectId: "queops-84feb",
+        storageBucket: "queops-84feb.appspot.com",
+        messagingSenderId: "415710636047",
+        appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let projetos = [];
+    let chartStatus, chartCustos;
+
+    function carregarProjetos() {
+        db.collection("projetos_atualizados")
+            .orderBy("dataAtualizacao", "asc")
+            .onSnapshot((snapshot) => {
+                const acumulados = {};
+
+                // helper p/ converter "10", "10,5", "1.000,50", "10%" etc.
+                const toNum = (v) => {
+                    if (typeof v === "number") return v;
+                    if (typeof v === "string") {
+                        return Number(
+                            v.replace(/\s/g, "")
+                             .replace("R$", "")
+                             .replace(/\./g, "")
+                             .replace(",", ".")
+                             .replace("%", "")
+                        ) || 0;
+                    }
+                    return 0;
+                };
+
+                snapshot.forEach(doc => {
+                    const dados = doc.data();
+                    const id = (dados.projetoId ?? "").toString().trim();
+                    if (!id) return;
+
+                    if (!acumulados[id]) {
+                        acumulados[id] = { 
+                            projetoId: id,
+                            nomeProjeto: dados.nomeProjeto || "-",
+                            localidade:  dados.localidade  || "-",
+                            regional:    dados.regional    || "-",
+                            custoOrcado: 0,               // 🔹 será preenchido pela coleção "projetos"
+                            investimentoNovo: 0,          // soma dos incrementos = EXECUTADO
+                            avancoFisicoNovo: 0,          // soma dos incrementos de avanço
+                            statusNovo: "-",
+                            ultimaData: null
+                        };
+                    }
+
+                    // 🔹 Soma dos incrementos (executado)
+                    const incCusto  = toNum(dados.investimentoNovo);
+                    const incAvanco = toNum(dados.avancoFisicoNovo);
+
+                    if (incCusto  > 0) acumulados[id].investimentoNovo += incCusto;
+                    if (incAvanco > 0) acumulados[id].avancoFisicoNovo += incAvanco;
+
+                    // 🔹 Mantém status/metadados do registro mais recente
+                    const tsAtual  = dados.dataAtualizacao?.toMillis?.() || 0;
+                    const tsUltimo = acumulados[id].ultimaData?.toMillis?.() || 0;
+                    if (tsAtual >= tsUltimo) {
+                        acumulados[id].statusNovo  = dados.statusNovo || "-";
+                        acumulados[id].ultimaData  = dados.dataAtualizacao || null;
+                        acumulados[id].nomeProjeto = dados.nomeProjeto || acumulados[id].nomeProjeto;
+                        acumulados[id].localidade  = dados.localidade  || acumulados[id].localidade;
+                        acumulados[id].regional    = dados.regional    || acumulados[id].regional;
+                    }
+                });
+
+                // 🔹 Limita avanço em 100%
+                Object.keys(acumulados).forEach(id => {
+                    acumulados[id].avancoFisicoNovo = Math.min(100, acumulados[id].avancoFisicoNovo);
+                });
+
+                // 🔹 Busca CUSTO ORÇADO na coleção "projetos" usando o mesmo projetoId
+                (async () => {
+                    const ids = Object.keys(acumulados);
+                    if (ids.length === 0) {
+                        projetos = [];
+                        preencherFiltros();
+                        atualizarIndicadores();
+                        return;
+                    }
+
+                    const gets = ids.map(id => db.collection("projetos").doc(id).get());
+                    const docs = await Promise.all(gets);
+
+                    docs.forEach((snap, i) => {
+                        if (!snap.exists) return;
+                        const p = snap.data();
+                        const bruto = p.investimento ?? p.custoOrcado ?? 0; // aceita investimento OU custoOrcado
+                        acumulados[ids[i]].custoOrcado = toNum(bruto);
+
+                        // opcional: prioriza metadados do projeto base
+                        acumulados[ids[i]].nomeProjeto = p.nomeProjeto || p.nome || acumulados[ids[i]].nomeProjeto;
+                        acumulados[ids[i]].localidade  = p.localidade  || acumulados[ids[i]].localidade;
+                        acumulados[ids[i]].regional    = p.regional    || acumulados[ids[i]].regional;
+                    });
+
+                    projetos = Object.values(acumulados);
+                    preencherFiltros();
+                    atualizarIndicadores();
+                })();
+            });
+    }
+
+    function preencherFiltros() {
+        const statusList = [...new Set(projetos.map(p => p.statusNovo))];
+        const regionais = [...new Set(projetos.map(p => p.regional))];
+        const localidades = [...new Set(projetos.map(p => p.localidade))];
+
+        document.getElementById("filtroStatus").innerHTML =
+            `<option value="">Todos os status</option>` +
+            statusList.map(s => `<option value="${s}">${s}</option>`).join("");
+
+        document.getElementById("filtroRegional").innerHTML =
+            `<option value="">Todas as regionais</option>` +
+            regionais.map(r => `<option value="${r}">${r}</option>`).join("");
+
+        document.getElementById("filtroLocalidade").innerHTML =
+            `<option value="">Todas as localidades</option>` +
+            localidades.map(l => `<option value="${l}">${l}</option>`).join("");
+    }
+
+    function atualizarIndicadores() {
+        const status = document.getElementById("filtroStatus").value;
+        const regional = document.getElementById("filtroRegional").value;
+        const localidade = document.getElementById("filtroLocalidade").value;
+
+        let filtrados = projetos.filter(p => 
+            (!status || p.statusNovo == status) &&
+            (!regional || p.regional == regional) &&
+            (!localidade || p.localidade == localidade)
+        );
+
+        document.getElementById("totalObras").textContent = filtrados.length;
+        document.getElementById("planejadas").textContent = filtrados.filter(p => p.statusNovo === "Planejado").length;
+        document.getElementById("andamento").textContent = filtrados.filter(p => p.statusNovo === "Em andamento").length;
+        document.getElementById("paralisadas").textContent = filtrados.filter(p => p.statusNovo === "Paralisado").length;
+        document.getElementById("concluidas").textContent = filtrados.filter(p => p.statusNovo === "Concluído").length;
+
+        const tabela = document.getElementById("tabelaProjetos");
+        tabela.innerHTML = filtrados.map(p => `
+            <tr>
+                <td>${p.nomeProjeto || "-"}</td>
+                <td>${p.localidade || "-"}</td>
+                <td>${p.regional || "-"}</td>
+                <td>R$ ${(p.custoOrcado || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>      <!-- Orçado -->
+                <td>R$ ${(p.investimentoNovo || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td> <!-- Executado -->
+                <td>${(p.avancoFisicoNovo || 0).toFixed(2)}%</td>
+                <td>${p.statusNovo || "-"}</td>
+            </tr>
+        `).join("");
+
+        gerarGraficos(filtrados);
+    }
+
+    function gerarGraficos(dados) {
+        const statusCounts = { "Planejado": 0, "Em andamento": 0, "Paralisado": 0, "Concluído": 0 };
+        const custosRegionais = {};
+
+        dados.forEach(p => {
+            statusCounts[p.statusNovo] = (statusCounts[p.statusNovo] || 0) + 1;
+            // gráfico usa EXECUTADO
+            custosRegionais[p.regional] = (custosRegionais[p.regional] || 0) + (parseFloat(p.investimentoNovo) || 0);
+        });
+
+        if(chartStatus) chartStatus.destroy();
+        chartStatus = new Chart(document.getElementById("graficoStatus"), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(statusCounts),
+                datasets: [{
+                    label: 'Quantidade de Obras',
+                    data: Object.values(statusCounts),
+                    backgroundColor: ["#999", "#007E7A", "#f39c12", "#27ae60"],
+                    borderRadius: 6
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        if(chartCustos) chartCustos.destroy();
+        chartCustos = new Chart(document.getElementById("graficoCustos"), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(custosRegionais),
+                datasets: [{
+                    label: 'Custos Executados (R$)',  // 🔹 rótulo atualizado
+                    data: Object.values(custosRegionais),
+                    backgroundColor: "#007E7A",
+                    borderRadius: 6
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    document.getElementById("filtroStatus").addEventListener("change", atualizarIndicadores);
+    document.getElementById("filtroRegional").addEventListener("change", atualizarIndicadores);
+    document.getElementById("filtroLocalidade").addEventListener("change", atualizarIndicadores);
+
+    carregarProjetos();
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+/* ======== Estilos Gerais ======== */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+}
+
+/* ======== Menu Lateral ======== */
+.menu-lateral {
+    width: 220px;
+    height: 100vh;
+    background-color: #007E7A;
+    padding: 15px;
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+.menu-lateral button {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    background-color: #0ABB98;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.menu-lateral button:hover {
+    background-color: #059e8b;
+}
+
+/* ======== Conteúdo Principal ======== */
+.conteudo {
+    margin-left: 240px;
+    padding: 20px;
+}
+
+h1 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+/* ======== Filtros ======== */
+.filtros {
+    margin-bottom: 20px;
+}
+
+.filtros select {
+    padding: 8px;
+    margin-right: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* ======== Tabela ======== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+thead {
+    background-color: #007E7A;
+    color: white;
+}
+
+thead th {
+    padding: 12px;
+    text-align: left;
+    font-size: 10px;
+}
+
+tbody td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    font-size: 10px;
+}
+
+tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* ======== Responsividade ======== */
+@media (max-width: 768px) {
+    .menu-lateral {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+
+    .conteudo {
+        margin-left: 0;
+    }
+
+    table {
+        font-size: 12px;
+    }
+}
+
+
