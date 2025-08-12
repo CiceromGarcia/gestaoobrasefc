@@ -1,197 +1,209 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastrar Projeto</title>
-    <link rel="stylesheet" href="form.css">
-    <style>
-        .btn-voltar {
-            background-color: #555;
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 6px;
-            font-size: 14px;
-            cursor: pointer;
-            margin-top: 10px;
-            margin-left: 10px;
-            transition: 0.3s;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cadastrar Projeto</title>
+  <link rel="stylesheet" href="form.css">
+  <style>
+    .btn-voltar{background:#555;color:#fff;border:none;padding:10px 16px;border-radius:6px;font-size:14px;cursor:pointer;margin-top:10px;margin-left:10px;transition:.3s}
+    .btn-voltar:hover{background:#333}
+    .hint{font-size:12px;color:#666;margin:-6px 0 10px}
+  </style>
 
-        .btn-voltar:hover {
-            background-color: #333;
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore-compat.js"></script>
+
+  <script>
+    // ===== Config Firebase =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
+      authDomain: "queops-84feb.firebaseapp.com",
+      projectId: "queops-84feb",
+      storageBucket: "queops-84feb.appspot.com",
+      messagingSenderId: "415710636047",
+      appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+
+    // ===== Estado de login (anônimo) =====
+    let authReady = false;
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (!user) {
+        try {
+          await firebase.auth().signInAnonymously();
+        } catch (err) {
+          console.error('Falha no login anônimo:', err);
+          alert('Ative o provedor "Anônimo" em Authentication > Sign-in method, e adicione seu domínio em Authentication > Settings > Authorized domains.');
+          return;
         }
-    </style>
+      }
+      authReady = true;
+      // libera o botão
+      const btn = document.getElementById("btnSalvar");
+      if (btn) { btn.disabled = false; btn.textContent = "Salvar Projeto"; }
+    });
+  </script>
 </head>
 <body>
-    <div class="container">
-        <h2>Cadastrar Novo Projeto</h2>
-        <form id="formProjeto">
-          
-            <div class="form-group">
-                <label for="idProjeto">ID do Projeto:</label>
-                <input type="text" id="idProjeto" placeholder="Gerado automaticamente" disabled>
-            </div>
+  <div class="container">
+    <h2>Cadastrar Novo Projeto</h2>
+    <div class="hint" id="authHint">Aguardando autenticação segura…</div>
 
-            <div class="form-group">
-                <label for="nomeProjeto">Nome do Projeto:</label>
-                <input type="text" id="nomeProjeto" placeholder="Digite o nome do projeto" required>
-            </div>
+    <form id="formProjeto">
+      <div class="form-group">
+        <label for="idProjeto">ID do Projeto:</label>
+        <input type="text" id="idProjeto" placeholder="Gerado automaticamente" disabled>
+      </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="localidade">Localidade:</label>
-                    <select id="localidade" required>
-                        <option value="" disabled selected>Selecione a Localidade</option>
-                        <option value="Arari">Arari</option>
-                        <option value="Vitória do Mearim">Vitória do Mearim</option>
-                        <option value="Santa Inês">Santa Inês</option>
-                        <option value="Marabá">Marabá</option>
-                        <option value="Nova Vida">Nova Vida</option>
-                        <option value="Açailândia">Açailândia</option>
-                        <option value="São Pedro d’Água Branca">São Pedro d’Água Branca</option>
-                        <option value="Itainópolis">Itainópolis</option>
-                        <option value="São Luís">São Luís</option>
-                    </select>
-                </div>
+      <div class="form-group">
+        <label for="nomeProjeto">Nome do Projeto:</label>
+        <input type="text" id="nomeProjeto" placeholder="Digite o nome do projeto" required>
+      </div>
 
-                <div class="form-group">
-                    <label for="regional">Regional:</label>
-                    <input type="text" id="regional" readonly placeholder="Será preenchido automaticamente">
-                </div>
-            </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="localidade">Localidade:</label>
+          <select id="localidade" required>
+            <option value="" disabled selected>Selecione a Localidade</option>
+            <option value="Arari">Arari</option>
+            <option value="Vitória do Mearim">Vitória do Mearim</option>
+            <option value="Santa Inês">Santa Inês</option>
+            <option value="Marabá">Marabá</option>
+            <option value="Nova Vida">Nova Vida</option>
+            <option value="Açailândia">Açailândia</option>
+            <option value="São Pedro d’Água Branca">São Pedro d’Água Branca</option>
+            <option value="Itainópolis">Itainópolis</option>
+            <option value="São Luís">São Luís</option>
+          </select>
+        </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="centroCusto">Centro de Custo:</label>
-                    <input type="text" id="centroCusto" placeholder="Ex: CC-001">
-                </div>
+        <div class="form-group">
+          <label for="regional">Regional:</label>
+          <input type="text" id="regional" readonly placeholder="Será preenchido automaticamente">
+        </div>
+      </div>
 
-                <div class="form-group">
-                    <label for="investimento">Custo da obra:</label>
-                    <input type="text" id="investimento" placeholder="R$ 0,00">
-                </div>
-            </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="centroCusto">Centro de Custo:</label>
+          <input type="text" id="centroCusto" placeholder="Ex: 148080">
+        </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="dataInicio">Data de Início:</label>
-                    <input type="date" id="dataInicio" required>
-                </div>
+        <div class="form-group">
+          <label for="investimento">Custo da obra:</label>
+          <input type="text" id="investimento" placeholder="R$ 0,00">
+        </div>
+      </div>
 
-                <div class="form-group">
-                    <label for="dataTermino">Data de Término:</label>
-                    <input type="date" id="dataTermino" required>
-                </div>
-            </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="dataInicio">Data de Início:</label>
+          <input type="date" id="dataInicio" required>
+        </div>
 
-            <div class="form-group">
-                <label for="emailSponsor">E-mail do Sponsor:</label>
-                <input type="email" id="emailSponsor" placeholder="exemplo@empresa.com" required>
-            </div>
+        <div class="form-group">
+          <label for="dataTermino">Data de Término:</label>
+          <input type="date" id="dataTermino" required>
+        </div>
+      </div>
 
-            <div class="form-group">
-                <label for="status">Status:</label>
-                <input type="text" id="status" value="Planejado" readonly>
-            </div>
+      <div class="form-group">
+        <label for="emailSponsor">E-mail do Sponsor:</label>
+        <input type="email" id="emailSponsor" placeholder="exemplo@empresa.com" required>
+      </div>
 
-            <button type="submit" class="btn">Salvar Projeto</button>
-            <button type="button" class="btn-voltar" onclick="window.location.href='menu.html'">⬅ Voltar ao Menu</button>
-        </form>
-    </div>
+      <div class="form-group">
+        <label for="status">Status:</label>
+        <input type="text" id="status" value="Planejado" readonly>
+      </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore-compat.js"></script>
+      <button type="submit" id="btnSalvar" class="btn" disabled>Autenticando…</button>
+      <button type="button" class="btn-voltar" onclick="window.location.href='menu.html'">⬅ Voltar ao Menu</button>
+    </form>
+  </div>
 
-    <script>
-        // Configuração do Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
-            authDomain: "queops-84feb.firebaseapp.com",
-            projectId: "queops-84feb",
-            storageBucket: "queops-84feb.firebasestorage.app",
-            messagingSenderId: "415710636047",
-            appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
-        };
+  <script>
+    const db = firebase.firestore();
 
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        // Preencher Regional automaticamente
-        document.getElementById("localidade").addEventListener("change", function(){
-            const local = this.value;
-            let regional = "";
-
-            if (local === "São Luís") {
+    // Preenche Regional conforme Localidade
+    document.getElementById("localidade").addEventListener("change", function(){
+      const local = this.value;
+      let regional = "";
+      if (local === "São Luís") {
         regional = "São Luís";
-    } else if (["Arari","Vitória do Mearim","Santa Inês","Alto Alegre do Pindaré"].includes(local)) {
+      } else if (["Arari","Vitória do Mearim","Santa Inês","Alto Alegre do Pindaré"].includes(local)) {
         regional = "Regional 1";
-    } else if (["Açailândia","Nova Vida"].includes(local)) {
+      } else if (["Açailândia","Nova Vida"].includes(local)) {
         regional = "Regional 2";
-    } else if (["Marabá","São Pedro d’Água Branca","Itainópolis"].includes(local)) {
+      } else if (["Marabá","São Pedro d’Água Branca","Itainópolis"].includes(local)) {
         regional = "Regional 3";
-    }
-    document.getElementById("regional").value = regional;
-});
+      }
+      document.getElementById("regional").value = regional;
+    });
 
-        // Máscara para campo de moeda
-        document.getElementById('investimento').addEventListener('input', function (e) {
-            let valor = e.target.value.replace(/\D/g, '');
-            valor = (Number(valor) / 100).toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-            });
-            e.target.value = valor;
-        });
+    // Máscara de moeda (gera número depois)
+    document.getElementById('investimento').addEventListener('input', function (e) {
+      let v = e.target.value.replace(/\D/g, '');
+      v = (Number(v || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      e.target.value = v;
+    });
 
-        // Capturar envio do formulário
-        document.getElementById("formProjeto").addEventListener("submit", async function(e){
-            e.preventDefault();
+    // Envio
+    document.getElementById("formProjeto").addEventListener("submit", async function(e){
+      e.preventDefault();
 
-            let investimentoBruto = document.getElementById("investimento").value;
-            let investimentoNumerico = investimentoBruto.replace(/\D/g, '');
-            if (investimentoNumerico === "") investimentoNumerico = 0;
-            let investimento = parseFloat(investimentoNumerico) / 100;
+      if (!authReady || !firebase.auth().currentUser) {
+        alert('Autenticando… tente novamente em 1–2 segundos.');
+        return;
+      }
 
-            let projeto = {
-                nome: document.getElementById("nomeProjeto").value,
-                localidade: document.getElementById("localidade").value,
-                regional: document.getElementById("regional").value,
-                centroCusto: document.getElementById("centroCusto").value,
-                investimento: investimento,
-                dataInicio: document.getElementById("dataInicio").value,
-                dataTermino: document.getElementById("dataTermino").value,
-                emailSponsor: document.getElementById("emailSponsor").value,
-                status: "Planejado"
-            };
+      // número limpo para cumprir as regras
+      const investimentoBruto = document.getElementById("investimento").value;
+      const investimento = (parseFloat((investimentoBruto || '').replace(/\D/g, '')) || 0) / 100;
 
-            try {
-                const docRef = await db.collection("projetos").add(projeto);
-                document.getElementById("idProjeto").value = docRef.id;
-                alert("✅ Projeto cadastrado com sucesso!");
+      const docData = {
+        nome: document.getElementById("nomeProjeto").value.trim(),
+        localidade: document.getElementById("localidade").value,
+        regional: document.getElementById("regional").value,
+        centroCusto: document.getElementById("centroCusto").value.trim(),
+        investimento: investimento,                       // number ✔
+        dataInicio: document.getElementById("dataInicio").value,
+        dataTermino: document.getElementById("dataTermino").value,
+        emailSponsor: document.getElementById("emailSponsor").value.trim(),
+        status: "Planejado"                               // dentro do enum ✔
+      };
 
-                // ✅ Limpar os campos do formulário (mantendo o ID)
-                document.getElementById("nomeProjeto").value = "";
-                document.getElementById("localidade").value = "";
-                document.getElementById("regional").value = "";
-                document.getElementById("centroCusto").value = "";
-                document.getElementById("investimento").value = "";
-                document.getElementById("dataInicio").value = "";
-                document.getElementById("dataTermino").value = "";
-                document.getElementById("emailSponsor").value = "";
-                document.getElementById("status").value = "Planejado";
+      try {
+        const btn = document.getElementById("btnSalvar");
+        btn.disabled = true; btn.textContent = "Salvando…";
 
-            } catch (error) {
-                alert("❌ Erro ao salvar o projeto: " + error.message);
-            }
-        });
-    </script>
+        const ref = await db.collection("projetos").add(docData);
+        document.getElementById("idProjeto").value = ref.id;
+        alert("✅ Projeto cadastrado com sucesso!");
+
+        // limpa
+        document.getElementById("formProjeto").reset();
+        document.getElementById("regional").value = "";
+        document.getElementById("status").value = "Planejado";
+
+      } catch (error) {
+        console.error(error);
+        alert("❌ Erro ao salvar o projeto: " + error.message);
+      } finally {
+        const btn = document.getElementById("btnSalvar");
+        btn.disabled = false; btn.textContent = "Salvar Projeto";
+      }
+    });
+
+    // UX: quando autenticar, some o aviso
+    const iv = setInterval(()=>{
+      if (authReady){ const h=document.getElementById('authHint'); if(h){h.remove();} clearInterval(iv);}
+    },200);
+  </script>
 </body>
 </html>
-
-
-
 
