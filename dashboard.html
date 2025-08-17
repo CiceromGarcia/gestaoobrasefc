@@ -18,7 +18,7 @@
             background-color: #007E7A;
             color: white;
             padding: 15px;
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
         }
 
@@ -77,7 +77,7 @@
         .link-desabilitado{
             color:#777 !important;
             text-decoration:none !important;
-            pointer-events:none;  /* bloqueia clique do mouse */
+            pointer-events:none;
             cursor: default;
         }
     </style>
@@ -354,21 +354,26 @@
     });
   }
 
-  /* 🔹 aplica filtro automático de São Luís (ou ?localidade=...) sem mudar layout */
+  /* 🔹 Inicialização sem forçar "São Luís"
+     - Se existir ?localidade= na URL, aplica.
+     - Caso contrário, mantém "Todas" (valor vazio). */
   window.onload = async () => {
     await carregarProjetos();
     const params = new URLSearchParams(location.search);
-    const alvo = params.get("localidade") || "São Luís";
+
+    // ✅ antes: params.get("localidade") || "São Luís"
+    const alvo = params.has("localidade") ? params.get("localidade") : ""; // "" = Todas
+
     const sel = document.getElementById('filtroLocalidade');
-    if (sel) {
+    if (sel && alvo !== "") {
       for (const opt of sel.options) {
-        if (opt.value.toLowerCase() === alvo.toLowerCase()) {
+        if (opt.value.toLowerCase() === String(alvo).toLowerCase()) {
           sel.value = opt.value;
           break;
         }
       }
-      filtrarProjetos();
     }
+    filtrarProjetos();
   };
 </script>
 
