@@ -38,6 +38,7 @@ input {
     border-radius: 6px;
     outline: none;
     font-size: 14px;
+    box-sizing: border-box;   /* ✅ garante largura idêntica ao botão */
 }
 
 button {
@@ -50,6 +51,7 @@ button {
     cursor: pointer;
     font-size: 16px;
     transition: background 0.3s ease;
+    box-sizing: border-box;   /* ✅ mesma largura visual dos inputs */
 }
 
 button:hover {

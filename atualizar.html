@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Atualizar Projeto - Sistema Quéops</title>
@@ -16,9 +17,55 @@
     button:hover { background:#0ABB98; }
   </style>
 
-  <!-- Firebase -->
+  <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+  <script>
+    // ===== Config do Firebase =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
+      authDomain: "queops-84feb.firebaseapp.com",
+      projectId: "queops-84feb",
+      storageBucket: "queops-84feb.appspot.com",
+      messagingSenderId: "415710636047",
+      appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+
+    // ===== Guard de sessão e carregamento seguro =====
+    (function(){
+      try { firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION); } catch(e){}
+      firebase.auth().onAuthStateChanged(function(user){
+        if (!user) {
+          // Redireciona para login preservando destino atual
+          const next = encodeURIComponent(location.pathname + location.search);
+          if (!location.pathname.toLowerCase().includes('login.html')) {
+            location.replace('login.html?next=' + next);
+          }
+          return;
+        }
+        // Usuário confirmado -> carrega os dados do projeto
+        if (!window.__carregouProjeto) {  // evita rodar 2x
+          window.__carregouProjeto = true;
+          carregarProjeto();
+        }
+      });
+    })();
+
+    // helper para ações sensíveis (ex.: salvar)
+    function exigeLogin() {
+      const u = firebase.auth().currentUser;
+      if (!u) {
+        alert('Faça login para continuar.');
+        const next = encodeURIComponent(location.pathname + location.search);
+        location.replace('login.html?next=' + next);
+        return false;
+      }
+      return true;
+    }
+  </script>
 </head>
 <body>
   <div class="container">
@@ -51,16 +98,6 @@
   </div>
 
   <script>
-    // ===== Firebase Config =====
-    const firebaseConfig = {
-      apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
-      authDomain: "queops-84feb.firebaseapp.com",
-      projectId: "queops-84feb",
-      storageBucket: "queops-84feb.firebasestorage.app",
-      messagingSenderId: "415710636047",
-      appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
-    };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     // ===== Util =====
@@ -68,24 +105,30 @@
     const projetoId = params.get("id");
     let dadosOriginais = {};
 
-    // Carregar dados do projeto base (só pra exibir na tela)
+    // Carregar dados do projeto base (só exibição) — chamado APENAS após auth ok
     async function carregarProjeto() {
       if (!projetoId) {
         alert("❌ Nenhum projeto selecionado!");
         window.location.href = "dashboard.html";
         return;
       }
-      const doc = await db.collection("projetos").doc(projetoId).get();
-      if (!doc.exists) {
-        alert("⚠ Projeto não encontrado!");
-        window.location.href = "dashboard.html";
-        return;
+
+      try {
+        const doc = await db.collection("projetos").doc(projetoId).get();
+        if (!doc.exists) {
+          alert("⚠ Projeto não encontrado!");
+          window.location.href = "dashboard.html";
+          return;
+        }
+        dadosOriginais = doc.data();
+        document.getElementById("nomeProjeto").value   = dadosOriginais.nomeProjeto || dadosOriginais.nome || "";
+        document.getElementById("localidade").value    = dadosOriginais.localidade || "";
+        document.getElementById("regional").value      = dadosOriginais.regional || "";
+        document.getElementById("centroCusto").value   = dadosOriginais.centroCusto || "";
+      } catch (e) {
+        console.error(e);
+        alert("Erro ao carregar o projeto.");
       }
-      dadosOriginais = doc.data();
-      document.getElementById("nomeProjeto").value = dadosOriginais.nomeProjeto || dadosOriginais.nome || "";
-      document.getElementById("localidade").value = dadosOriginais.localidade || "";
-      document.getElementById("regional").value = dadosOriginais.regional || "";
-      document.getElementById("centroCusto").value = dadosOriginais.centroCusto || "";
     }
 
     // Formatar moeda no input
@@ -105,29 +148,28 @@
       return only ? Number(only)/100 : 0;
     }
 
-    // Salvar APENAS os incrementos em projetos_atualizados
+    // Salvar APENAS os incrementos em projetos_atualizados — exige login
     async function atualizarProjeto() {
+      if (!exigeLogin()) return;
       if (!projetoId) return;
 
       const btn = document.getElementById("btnSalvar");
-      btn.disabled = true; // (ajuste) evita duplo clique
+      btn.disabled = true;
 
       try {
-        // Incrementos informados agora
-        const valorInput = document.getElementById("investimento").value;
-        const custoAdicional = parseBRL(valorInput);                    // (ajuste) parser robusto
-        const avancoAdicional = parseFloat(document.getElementById("avancoFisico").value) || 0;
+        const valorInput       = document.getElementById("investimento").value;
+        const custoAdicional   = parseBRL(valorInput);
+        const avancoAdicional  = parseFloat(document.getElementById("avancoFisico").value) || 0;
 
         if (custoAdicional <= 0 && avancoAdicional <= 0) {
           alert("Informe ao menos Custo adicional ou Avanço físico.");
           return;
         }
 
-        // Buscar acumulados anteriores SOMENTE na coleção projetos_atualizados
+        // Buscar acumulados anteriores na coleção de histórico
         let somaInvestAnterior = 0;
         let somaAvancoAnterior = 0;
 
-        // (ajuste) sem orderBy para não exigir índice
         const snap = await db.collection("projetos_atualizados")
           .where("projetoId", "==", projetoId)
           .get();
@@ -143,24 +185,24 @@
         let avancoFisicoAcumulado = somaAvancoAnterior + avancoAdicional;
         if (avancoFisicoAcumulado > 100) avancoFisicoAcumulado = 100;
 
-        // Status calculado pelo ACUMULADO de avanço
+        // Status calculado
         let statusNovo = "Planejado";
         if (avancoFisicoAcumulado > 0 && avancoFisicoAcumulado < 100) statusNovo = "Em andamento";
         if (avancoFisicoAcumulado === 100) statusNovo = "Concluído";
         if (investimentoAcumulado > 0 && avancoFisicoAcumulado === 0) statusNovo = "Paralisado";
 
-        // Gravar NOVA LINHA somente com incrementos (e campos acumulados de apoio)
+        // Registro de histórico (somente incrementos)
         await db.collection("projetos_atualizados").add({
-          projetoId: projetoId,
+          projetoId,
           nomeProjeto: dadosOriginais.nomeProjeto || dadosOriginais.nome || "",
-          localidade: dadosOriginais.localidade || "",
-          regional: dadosOriginais.regional || "",
+          localidade:  dadosOriginais.localidade || "",
+          regional:    dadosOriginais.regional || "",
           centroCusto: dadosOriginais.centroCusto || "",
-          investimentoNovo: custoAdicional,             // incremento
-          avancoFisicoNovo: avancoAdicional,            // incremento
-          investimentoAcumulado: investimentoAcumulado, // apoio
-          avancoFisicoAcumulado: avancoFisicoAcumulado, // apoio
-          statusNovo: statusNovo,
+          investimentoNovo:        custoAdicional,
+          avancoFisicoNovo:        avancoAdicional,
+          investimentoAcumulado:   investimentoAcumulado,
+          avancoFisicoAcumulado:   avancoFisicoAcumulado,
+          statusNovo:              statusNovo,
           dataAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -170,13 +212,13 @@
         console.error("Erro ao salvar atualização:", err);
         alert("Erro ao salvar. Veja o console (F12).");
       } finally {
-        btn.disabled = false; // (ajuste)
+        btn.disabled = false;
       }
     }
 
     // Eventos
     document.getElementById("btnSalvar").addEventListener("click", atualizarProjeto);
-    window.addEventListener("load", carregarProjeto);
+    // (removido o onload que causava loop; carregamento acontece no onAuthStateChanged)
   </script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Histórico de Atualizações - Sistema Quéops</title>
@@ -114,6 +115,14 @@
     }
     button:hover { background-color: #007E7A; }
   </style>
+<script>
+function esc(v){
+  if(v===undefined||v===null) return '';
+  return String(v).replace(/[&<>"']/g, function(s){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]);
+  });
+}
+</script>
 </head>
 <body>
   <div class="container">
@@ -177,6 +186,7 @@
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script> <!-- ADICIONADO -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 
   <script>
@@ -190,168 +200,192 @@
         appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
       });
     }
+    try { firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION); } catch(e){}
     window.db = firebase.firestore();
+
+    // ✅ Só começa a carregar dados depois de restaurar a sessão
+    firebase.auth().onAuthStateChanged(function(user){
+      if (!user) {
+        const next = encodeURIComponent(location.pathname + location.search);
+        location.replace('login.html?next=' + next);
+      } else {
+        window.__AUTH_OK__ = true;
+        if (typeof window.__startHistorico === 'function') {
+          window.__startHistorico();
+        }
+      }
+    });
   </script>
 
   <script>
   document.addEventListener("DOMContentLoaded", () => {
-    const db = window.db;
+    // --- tudo que já existia no seu DOMContentLoaded foi movido para uma função
+    // --- e será executado somente após o usuário estar autenticado.
+    window.__startHistorico = () => {
+      const db = window.db;
 
-    const selectRegional  = document.getElementById("selectRegional");
-    const selectProjeto   = document.getElementById("selectProjeto");
-    const tabelaHistorico = document.getElementById("tabelaHistorico");
-    const btnVoltar       = document.getElementById("btnVoltar");
-    const btnImprimir     = document.getElementById("btnImprimir");
+      const selectRegional  = document.getElementById("selectRegional");
+      const selectProjeto   = document.getElementById("selectProjeto");
+      const tabelaHistorico = document.getElementById("tabelaHistorico");
+      const btnVoltar       = document.getElementById("btnVoltar");
+      const btnImprimir     = document.getElementById("btnImprimir");
 
-    const resumoWrap      = document.getElementById("resumoProjeto");
-    const resumoInicio    = document.getElementById("resumoInicio");
-    const resumoTermino   = document.getElementById("resumoTermino");
-    const resumoCusto     = document.getElementById("resumoCusto");
-    const resumoExecutado = document.getElementById("resumoExecutado");
+      const resumoWrap      = document.getElementById("resumoProjeto");
+      const resumoInicio    = document.getElementById("resumoInicio");
+      const resumoTermino   = document.getElementById("resumoTermino");
+      const resumoCusto     = document.getElementById("resumoCusto");
+      const resumoExecutado = document.getElementById("resumoExecutado");
 
-    let custoOrcadoAtual = 0;
+      let custoOrcadoAtual = 0;
 
-    const fmtBRL = v => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    const fmtDT  = ts => ts?.toDate ? ts.toDate().toLocaleString("pt-BR") : "-";
-    const fmtPct = v => `${(Number(v || 0)).toFixed(2)}%`;
+      const fmtBRL = v => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      const fmtDT  = ts => ts?.toDate ? ts.toDate().toLocaleString("pt-BR") : "-";
+      const fmtPct = v => `${(Number(v || 0)).toFixed(2)}%`;
 
-    const fmtDataSimples = (val) => {
-      if (!val) return "-";
-      if (val.toDate) return val.toDate().toLocaleDateString("pt-BR");
-      if (typeof val === "string") {
-        const d = new Date(val);
-        return isNaN(d) ? val : d.toLocaleDateString("pt-BR");
+      const fmtDataSimples = (val) => {
+        if (!val) return "-";
+        if (val.toDate) return val.toDate().toLocaleDateString("pt-BR");
+        if (typeof val === "string") {
+          const d = new Date(val);
+          return isNaN(d) ? val : d.toLocaleDateString("pt-BR");
+        }
+        return "-";
+      };
+
+      const toNum = (v) => {
+        if (typeof v === "number") return v;
+        if (typeof v === "string") {
+          return Number(
+            v.replace(/\s/g, "")
+             .replace("R$", "")
+             .replace(/\./g, "")
+             .replace(",", ".")
+             .replace("%", "")
+          ) || 0;
+        }
+        return 0;
+      };
+
+      async function carregarRegionais() {
+        const snap = await db.collection("projetos").get();
+        const regionais = [...new Set(snap.docs.map(d => d.data().regional).filter(Boolean))].sort();
+        selectRegional.innerHTML = regionais.length
+          ? `<option value="">Selecione a regional</option>` +
+            regionais.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("")
+          : `<option value="">Nenhuma regional encontrada</option>`;
       }
-      return "-";
-    };
 
-    const toNum = (v) => {
-      if (typeof v === "number") return v;
-      if (typeof v === "string") {
-        return Number(
-          v.replace(/\s/g, "")
-          .replace("R$", "")
-          .replace(/\./g, "")
-          .replace(",", ".")
-          .replace("%", "")
-        ) || 0;
-      }
-      return 0;
-    };
+      async function carregarProjetos() {
+        selectProjeto.innerHTML = `<option value="">Carregando...</option>`;
+        const regionalSelecionada = selectRegional.value;
+        if (!regionalSelecionada) {
+          selectProjeto.innerHTML = `<option value="">Selecione uma regional primeiro</option>`;
+          tabelaHistorico.innerHTML = `<tr><td colspan="4">Selecione um projeto para visualizar o histórico.</td></tr>`;
+          resumoWrap.hidden = true;
+          return;
+        }
 
-    async function carregarRegionais() {
-      const snap = await db.collection("projetos").get();
-      const regionais = [...new Set(snap.docs.map(d => d.data().regional).filter(Boolean))].sort();
-      selectRegional.innerHTML = regionais.length
-        ? `<option value="">Selecione a regional</option>` +
-          regionais.map(r => `<option value="${r}">${r}</option>`).join("")
-        : `<option value="">Nenhuma regional encontrada</option>`;
-    }
+        const snap = await db.collection("projetos")
+          .where("regional", "==", regionalSelecionada)
+          .get();
 
-    async function carregarProjetos() {
-      selectProjeto.innerHTML = `<option value="">Carregando...</option>`;
-      const regionalSelecionada = selectRegional.value;
-      if (!regionalSelecionada) {
-        selectProjeto.innerHTML = `<option value="">Selecione uma regional primeiro</option>`;
+        if (snap.empty) {
+          selectProjeto.innerHTML = `<option value="">Nenhum projeto encontrado</option>`;
+          tabelaHistorico.innerHTML = `<tr><td colspan="4">Nenhum projeto nessa regional.</td></tr>`;
+          resumoWrap.hidden = true;
+          return;
+        }
+
+        let opts = `<option value="">Selecione um projeto</option>`;
+        snap.forEach(doc => {
+          const d = doc.data();
+          opts += `<option value="${doc.id}">${esc(d.nomeProjeto || d.nome || "Sem nome")}</option>`;
+        });
+        selectProjeto.innerHTML = opts;
         tabelaHistorico.innerHTML = `<tr><td colspan="4">Selecione um projeto para visualizar o histórico.</td></tr>`;
         resumoWrap.hidden = true;
-        return;
       }
 
-      const snap = await db.collection("projetos")
-        .where("regional", "==", regionalSelecionada)
-        .get();
-
-      if (snap.empty) {
-        selectProjeto.innerHTML = `<option value="">Nenhum projeto encontrado</option>`;
-        tabelaHistorico.innerHTML = `<tr><td colspan="4">Nenhum projeto nessa regional.</td></tr>`;
+      async function carregarResumoProjeto(projetoId) {
+        resumoInicio.textContent    = "-";
+        resumoTermino.textContent   = "-";
+        resumoCusto.textContent     = "-";
+        resumoExecutado.textContent = "-";
+        resumoExecutado.classList.remove("over-budget");
         resumoWrap.hidden = true;
-        return;
-      }
 
-      let opts = `<option value="">Selecione um projeto</option>`;
-      snap.forEach(doc => {
-        const d = doc.data();
-        opts += `<option value="${doc.id}">${d.nomeProjeto || d.nome || "Sem nome"}</option>`;
-      });
-      selectProjeto.innerHTML = opts;
-      tabelaHistorico.innerHTML = `<tr><td colspan="4">Selecione um projeto para visualizar o histórico.</td></tr>`;
-      resumoWrap.hidden = true;
-    }
+        const doc = await db.collection("projetos").doc(projetoId).get();
+        if (!doc.exists) return;
 
-    async function carregarResumoProjeto(projetoId) {
-      resumoInicio.textContent    = "-";
-      resumoTermino.textContent   = "-";
-      resumoCusto.textContent     = "-";
-      resumoExecutado.textContent = "-";
-      resumoExecutado.classList.remove("over-budget");
-      resumoWrap.hidden = true;
+        const p = doc.data();
+        custoOrcadoAtual = toNum(p.investimento ?? p.custoOrcado ?? 0);
 
-      const doc = await db.collection("projetos").doc(projetoId).get();
-      if (!doc.exists) return;
-
-      const p = doc.data();
-      custoOrcadoAtual = toNum(p.investimento ?? p.custoOrcado ?? 0);
-
-      resumoInicio.textContent  = fmtDataSimples(p.dataInicio);
-      resumoTermino.textContent = fmtDataSimples(p.dataTermino);
-      resumoCusto.textContent   = fmtBRL(custoOrcadoAtual);
-      resumoWrap.hidden = false;
-    }
-
-    async function carregarHistorico() {
-      tabelaHistorico.innerHTML = `<tr><td colspan="4">Carregando histórico...</td></tr>`;
-      const projetoId = selectProjeto.value;
-      if (!projetoId) {
-        tabelaHistorico.innerHTML = `<tr><td colspan="4">Selecione um projeto para visualizar o histórico.</td></tr>`;
-        resumoWrap.hidden = true;
-        return;
-      }
-
-      await carregarResumoProjeto(projetoId);
-
-      const snap = await db.collection("projetos_atualizados")
-        .where("projetoId", "==", projetoId)
-        .orderBy("dataAtualizacao", "desc")
-        .get();
-
-      if (snap.empty) {
-        tabelaHistorico.innerHTML = `<tr><td colspan="4">Nenhuma atualização encontrada para este projeto.</td></tr>`;
-        resumoExecutado.textContent = fmtBRL(0);
+        resumoInicio.textContent  = fmtDataSimples(p.dataInicio);
+        resumoTermino.textContent = fmtDataSimples(p.dataTermino);
+        resumoCusto.textContent   = fmtBRL(custoOrcadoAtual);
         resumoWrap.hidden = false;
-        return;
       }
 
-      let totalExecutado = 0;
-      let html = "";
-      snap.forEach(doc => {
-        const d = doc.data();
-        totalExecutado += toNum(d.investimentoNovo);
-        html += `
-          <tr>
-            <td>${fmtDT(d.dataAtualizacao)}</td>
-            <td>${fmtBRL(d.investimentoNovo)}</td>
-            <td>${fmtPct(d.avancoFisicoNovo)}</td>
-            <td>${d.statusNovo || "-"}</td>
-          </tr>`;
-      });
+      async function carregarHistorico() {
+        tabelaHistorico.innerHTML = `<tr><td colspan="4">Carregando histórico...</td></tr>`;
+        const projetoId = selectProjeto.value;
+        if (!projetoId) {
+          tabelaHistorico.innerHTML = `<tr><td colspan="4">Selecione um projeto para visualizar o histórico.</td></tr>`;
+          resumoWrap.hidden = true;
+          return;
+        }
 
-      tabelaHistorico.innerHTML = html;
+        await carregarResumoProjeto(projetoId);
 
-      resumoExecutado.textContent = fmtBRL(totalExecutado);
-      if (totalExecutado > custoOrcadoAtual) {
-        resumoExecutado.classList.add("over-budget");
+        const snap = await db.collection("projetos_atualizados")
+          .where("projetoId", "==", projetoId)
+          .orderBy("dataAtualizacao", "desc")
+          .get();
+
+        if (snap.empty) {
+          tabelaHistorico.innerHTML = `<tr><td colspan="4">Nenhuma atualização encontrada para este projeto.</td></tr>`;
+          resumoExecutado.textContent = fmtBRL(0);
+          resumoWrap.hidden = false;
+          return;
+        }
+
+        let totalExecutado = 0;
+        let html = "";
+        snap.forEach(doc => {
+          const d = doc.data();
+          totalExecutado += toNum(d.investimentoNovo);
+          html += `
+            <tr>
+              <td>${fmtDT(d.dataAtualizacao)}</td>
+              <td>${fmtBRL(d.investimentoNovo)}</td>
+              <td>${fmtPct(d.avancoFisicoNovo)}</td>
+              <td>${esc(d.statusNovo) || "-"}</td>
+            </tr>`;
+        });
+
+        tabelaHistorico.innerHTML = html;
+
+        resumoExecutado.textContent = fmtBRL(totalExecutado);
+        if (totalExecutado > custoOrcadoAtual) {
+          resumoExecutado.classList.add("over-budget");
+        }
+        resumoWrap.hidden = false;
       }
-      resumoWrap.hidden = false;
+
+      btnVoltar.addEventListener("click", () => (window.location.href = "menu.html"));
+      btnImprimir.addEventListener("click", () => window.print());
+
+      selectRegional.addEventListener("change", carregarProjetos);
+      selectProjeto.addEventListener("change", carregarHistorico);
+
+      // inicia o fluxo normal
+      carregarRegionais();
+    };
+
+    // Se o auth já estiver pronto quando o DOM carregar, inicia já
+    if (window.__AUTH_OK__) {
+      window.__startHistorico();
     }
-
-    btnVoltar.addEventListener("click", () => (window.location.href = "menu.html"));
-    btnImprimir.addEventListener("click", () => window.print());
-
-    selectRegional.addEventListener("change", carregarProjetos);
-    selectProjeto.addEventListener("change", carregarHistorico);
-
-    carregarRegionais();
   });
   </script>
 </body>

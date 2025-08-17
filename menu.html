@@ -1,19 +1,24 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu - Sistema Quéops</title>
     <style>
+        /* >>> ajustes de layout para centralizar e remover scroll <<< */
+        html, body { height: 100%; }
+
         body {
             font-family: Arial, sans-serif;
             background: #f1f1f1;
             margin: 0;
             padding: 0;
             text-align: center;
-            min-height: 100vh; /* altura mínima da tela */
-            display: flex;
+            min-height: 100vh;          /* ocupa toda a janela */
+            display: flex;               /* coluna flex para header / card / footer */
             flex-direction: column;
+            overflow: hidden;            /* remove a barra de rolagem */
         }
 
         header {
@@ -22,6 +27,7 @@
             padding: 20px;
             font-size: 24px;
             font-weight: bold;
+            flex: 0 0 auto;             /* não cresce */
         }
 
         .menu-container {
@@ -30,10 +36,14 @@
             gap: 15px;
             padding: 40px;
             max-width: 400px;
-            margin: 50px auto;
+
+            /* centraliza o cartão na vertical e horizontal */
+            margin: auto;
+
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            flex: 0 0 auto;             /* não estica para ocupar a tela toda */
         }
 
         a {
@@ -53,7 +63,9 @@
         }
 
         footer {
-            margin-top: auto; /* empurra para o final */
+            /* mantém o rodapé visível sem provocar scroll */
+            flex: 0 0 auto;
+            margin-top: 12px;
             padding: 10px 0;
             font-size: 14px;
             color: #777;
@@ -68,18 +80,49 @@
             width: 45px;
             opacity: 0.9;
         }
+
+        /* opcional: badge do usuário logado */
+        .user-badge{
+            font-size: 12px;
+            font-weight: normal;
+            display:block;
+            margin-top: 4px;
+            opacity:.9;
+        }
+
+/* Rodapé: logo acima do texto (sem alterar o HTML) */
+.creditos, .rodape, .footer {
+  display: flex;
+  flex-direction: column-reverse; /* inverte a ordem visual: logo fica em cima */
+  align-items: center;
+  gap: 8px;
+}
+
+/* (opcional) garante tamanho consistente da logo no rodapé */
+.creditos img, .rodape img, .footer img {
+  width: 44px;
+  height: auto;
+}
+
+
+
+
     </style>
 </head>
 <body>
 
-    <header> Dashboard de Projetos e Indicadores</header>
+    <header>
+        Dashboard de Projetos e Indicadores
+        <span id="user-badge" class="user-badge"></span>
+    </header>
 
     <div class="menu-container">
         <a href="cadastrar.html">➕ Cadastrar Projeto</a>
         <a href="dashboard.html">📊 Atualizar Projetos</a>
         <a href="indicadores.html">💰 Indicadores</a>
         <a href="historico.html">📜 Histórico de Atualizações</a>
-        <button onclick="window.location.href='login.html'" 
+
+        <button onclick="sair()" 
         style="background-color:#a52950; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
             🚪 Sair
         </button>
@@ -92,11 +135,70 @@
         </div>
     </footer>
 
+    <!-- SDKs Firebase compat -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+    <!-- Configuração única (garante auth/db globais) -->
+    <script src="firebaseConfig.js"></script>
+
+    <!-- Guard de sessão + logout real (reforçado, sem mudar estrutura) -->
+    <script>
+      // Mapa para exibir o nome amigável no badge
+      const EMAIL_TO_NAME = {
+        "admin@queops.local": "Admin",
+        "regional1@queops.local": "Regional 1",
+        "regional2@queops.local": "Regional 2",
+        "regional3@queops.local": "Regional 3"
+      };
+
+      // Aguarda o Firebase Auth ficar disponível (até 3s)
+      function waitForAuth(timeoutMs = 3000){
+        const start = Date.now();
+        return new Promise((resolve, reject) => {
+          (function poll(){
+            if (window.auth) return resolve(window.auth);
+            if (Date.now() - start > timeoutMs) return reject(new Error("Auth não inicializado"));
+            setTimeout(poll, 50);
+          })();
+        });
+      }
+
+      // Guard: só entra se estiver logado; mostra badge com nome amigável
+      (async function protegerPagina(){
+        try {
+          await waitForAuth();
+          window.auth.onAuthStateChanged(function(user){
+            if (!user) {
+              // não logado -> manda para login
+              location.replace("login.html");
+              return;
+            }
+            // badge
+            const b = document.getElementById("user-badge");
+            if (b) {
+              const label = EMAIL_TO_NAME[user.email] || user.email || "Usuário";
+              b.textContent = "Logado como: " + label;
+            }
+          });
+        } catch (e) {
+          // se não inicializar auth, retorna ao login
+          location.replace("login.html");
+        }
+      })();
+
+      // Sair: encerra sessão no Firebase Auth
+      async function sair(){
+        try {
+          if (window.auth) {
+            await window.auth.signOut();
+          }
+        } finally {
+          // replace impede voltar ao menu com botão "Voltar"
+          location.replace("login.html");
+        }
+      }
+    </script>
 </body>
-
-
-</script>
-
-
 </html>
-

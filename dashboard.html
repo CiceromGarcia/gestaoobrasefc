@@ -1,6 +1,7 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="pt-BR">
 <head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projetos Cadastrados - Sistema Quéops</title>
@@ -71,9 +72,19 @@
             text-decoration: underline;
             cursor: pointer;
         }
+
+        /* ⛔ link desabilitado para projetos concluídos */
+        .link-desabilitado{
+            color:#777 !important;
+            text-decoration:none !important;
+            pointer-events:none;  /* bloqueia clique do mouse */
+            cursor: default;
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <!-- ✅ Auth compat para o guard de sessão -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -100,6 +111,8 @@
             <option value="Açailândia">Açailândia</option>
             <option value="São Pedro d’Água Branca">São Pedro d’Água Branca</option>
             <option value="Itainópolis">Itainópolis</option>
+            <!-- 🔹 adicionada -->
+            <option value="São Luís">São Luís</option>
         </select>
 
         <!-- ✅ Novo filtro de Status -->
@@ -138,19 +151,42 @@
     <button onclick="window.location.href='menu.html'">← Voltar ao Menu</button>
 
 <script>
-  // Firebase Config
+  // ====== Correção do bucket + init ======
   const firebaseConfig = {
     apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
     authDomain: "queops-84feb.firebaseapp.com",
     projectId: "queops-84feb",
-    storageBucket: "queops-84feb.firebasestorage.app",
+    storageBucket: "queops-84feb.appspot.com", // ✅ corrigido
     messagingSenderId: "415710636047",
     appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
   };
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 
-  firebase.initializeApp(firebaseConfig);
+  // ====== Auth (guard de sessão mantendo sua estrutura) ======
+  const auth = firebase.auth();
+  window.auth = auth; // expõe como você já usava
+  auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
   const db = firebase.firestore();
   let listaProjetos = [];
+
+  // ✅ Guard: bloqueia anônimos
+  (function protegerPagina(){
+    auth.onAuthStateChanged(function(user){
+      if (!user) {
+        location.replace('login.html');
+      }
+    });
+  })();
+
+  // ======= Sanitização contra XSS (sem mudar sua estrutura) =======
+  function esc(v){
+    return String(v ?? '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
 
   // Normaliza textos de status (ex.: "concluido" -> "Concluído")
   function normalizarStatus(txt) {
@@ -219,16 +255,14 @@
         if (ult && ult.avancoFisicoNovo != null) {
           p._avancoCalc = Number(ult.avancoFisicoNovo);
         } else {
-          // fallback (caso queira usar investimento acumulado quando não houver avancoFisicoNovo)
           const invAcum = ult ? Number(ult.investimentoAcumulado || 0) : 0;
           p._avancoCalc = investimento > 0 ? (invAcum / investimento) * 100 : 0;
         }
 
-        // status: PRIORIDADE para statusNovo da última atualização
+        // status: prioridade para statusNovo
         if (ult && ult.statusNovo) {
           p._statusCalc = normalizarStatus(ult.statusNovo);
         } else {
-          // mesma lógica dos indicadores
           const hoje = new Date();
           const dataTermino = p.dataTermino ? new Date(p.dataTermino) : null;
           const av = Number(p._avancoCalc || 0);
@@ -250,26 +284,46 @@
     }
   }
 
-  // Atualizar tabela (usa _statusCalc calculado acima)
+  // Atualizar tabela (mantendo sua estrutura + innerHTML seguro com esc())
   function atualizarTabela() {
     const tbody = document.querySelector("#tabelaProjetos tbody");
     tbody.innerHTML = "";
 
     let contador = 1;
     listaProjetos.forEach(p => {
-      const investimentoFmt = `R$ ${parseFloat(p.investimento || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-      const status = p._statusCalc || "Planejado";
+      const investimentoNum = parseFloat(p.investimento || 0);
+      const investimentoFmt = "R$ " + investimentoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
+      const idLink = encodeURIComponent(String(p.id || ""));
+      const nome = esc(p.nomeProjeto || p.nome || "");
+      const localidade = esc(p.localidade || "");
+      const regional = esc(p.regional || "");
+      const centroCusto = esc(p.centroCusto || "");
+      const dataInicio = esc(p.dataInicio || "");
+      const dataTermino = esc(p.dataTermino || "");
+      const status = esc(p._statusCalc || "Planejado");
+
+      // detecta "Concluído" (com/sem acento)
+      const statusNorm = String(p._statusCalc || "")
+        .normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase();
+      const isConcluido = statusNorm.includes('concluido');
+
+      // link do nome: desabilita quando concluído
+      const linkHtml = isConcluido
+        ? `<a class="link-desabilitado" aria-disabled="true" tabindex="-1">${nome}</a>`
+        : `<a href="atualizar.html?id=${idLink}">${nome}</a>`;
+
+      // mantém sua forma de montar a linha, mas sanitizando os dados
       tbody.innerHTML += `
         <tr>
-          <td>#${String(contador).padStart(3, '0')}</td>
-          <td><a href="atualizar.html?id=${p.id}">${p.nomeProjeto || p.nome || ""}</a></td>
-          <td>${p.localidade || ""}</td>
-          <td>${p.regional || ""}</td>
-          <td>${p.centroCusto || ""}</td>
-          <td>${investimentoFmt}</td>
-          <td>${p.dataInicio || ""}</td>
-          <td>${p.dataTermino || ""}</td>
+          <td>#${esc(String(contador).padStart(3, '0'))}</td>
+          <td>${linkHtml}</td>
+          <td>${localidade}</td>
+          <td>${regional}</td>
+          <td>${centroCusto}</td>
+          <td>${esc(investimentoFmt)}</td>
+          <td>${dataInicio}</td>
+          <td>${dataTermino}</td>
           <td>${status}</td>
         </tr>
       `;
@@ -300,9 +354,23 @@
     });
   }
 
-  window.onload = carregarProjetos;
+  /* 🔹 aplica filtro automático de São Luís (ou ?localidade=...) sem mudar layout */
+  window.onload = async () => {
+    await carregarProjetos();
+    const params = new URLSearchParams(location.search);
+    const alvo = params.get("localidade") || "São Luís";
+    const sel = document.getElementById('filtroLocalidade');
+    if (sel) {
+      for (const opt of sel.options) {
+        if (opt.value.toLowerCase() === alvo.toLowerCase()) {
+          sel.value = opt.value;
+          break;
+        }
+      }
+      filtrarProjetos();
+    }
+  };
 </script>
-
 
 </body>
 </html>

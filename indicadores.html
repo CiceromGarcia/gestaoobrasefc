@@ -1,6 +1,7 @@
 <!DOCTYPE html> 
 <html lang="pt-BR">
 <head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Indicadores - Sistema Quéops</title>
@@ -8,6 +9,9 @@
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <!-- ✅ Auth compat para guard de sessão -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
@@ -36,6 +40,14 @@
             height: 290px !important;
         }
     </style>
+<script>
+function esc(v){
+  if(v===undefined||v===null) return '';
+  return String(v).replace(/[&<>"']/g, function(s){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]);
+  });
+}
+</script>
 </head>
 <body>
     <h1>📊 Indicadores de Obras</h1>
@@ -97,6 +109,17 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // ✅ Auth para proteger a página (sessão até fechar o navegador)
+    const auth = firebase.auth();
+    window.auth = auth;
+    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+    auth.onAuthStateChanged((user) => {
+        if (!user) {
+            // Não autenticado: volta pro login (impede voltar com "Voltar")
+            location.replace('login.html');
+        }
+    });
+
     let projetos = [];
     let chartStatus, chartCustos;
 
@@ -108,15 +131,16 @@
 
                 // helper p/ converter "10", "10,5", "1.000,50", "10%" etc.
                 const toNum = (v) => {
-                    if (typeof v === "number") return v;
+                    if (typeof v === "number" && isFinite(v)) return v;
                     if (typeof v === "string") {
-                        return Number(
+                        const n = Number(
                             v.replace(/\s/g, "")
                              .replace("R$", "")
                              .replace(/\./g, "")
                              .replace(",", ".")
                              .replace("%", "")
-                        ) || 0;
+                        );
+                        return isFinite(n) ? n : 0;
                     }
                     return 0;
                 };
@@ -132,7 +156,7 @@
                             nomeProjeto: dados.nomeProjeto || "-",
                             localidade:  dados.localidade  || "-",
                             regional:    dados.regional    || "-",
-                            custoOrcado: 0,               // 🔹 será preenchido pela coleção "projetos"
+                            custoOrcado: 0,               // 🔹 preenchido pela coleção "projetos"
                             investimentoNovo: 0,          // soma dos incrementos = EXECUTADO
                             avancoFisicoNovo: 0,          // soma dos incrementos de avanço
                             statusNovo: "-",
@@ -181,9 +205,9 @@
                         if (!snap.exists) return;
                         const p = snap.data();
                         const bruto = p.investimento ?? p.custoOrcado ?? 0; // aceita investimento OU custoOrcado
-                        acumulados[ids[i]].custoOrcado = toNum(bruto);
+                        acumulados[ids[i]].custoOrcado = (typeof bruto === 'number' ? bruto : 0);
 
-                        // opcional: prioriza metadados do projeto base
+                        // prioriza metadados do projeto base quando disponíveis
                         acumulados[ids[i]].nomeProjeto = p.nomeProjeto || p.nome || acumulados[ids[i]].nomeProjeto;
                         acumulados[ids[i]].localidade  = p.localidade  || acumulados[ids[i]].localidade;
                         acumulados[ids[i]].regional    = p.regional    || acumulados[ids[i]].regional;
@@ -197,21 +221,21 @@
     }
 
     function preencherFiltros() {
-        const statusList = [...new Set(projetos.map(p => p.statusNovo))];
-        const regionais = [...new Set(projetos.map(p => p.regional))];
-        const localidades = [...new Set(projetos.map(p => p.localidade))];
+        const statusList = [...new Set(projetos.map(p => p.statusNovo))].filter(Boolean);
+        const regionais = [...new Set(projetos.map(p => p.regional))].filter(Boolean);
+        const localidades = [...new Set(projetos.map(p => p.localidade))].filter(Boolean);
 
         document.getElementById("filtroStatus").innerHTML =
             `<option value="">Todos os status</option>` +
-            statusList.map(s => `<option value="${s}">${s}</option>`).join("");
+            statusList.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
 
         document.getElementById("filtroRegional").innerHTML =
             `<option value="">Todas as regionais</option>` +
-            regionais.map(r => `<option value="${r}">${r}</option>`).join("");
+            regionais.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
 
         document.getElementById("filtroLocalidade").innerHTML =
             `<option value="">Todas as localidades</option>` +
-            localidades.map(l => `<option value="${l}">${l}</option>`).join("");
+            localidades.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join("");
     }
 
     function atualizarIndicadores() {
@@ -227,20 +251,20 @@
 
         document.getElementById("totalObras").textContent = filtrados.length;
         document.getElementById("planejadas").textContent = filtrados.filter(p => p.statusNovo === "Planejado").length;
-        document.getElementById("andamento").textContent = filtrados.filter(p => p.statusNovo === "Em andamento").length;
-        document.getElementById("paralisadas").textContent = filtrados.filter(p => p.statusNovo === "Paralisado").length;
+        document.getElementById("andamento").textContent  = filtrados.filter(p => p.statusNovo === "Em andamento").length;
+        document.getElementById("paralisadas").textContent= filtrados.filter(p => p.statusNovo === "Paralisado" || p.statusNovo === "Paralisada").length;
         document.getElementById("concluidas").textContent = filtrados.filter(p => p.statusNovo === "Concluído").length;
 
         const tabela = document.getElementById("tabelaProjetos");
         tabela.innerHTML = filtrados.map(p => `
             <tr>
-                <td>${p.nomeProjeto || "-"}</td>
-                <td>${p.localidade || "-"}</td>
-                <td>${p.regional || "-"}</td>
+                <td>${esc(p.nomeProjeto) || "-"}</td>
+                <td>${esc(p.localidade) || "-"}</td>
+                <td>${esc(p.regional) || "-"}</td>
                 <td>R$ ${(p.custoOrcado || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>      <!-- Orçado -->
                 <td>R$ ${(p.investimentoNovo || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td> <!-- Executado -->
                 <td>${(p.avancoFisicoNovo || 0).toFixed(2)}%</td>
-                <td>${p.statusNovo || "-"}</td>
+                <td>${esc(p.statusNovo) || "-"}</td>
             </tr>
         `).join("");
 
@@ -252,9 +276,14 @@
         const custosRegionais = {};
 
         dados.forEach(p => {
-            statusCounts[p.statusNovo] = (statusCounts[p.statusNovo] || 0) + 1;
+            const st = p.statusNovo || "-";
+            if (statusCounts[st] === undefined) statusCounts[st] = 0;
+            statusCounts[st]++;
+
             // gráfico usa EXECUTADO
-            custosRegionais[p.regional] = (custosRegionais[p.regional] || 0) + (parseFloat(p.investimentoNovo) || 0);
+            const reg = p.regional || "-";
+            const val = (typeof p.investimentoNovo === 'number' ? p.investimentoNovo : 0);
+            custosRegionais[reg] = (custosRegionais[reg] || 0) + val;
         });
 
         if(chartStatus) chartStatus.destroy();
@@ -296,3 +325,4 @@
 </script>
 </body>
 </html>
+

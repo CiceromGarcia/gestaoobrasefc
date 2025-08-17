@@ -1,23 +1,183 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Quéops</title>
     <link rel="stylesheet" href="login.css">
+    <!-- Recomendado: só rode em HTTPS em produção -->
+    <meta http-equiv="Referrer-Policy" content="no-referrer">
 </head>
 <body>
     <div class="login-container">
        <img src="Colorida.png" alt="Logo Vale" class="logo">
         <h2>Bem-vindo ao Quéops</h2>
-        <form id="loginForm">
-            <input type="text" id="username" placeholder="Usuário" required>
-            <input type="password" id="password" placeholder="Senha" required>
-            <button type="submit">Entrar</button>
+
+        <!-- MESMA ESTRUTURA: mesmo id e ordem; novalidate/autocomplete -->
+        <form id="loginForm" novalidate autocomplete="off">
+            <!-- mesmo id; texto (sem @); atributos anti-autofill/auto-capitalize -->
+            <input
+              type="text"
+              id="username"
+              placeholder='Usuário (ex.: "Regional 1" ou "Admin")'
+              required
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              inputmode="text"
+              maxlength="30">
+            <input
+              type="password"
+              id="password"
+              placeholder="Senha"
+              required
+              autocomplete="current-password"
+              maxlength="40">
+            <button type="submit" id="btnLogin">Entrar</button>
         </form>
         <p class="info">Acesso restrito a usuários autorizados</p>
     </div>
 
-    <script src="login.js"></script>
+    <!-- SDKs Firebase compat (mantidos) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+    <!-- Configuração única -->
+    <script src="firebaseConfig.js"></script>
+
+    <!-- Script de login com Firebase Auth (reforçado) -->
+    <script>
+      // ===== Redirecionamento pós-login (?next=...) + auto-skip se já logado =====
+      const __params = new URLSearchParams(location.search);
+      const __next = __params.get('next') || 'menu.html';
+      try {
+        firebase.auth().onAuthStateChanged(function(u){
+          if (u) location.replace(__next);
+        });
+      } catch(e) {}
+
+      // Lista branca de nomes permitidos (case/acentos/espacos tolerados)
+      const ALLOWED = {
+        "admin": "admin@queops.local",
+        "regional 1": "regional1@queops.local",
+        "regional1": "regional1@queops.local",
+        "regional 2": "regional2@queops.local",
+        "regional2": "regional2@queops.local",
+        "regional 3": "regional3@queops.local",
+        "regional3": "regional3@queops.local"
+      };
+
+      // normaliza: remove acentos, colapsa espacos, toLowerCase
+      const normalize = (s) =>
+        (s || "").normalize("NFD").replace(/\p{Diacritic}/gu,"").replace(/\s+/g," ").trim().toLowerCase();
+
+      const form = document.getElementById("loginForm");
+      const btn  = document.getElementById("btnLogin");
+
+      let lockUntil = 0; // pequeno backoff local
+
+      // Aguarda auth estar disponível por até 3s (evita race de carregamento)
+      function waitForAuth(timeoutMs = 3000) {
+        const start = Date.now();
+        return new Promise((resolve, reject) => {
+          (function poll() {
+            if (window.auth || (firebase && firebase.auth)) {
+              // garante window.auth mesmo que o firebaseConfig.js não tenha exposto
+              window.auth = window.auth || firebase.auth();
+              return resolve(window.auth);
+            }
+            if (Date.now() - start > timeoutMs) return reject(new Error("Auth não inicializado"));
+            setTimeout(poll, 50);
+          })();
+        });
+      }
+
+      // Define persistência de sessão (credenciais não ficam salvas após fechar o navegador)
+      window.addEventListener("load", async () => {
+        try {
+          await waitForAuth();
+          await window.auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+        } catch (e) {
+          console.warn("Persistência de sessão não configurada ainda:", e?.message || e);
+        }
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        // antispam simples: evita flood de submits
+        const now = Date.now();
+        if (now < lockUntil) return;
+
+        const rawUser = document.getElementById("username").value;
+        const pass    = document.getElementById("password").value;
+
+        // valida campos vazios (evita chamada desnecessária)
+        if (!rawUser || !pass) {
+          alert("Usuário ou senha inválidos.");
+          return;
+        }
+
+        // resolve e-mail a partir do alias digitado
+        const norm = normalize(rawUser);
+        const noSpace = norm.replace(/\s+/g, "");
+        let email = ALLOWED[norm] || ALLOWED[noSpace];
+
+        // se o usuário digitar um e-mail completo, usamos direto
+        if (!email && /\S+@\S+\.\S+/.test(rawUser.trim())) {
+          email = rawUser.trim();
+        }
+
+        if (!email) {
+          // não revela quais usuários existem
+          alert("Usuário ou senha inválidos.");
+          return;
+        }
+
+        // Garante que o Auth foi inicializado
+        try {
+          await waitForAuth();
+        } catch {
+          alert("Falha ao inicializar autenticação. Verifique o firebaseConfig.js e a ordem dos scripts.");
+          return;
+        }
+
+        btn.disabled = true;
+
+        try {
+          // tentativa de login
+          const cred = await window.auth.signInWithEmailAndPassword(email, pass);
+          const user = cred.user;
+
+          // Para domínios reais você pode exigir verificação; para .local, ignora
+          const isLocal = email.endsWith("@queops.local");
+          if (!isLocal && user.emailVerified === false) {
+            await window.auth.signOut();
+            alert("Confirme seu e-mail antes de acessar.");
+            return;
+          }
+
+          // sucesso — evita voltar para login
+          location.replace(__next);
+        } catch (err) {
+          console.error("LOGIN ERROR:", err);
+          // mensagens genéricas para não facilitar enumeração
+          let msg = "Usuário ou senha inválidos.";
+          if (err?.code === "auth/too-many-requests") {
+            msg = "Muitas tentativas. Aguarde um instante e tente de novo.";
+            lockUntil = Date.now() + 10_000; // backoff: trava 10s localmente
+          } else if (err?.code === "auth/network-request-failed") {
+            msg = "Falha de rede. Confira sua conexão e tente novamente.";
+          }
+          alert(msg);
+        } finally {
+          // pequena espera evita “timing” distinguível
+          await new Promise(r => setTimeout(r, 300));
+          btn.disabled = false;
+        }
+      });
+    </script>
 </body>
 </html>

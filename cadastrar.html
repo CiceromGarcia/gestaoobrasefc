@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Cadastrar Projeto</title>
@@ -33,13 +34,7 @@
     firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
     firebase.auth().onAuthStateChanged(async (user) => {
       if (!user) {
-        try {
-          await firebase.auth().signInAnonymously();
-        } catch (err) {
-          console.error('Falha no login anônimo:', err);
-          alert('Ative o provedor "Anônimo" em Authentication > Sign-in method, e adicione seu domínio em Authentication > Settings > Authorized domains.');
-          return;
-        }
+        const next=encodeURIComponent(location.pathname+location.search);location.replace('login.html?next='+next);
       }
       authReady = true;
       // libera o botão
