@@ -23,12 +23,14 @@
         }
 
         table {
-            width: 90%;
+            width: 97%;
             margin: 20px auto;
             border-collapse: collapse;
             background: white;
             border-radius: 8px;
             overflow: hidden;
+            /* ✅ fixa o layout para o ellipsis funcionar nas colunas não quebráveis */
+            table-layout: fixed;
         }
 
         th, td {
@@ -79,6 +81,31 @@
             text-decoration:none !important;
             pointer-events:none;
             cursor: default;
+        }
+
+        /* ====== Regras de quebra: só 2ª e 3ª colunas podem quebrar ====== */
+        /* Todas as colunas SEM quebra (com reticências) */
+        #tabelaProjetos th,
+        #tabelaProjetos td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Nome do Projeto (2ª) e Localidade (3ª) PODEM quebrar */
+        #tabelaProjetos th:nth-child(2),
+        #tabelaProjetos td:nth-child(2),
+        #tabelaProjetos th:nth-child(3),
+        #tabelaProjetos td:nth-child(3) {
+            white-space: normal;          /* permite quebra */
+            word-break: break-word;       /* quebra palavras longas */
+            text-align: left;             /* leitura melhor */
+        }
+        /* garante que o <a> herde a quebra nessas colunas */
+        #tabelaProjetos td:nth-child(2) a,
+        #tabelaProjetos td:nth-child(3) a {
+            white-space: inherit;
+            overflow: visible;
+            text-overflow: clip;
         }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
@@ -339,7 +366,7 @@
   function filtrarProjetos() {
     const filtroRegional = document.getElementById('filtroRegional').value.toLowerCase();
     const filtroLocalidade = document.getElementById('filtroLocalidade').value.toLowerCase();
-    const filtroStatus = document.getElementById('filtroStatus').value.toLowerCase();
+       const filtroStatus = document.getElementById('filtroStatus').value.toLowerCase();
 
     document.querySelectorAll("#tabelaProjetos tbody tr").forEach(linha => {
       const regional = linha.cells[3].textContent.toLowerCase();
@@ -379,3 +406,4 @@
 
 </body>
 </html>
+
