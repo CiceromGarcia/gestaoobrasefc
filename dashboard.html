@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>  
 <html lang="pt-BR">
 <head>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
@@ -23,25 +23,27 @@
         }
 
         table {
-            width: 97%;
+            width: 90%;
             margin: 20px auto;
             border-collapse: collapse;
             background: white;
             border-radius: 8px;
             overflow: hidden;
-            /* ✅ fixa o layout para o ellipsis funcionar nas colunas não quebráveis */
             table-layout: fixed;
         }
 
         th, td {
-            padding: 10px;
+            padding: 8px;
             text-align: center;
             border-bottom: 1px solid #ddd;
+            font-size: 13px;
+            line-height: 1.25;
         }
 
         th {
             background-color: #007E7A;
             color: white;
+            font-size: 14px;
         }
 
         button {
@@ -58,24 +60,11 @@
             background-color: #0ABB98;
         }
 
-        /* Área dos filtros */
-        .filtros-container {
-            margin: 15px;
-        }
+        .filtros-container { margin: 15px; }
+        .filtros-container select { padding: 6px; margin-left: 5px; margin-right: 10px; }
 
-        .filtros-container select {
-            padding: 6px;
-            margin-left: 5px;
-            margin-right: 10px;
-        }
+        a { color: #007E7A; text-decoration: underline; cursor: pointer; }
 
-        a {
-            color: #007E7A;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-
-        /* ⛔ link desabilitado para projetos concluídos */
         .link-desabilitado{
             color:#777 !important;
             text-decoration:none !important;
@@ -83,34 +72,68 @@
             cursor: default;
         }
 
-        /* ====== Regras de quebra: só 2ª e 3ª colunas podem quebrar ====== */
-        /* Todas as colunas SEM quebra (com reticências) */
+        /* larguras por coluna */
+        #tabelaProjetos th:nth-child(1), #tabelaProjetos td:nth-child(1) { width: 7%; }
+        #tabelaProjetos th:nth-child(2), #tabelaProjetos td:nth-child(2) { width: 28%; }
+        #tabelaProjetos th:nth-child(3), #tabelaProjetos td:nth-child(3) { width: 16%; }
+        #tabelaProjetos th:nth-child(4), #tabelaProjetos td:nth-child(4) { width: 10%; }
+        #tabelaProjetos th:nth-child(5), #tabelaProjetos td:nth-child(5) { width: 11%; }
+        #tabelaProjetos th:nth-child(6), #tabelaProjetos td:nth-child(6) { width: 12%; }
+        #tabelaProjetos th:nth-child(7), #tabelaProjetos td:nth-child(7) { width: 8%; }
+        #tabelaProjetos th:nth-child(8), #tabelaProjetos td:nth-child(8) { width: 8%; }
+        #tabelaProjetos th:nth-child(9), #tabelaProjetos td:nth-child(9) { width: 10%; }
+
+        /* ellipsis em todas as colunas */
         #tabelaProjetos th,
         #tabelaProjetos td {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        /* Nome do Projeto (2ª) e Localidade (3ª) PODEM quebrar */
+        /* quebra apenas em Nome e Localidade */
         #tabelaProjetos th:nth-child(2),
         #tabelaProjetos td:nth-child(2),
         #tabelaProjetos th:nth-child(3),
         #tabelaProjetos td:nth-child(3) {
-            white-space: normal;          /* permite quebra */
-            word-break: break-word;       /* quebra palavras longas */
-            text-align: left;             /* leitura melhor */
+            white-space: normal;
+            word-break: break-word;
+            text-align: left;
+            overflow: visible;
+            text-overflow: clip;
         }
-        /* garante que o <a> herde a quebra nessas colunas */
         #tabelaProjetos td:nth-child(2) a,
         #tabelaProjetos td:nth-child(3) a {
             white-space: inherit;
             overflow: visible;
             text-overflow: clip;
         }
+
+        @media (max-width: 1200px){
+            #tabelaProjetos th:nth-child(2), #tabelaProjetos td:nth-child(2){ width: 30%; }
+            #tabelaProjetos th:nth-child(3), #tabelaProjetos td:nth-child(3){ width: 18%; }
+            #tabelaProjetos th:nth-child(6), #tabelaProjetos td:nth-child(6){ width: 14%; }
+        }
+        @media (max-width: 992px){
+            #tabelaProjetos th:nth-child(1), #tabelaProjetos td:nth-child(1){ width: 8%; }
+            #tabelaProjetos th:nth-child(2), #tabelaProjetos td:nth-child(2){ width: 34%; }
+            #tabelaProjetos th:nth-child(3), #tabelaProjetos td:nth-child(3){ width: 20%; }
+            #tabelaProjetos th:nth-child(4), #tabelaProjetos td:nth-child(4){ width: 10%; }
+            #tabelaProjetos th:nth-child(6), #tabelaProjetos td:nth-child(6){ width: 12%; }
+            #tabelaProjetos th:nth-child(7), #tabelaProjetos td:nth-child(7){ width: 8%; }
+            #tabelaProjetos th:nth-child(8), #tabelaProjetos td:nth-child(8){ width: 8%; }
+            #tabelaProjetos th:nth-child(9), #tabelaProjetos td:nth-child(9){ width: 10%; }
+        }
+        @media (max-width: 768px){
+            #tabelaProjetos th:nth-child(2), #tabelaProjetos td:nth-child(2){ width: 40%; }
+            #tabelaProjetos th:nth-child(3), #tabelaProjetos td:nth-child(3){ width: 22%; }
+            #tabelaProjetos th:nth-child(5), #tabelaProjetos td:nth-child(5){ width: 10%; }
+            #tabelaProjetos th:nth-child(7), #tabelaProjetos td:nth-child(7){ width: 7%; }
+            #tabelaProjetos th:nth-child(8), #tabelaProjetos td:nth-child(8){ width: 7%; }
+        }
     </style>
+
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    <!-- ✅ Auth compat para o guard de sessão -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
 </head>
 <body>
@@ -125,6 +148,7 @@
             <option value="Regional 1">Regional 1</option>
             <option value="Regional 2">Regional 2</option>
             <option value="Regional 3">Regional 3</option>
+            <option value="São Luís">São Luís</option>
         </select>
 
         <label for="filtroLocalidade">Localidade:</label>
@@ -138,11 +162,9 @@
             <option value="Açailândia">Açailândia</option>
             <option value="São Pedro d’Água Branca">São Pedro d’Água Branca</option>
             <option value="Itainópolis">Itainópolis</option>
-            <!-- 🔹 adicionada -->
             <option value="São Luís">São Luís</option>
         </select>
 
-        <!-- ✅ Novo filtro de Status -->
         <label for="filtroStatus">Status:</label>
         <select id="filtroStatus" onchange="filtrarProjetos()">
             <option value="">Todos</option>
@@ -174,29 +196,64 @@
         </tbody>
     </table>
 
-    <!-- Botão único -->
     <button onclick="window.location.href='menu.html'">← Voltar ao Menu</button>
 
 <script>
-  // ====== Correção do bucket + init ======
   const firebaseConfig = {
     apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
     authDomain: "queops-84feb.firebaseapp.com",
     projectId: "queops-84feb",
-    storageBucket: "queops-84feb.appspot.com", // ✅ corrigido
+    storageBucket: "queops-84feb.appspot.com",
     messagingSenderId: "415710636047",
     appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
   };
   if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 
-  // ====== Auth (guard de sessão mantendo sua estrutura) ======
   const auth = firebase.auth();
-  window.auth = auth; // expõe como você já usava
+  window.auth = auth;
   auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
   const db = firebase.firestore();
   let listaProjetos = [];
 
-  // ✅ Guard: bloqueia anônimos
+  /* 🔗 Mapeamento Regional -> Localidades (acentuação idêntica à tabela) */
+  const REGIONAL_LOCALIDADES = {
+    "Regional 1": ["Altamira","Arari","Auzilândia","Mineirinho","Santa Inês","Vila Pindaré","Vitória do Mearim"],
+    "Regional 2": ["Açailândia","Nova Vida"],
+    "Regional 3": ["Itainópolis","Marabá","São Pedro d’Água Branca"],
+    "São Luís":  ["São Luís"]
+  };
+  let DEFAULT_LOCALIDADES = []; // capturadas do select ao carregar
+
+  /* Atualiza as opções do select de Localidade conforme a Regional */
+  function atualizarLocalidades(preservarSelecao = true){
+    const selRegional   = document.getElementById('filtroRegional');
+    const selLocalidade = document.getElementById('filtroLocalidade');
+    if(!selRegional || !selLocalidade) return;
+
+    const regional = selRegional.value.trim();
+    const lista = REGIONAL_LOCALIDADES[regional] || DEFAULT_LOCALIDADES;
+
+    const selecionadaAntes = selLocalidade.value;
+    selLocalidade.innerHTML = "";
+    const optTodas = document.createElement('option');
+    optTodas.value = "";
+    optTodas.textContent = "Todas";
+    selLocalidade.appendChild(optTodas);
+
+    (lista || []).forEach(v => {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = v;
+      selLocalidade.appendChild(o);
+    });
+
+    if (preservarSelecao && lista && lista.includes(selecionadaAntes)) {
+      selLocalidade.value = selecionadaAntes;
+    } else {
+      selLocalidade.value = "";
+    }
+  }
+
   (function protegerPagina(){
     auth.onAuthStateChanged(function(user){
       if (!user) {
@@ -205,7 +262,6 @@
     });
   })();
 
-  // ======= Sanitização contra XSS (sem mudar sua estrutura) =======
   function esc(v){
     return String(v ?? '')
       .replace(/&/g,'&amp;')
@@ -215,7 +271,6 @@
       .replace(/'/g,'&#39;');
   }
 
-  // Normaliza textos de status (ex.: "concluido" -> "Concluído")
   function normalizarStatus(txt) {
     if (!txt) return "";
     const s = String(txt).trim().toLowerCase();
@@ -224,10 +279,9 @@
     if (s.includes("atras")) return "Atrasada";
     if (s.includes("planej")) return "Planejado";
     if (s.includes("paralis")) return "Paralisada";
-    return txt; // mantém como veio
+    return txt;
   }
 
-  // Busca a ÚLTIMA atualização do projeto em "projetos_atualizados"
   async function getUltimaAtualizacao(projetoId) {
     try {
       const snap = await db.collection("projetos_atualizados")
@@ -238,7 +292,6 @@
       if (!snap.empty) return snap.docs[0].data();
       return null;
     } catch (e) {
-      // Fallback (sem índice composto)
       const snap = await db.collection("projetos_atualizados")
         .where("projetoId", "==", projetoId)
         .get();
@@ -260,7 +313,6 @@
     }
   }
 
-  // Carregar Projetos
   async function carregarProjetos() {
     const tbody = document.querySelector("#tabelaProjetos tbody");
     tbody.innerHTML = "";
@@ -277,7 +329,6 @@
         const p = { id: doc.id, ...doc.data() };
         const ult = await getUltimaAtualizacao(p.id);
 
-        // avanço
         const investimento = Number(p.investimento || 0);
         if (ult && ult.avancoFisicoNovo != null) {
           p._avancoCalc = Number(ult.avancoFisicoNovo);
@@ -286,7 +337,6 @@
           p._avancoCalc = investimento > 0 ? (invAcum / investimento) * 100 : 0;
         }
 
-        // status: prioridade para statusNovo
         if (ult && ult.statusNovo) {
           p._statusCalc = normalizarStatus(ult.statusNovo);
         } else {
@@ -311,7 +361,6 @@
     }
   }
 
-  // Atualizar tabela (mantendo sua estrutura + innerHTML seguro com esc())
   function atualizarTabela() {
     const tbody = document.querySelector("#tabelaProjetos tbody");
     tbody.innerHTML = "";
@@ -330,17 +379,14 @@
       const dataTermino = esc(p.dataTermino || "");
       const status = esc(p._statusCalc || "Planejado");
 
-      // detecta "Concluído" (com/sem acento)
       const statusNorm = String(p._statusCalc || "")
         .normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase();
       const isConcluido = statusNorm.includes('concluido');
 
-      // link do nome: desabilita quando concluído
       const linkHtml = isConcluido
         ? `<a class="link-desabilitado" aria-disabled="true" tabindex="-1">${nome}</a>`
         : `<a href="atualizar.html?id=${idLink}">${nome}</a>`;
 
-      // mantém sua forma de montar a linha, mas sanitizando os dados
       tbody.innerHTML += `
         <tr>
           <td>#${esc(String(contador).padStart(3, '0'))}</td>
@@ -362,11 +408,13 @@
     }
   }
 
-  // Filtros (inalterado)
+  /* 🔧 Atualizamos localidades ANTES de aplicar os filtros */
   function filtrarProjetos() {
+    atualizarLocalidades(true);
+
     const filtroRegional = document.getElementById('filtroRegional').value.toLowerCase();
     const filtroLocalidade = document.getElementById('filtroLocalidade').value.toLowerCase();
-       const filtroStatus = document.getElementById('filtroStatus').value.toLowerCase();
+    const filtroStatus = document.getElementById('filtroStatus').value.toLowerCase();
 
     document.querySelectorAll("#tabelaProjetos tbody tr").forEach(linha => {
       const regional = linha.cells[3].textContent.toLowerCase();
@@ -381,15 +429,17 @@
     });
   }
 
-  /* 🔹 Inicialização sem forçar "São Luís"
-     - Se existir ?localidade= na URL, aplica.
-     - Caso contrário, mantém "Todas" (valor vazio). */
   window.onload = async () => {
-    await carregarProjetos();
-    const params = new URLSearchParams(location.search);
+    /* captura localidades padrão do select */
+    const selLocalidade = document.getElementById('filtroLocalidade');
+    DEFAULT_LOCALIDADES = Array.from(selLocalidade.options)
+      .map(o => o.value)
+      .filter(v => v !== "");
 
-    // ✅ antes: params.get("localidade") || "São Luís"
-    const alvo = params.has("localidade") ? params.get("localidade") : ""; // "" = Todas
+    await carregarProjetos();
+
+    const params = new URLSearchParams(location.search);
+    const alvo = params.has("localidade") ? params.get("localidade") : "";
 
     const sel = document.getElementById('filtroLocalidade');
     if (sel && alvo !== "") {
@@ -400,10 +450,11 @@
         }
       }
     }
+    /* garante coerência inicial */
+    atualizarLocalidades(false);
     filtrarProjetos();
   };
 </script>
 
 </body>
 </html>
-
