@@ -10,6 +10,9 @@
     .btn-voltar{background:#555;color:#fff;border:none;padding:10px 16px;border-radius:6px;font-size:14px;cursor:pointer;margin-top:10px;margin-left:10px;transition:.3s}
     .btn-voltar:hover{background:#333}
     .hint{font-size:12px;color:#666;margin:-6px 0 10px}
+    /* opcional: indicar que o bloco de data é clicável */
+    .form-group.date-clickable{cursor:pointer}
+    .form-group.date-clickable input{cursor:pointer}
   </style>
 
   <!-- Firebase compat -->
@@ -73,6 +76,11 @@
             <option value="São Pedro d’Água Branca">São Pedro d’Água Branca</option>
             <option value="Itainópolis">Itainópolis</option>
             <option value="São Luís">São Luís</option>
+            <!-- Regional 1 adicionais -->
+            <option value="Altamira">Altamira</option>
+            <option value="Auzilândia">Auzilândia</option>
+            <option value="Vila Pindaré">Vila Pindaré</option>
+            <option value="Mineirinho">Mineirinho</option>
           </select>
         </div>
 
@@ -85,7 +93,7 @@
       <div class="form-row">
         <div class="form-group">
           <label for="centroCusto">Centro de Custo:</label>
-          <input type="text" id="centroCusto" placeholder="Ex: 148080">
+          <input type="text" id="centroCusto" placeholder="Ex: 1480080">
         </div>
 
         <div class="form-group">
@@ -95,12 +103,13 @@
       </div>
 
       <div class="form-row">
-        <div class="form-group">
+        <!-- marcamos as form-groups de data como 'date-clickable' para cursor/UX -->
+        <div class="form-group date-clickable">
           <label for="dataInicio">Data de Início:</label>
           <input type="date" id="dataInicio" required>
         </div>
 
-        <div class="form-group">
+        <div class="form-group date-clickable">
           <label for="dataTermino">Data de Término:</label>
           <input type="date" id="dataTermino" required>
         </div>
@@ -130,7 +139,10 @@
       let regional = "";
       if (local === "São Luís") {
         regional = "São Luís";
-      } else if (["Arari","Vitória do Mearim","Santa Inês","Alto Alegre do Pindaré"].includes(local)) {
+      } else if ([
+        "Arari","Vitória do Mearim","Santa Inês","Alto Alegre do Pindaré",
+        "Altamira","Auzilândia","Vila Pindaré","Mineirinho"
+      ].includes(local)) {
         regional = "Regional 1";
       } else if (["Açailândia","Nova Vida"].includes(local)) {
         regional = "Regional 2";
@@ -147,6 +159,47 @@
       e.target.value = v;
     });
 
+    // ===== Abrir calendário ao clicar em qualquer área do bloco de data =====
+    function habilitarCliqueCalendario(inputId){
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const grupo = input.closest('.form-group');
+      if (!grupo) return;
+
+      // Clicar no bloco (exceto no próprio input já funciona) → abrir calendário
+      grupo.addEventListener('click', (ev)=>{
+        // Evita duplo clique se já clicou no próprio <input>
+        if (ev.target === input) return;
+        if (typeof input.showPicker === 'function') {
+          try { input.showPicker(); return; } catch(e){}
+        }
+        // fallback universal
+        input.focus();
+        input.click();
+      });
+
+      // Ao focar por teclado/tab, tenta abrir também
+      input.addEventListener('focus', ()=>{
+        if (typeof input.showPicker === 'function') {
+          try { input.showPicker(); } catch(e){}
+        }
+      });
+    }
+    habilitarCliqueCalendario('dataInicio');
+    habilitarCliqueCalendario('dataTermino');
+
+    // ===== Nome do Projeto: primeira letra maiúscula, demais minúsculas =====
+    function formatarPrimeiraMaiuscula(s){
+      const t = String(s || '').trim();
+      if (!t) return '';
+      return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+    }
+
+    // Opcional: ao sair do campo já normaliza visualmente (não altera estrutura)
+    document.getElementById('nomeProjeto').addEventListener('blur', function(){
+      this.value = formatarPrimeiraMaiuscula(this.value);
+    });
+
     // Envio
     document.getElementById("formProjeto").addEventListener("submit", async function(e){
       e.preventDefault();
@@ -160,16 +213,20 @@
       const investimentoBruto = document.getElementById("investimento").value;
       const investimento = (parseFloat((investimentoBruto || '').replace(/\D/g, '')) || 0) / 100;
 
+      // aplica formatação de nome antes de salvar
+      const nomeBruto = document.getElementById("nomeProjeto").value;
+      const nomeFormatado = formatarPrimeiraMaiuscula(nomeBruto);
+
       const docData = {
-        nome: document.getElementById("nomeProjeto").value.trim(),
+        nome: nomeFormatado,
         localidade: document.getElementById("localidade").value,
         regional: document.getElementById("regional").value,
         centroCusto: document.getElementById("centroCusto").value.trim(),
-        investimento: investimento,                       // number ✔
+        investimento: investimento,
         dataInicio: document.getElementById("dataInicio").value,
         dataTermino: document.getElementById("dataTermino").value,
         emailSponsor: document.getElementById("emailSponsor").value.trim(),
-        status: "Planejado"                               // dentro do enum ✔
+        status: "Planejado"
       };
 
       try {
@@ -201,4 +258,3 @@
   </script>
 </body>
 </html>
-
