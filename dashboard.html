@@ -1,4 +1,4 @@
-<!DOCTYPE html>  
+<!DOCTYPE html>    
 <html lang="pt-BR">
 <head>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
@@ -130,6 +130,22 @@
             #tabelaProjetos th:nth-child(7), #tabelaProjetos td:nth-child(7){ width: 7%; }
             #tabelaProjetos th:nth-child(8), #tabelaProjetos td:nth-child(8){ width: 7%; }
         }
+
+        /* ===== Toolbar de edição (não altera estrutura da tabela) ===== */
+        .edit-toolbar{
+            position: fixed; left: 50%; transform: translateX(-50%);
+            bottom: 18px; background: #ffffff; border: 1px solid #ddd; box-shadow: 0 6px 18px rgba(0,0,0,.12);
+            padding: 8px 10px; border-radius: 10px; display: none; gap:8px; z-index: 9999;
+        }
+        .edit-toolbar button{
+            padding:8px 12px; border-radius:8px; font-size:13px; border:none; cursor:pointer;
+        }
+        .btn-salvar{ background:#0A8F86; color:#fff; }
+        .btn-cancelar{ background:#eaeaea; color:#333; }
+        .editando td{ background:#f7fffd; }
+        .cel-edit input, .cel-edit select{
+            width:100%; box-sizing:border-box; padding:6px 8px; border:1px solid #bbb; border-radius:6px; font-size:13px;
+        }
     </style>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
@@ -173,6 +189,7 @@
             <option value="Atrasada">Atrasada</option>
             <option value="Concluído">Concluído</option>
         </select>
+        <!-- O filtro Centro de Custo e o total serão inseridos dinamicamente aqui -->
     </div>
 
     <table id="tabelaProjetos">
@@ -196,7 +213,14 @@
         </tbody>
     </table>
 
+    <!-- Botão único -->
     <button onclick="window.location.href='menu.html'">← Voltar ao Menu</button>
+
+    <!-- Toolbar flutuante de edição -->
+    <div id="toolbar" class="edit-toolbar">
+        <button class="btn-salvar" id="btnSalvar">Salvar</button>
+        <button class="btn-cancelar" id="btnCancelar">Cancelar</button>
+    </div>
 
 <script>
   const firebaseConfig = {
@@ -224,7 +248,6 @@
   };
   let DEFAULT_LOCALIDADES = []; // capturadas do select ao carregar
 
-  /* Atualiza as opções do select de Localidade conforme a Regional */
   function atualizarLocalidades(preservarSelecao = true){
     const selRegional   = document.getElementById('filtroRegional');
     const selLocalidade = document.getElementById('filtroLocalidade');
@@ -280,6 +303,123 @@
     if (s.includes("planej")) return "Planejado";
     if (s.includes("paralis")) return "Paralisada";
     return txt;
+  }
+
+  // Helpers edição e formatações
+  function parseMoedaBR(v){
+    if (v == null) return 0;
+    return Number(String(v).replace(/[R$\s\.]/g,'').replace(',','.')) || 0;
+  }
+  function fmtMoedaBR(n){
+    return 'R$ ' + (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  }
+  // yyyy-mm-dd -> dd/mm/aaaa | dd/mm/aaaa permanece | fallback Date
+  function fmtDataBR(str){
+    if(!str) return '';
+    const s = String(str).trim();
+    const mISO = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(mISO) return `${mISO[3]}/${mISO[2]}/${mISO[1]}`;
+    const mBR = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if(mBR) return s;
+    const d = new Date(s);
+    if(!isNaN(d)) {
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+    return s;
+  }
+
+  // 🔒 Caixa de senha com máscara
+  function pedirSenhaAntesDeSalvar(){
+    return new Promise((resolve) => {
+      const bg = document.createElement('div');
+      bg.style.position = 'fixed';
+      bg.style.inset = '0';
+      bg.style.background = 'rgba(0,0,0,.45)';
+      bg.style.display = 'flex';
+      bg.style.alignItems = 'center';
+      bg.style.justifyContent = 'center';
+      bg.style.zIndex = '10000';
+
+      const box = document.createElement('div');
+      box.style.background = '#fff';
+      box.style.borderRadius = '12px';
+      box.style.boxShadow = '0 10px 30px rgba(0,0,0,.18)';
+      box.style.padding = '18px 16px';
+      box.style.width = 'min(360px, 92vw)';
+      box.style.fontFamily = 'Arial, sans-serif';
+
+      const titulo = document.createElement('div');
+      titulo.textContent = '🔒 Digite a senha para salvar as alterações';
+      titulo.style.fontWeight = 'bold';
+      titulo.style.marginBottom = '10px';
+
+      const input = document.createElement('input');
+      input.type = 'password';
+      input.placeholder = 'Senha';
+      input.autocomplete = 'off';
+      input.style.width = '100%';
+      input.style.boxSizing = 'border-box';
+      input.style.padding = '10px 12px';
+      input.style.border = '1px solid #bbb';
+      input.style.borderRadius = '8px';
+      input.style.fontSize = '14px';
+      input.style.margin = '6px 0 12px';
+
+      const rowBtns = document.createElement('div');
+      rowBtns.style.display = 'flex';
+      rowBtns.style.gap = '8px';
+      rowBtns.style.justifyContent = 'flex-end';
+
+      const btnCancelar = document.createElement('button');
+      btnCancelar.textContent = 'Cancelar';
+      btnCancelar.style.background = '#eaeaea';
+      btnCancelar.style.color = '#333';
+      btnCancelar.style.border = 'none';
+      btnCancelar.style.padding = '8px 12px';
+      btnCancelar.style.borderRadius = '8px';
+      btnCancelar.style.cursor = 'pointer';
+
+      const btnOk = document.createElement('button');
+      btnOk.textContent = 'OK';
+      btnOk.style.background = '#0A8F86';
+      btnOk.style.color = '#fff';
+      btnOk.style.border = 'none';
+      btnOk.style.padding = '8px 12px';
+      btnOk.style.borderRadius = '8px';
+      btnOk.style.cursor = 'pointer';
+
+      function fechar(ret){
+        document.removeEventListener('keydown', onKey);
+        bg.remove();
+        resolve(ret);
+      }
+      function confirmar(){
+        const ok = input.value.trim() === '4272';
+        fechar(ok);
+        if(!ok) alert('Senha incorreta.');
+      }
+      function onKey(e){
+        if(e.key === 'Escape'){ e.preventDefault(); fechar(false); }
+        if(e.key === 'Enter'){ e.preventDefault(); confirmar(); }
+      }
+
+      btnCancelar.onclick = () => fechar(false);
+      btnOk.onclick = confirmar;
+      document.addEventListener('keydown', onKey);
+
+      rowBtns.appendChild(btnCancelar);
+      rowBtns.appendChild(btnOk);
+      box.appendChild(titulo);
+      box.appendChild(input);
+      box.appendChild(rowBtns);
+      bg.appendChild(box);
+      document.body.appendChild(bg);
+
+      setTimeout(()=>input.focus(), 0);
+    });
   }
 
   async function getUltimaAtualizacao(projetoId) {
@@ -353,6 +493,9 @@
       });
 
       await Promise.all(promessas);
+
+      // cria filtro centro de custo e total após carregar os dados
+      ensureFiltroCentroCusto();
       atualizarTabela();
       filtrarProjetos();
     } catch (err) {
@@ -375,8 +518,8 @@
       const localidade = esc(p.localidade || "");
       const regional = esc(p.regional || "");
       const centroCusto = esc(p.centroCusto || "");
-      const dataInicio = esc(p.dataInicio || "");
-      const dataTermino = esc(p.dataTermino || "");
+      const dataInicio = fmtDataBR(p.dataInicio || "");
+      const dataTermino = fmtDataBR(p.dataTermino || "");
       const status = esc(p._statusCalc || "Planejado");
 
       const statusNorm = String(p._statusCalc || "")
@@ -387,19 +530,24 @@
         ? `<a class="link-desabilitado" aria-disabled="true" tabindex="-1">${nome}</a>`
         : `<a href="atualizar.html?id=${idLink}">${nome}</a>`;
 
-      tbody.innerHTML += `
-        <tr>
+      const tr = document.createElement('tr');
+      tr.setAttribute('data-id', p.id);
+      tr.innerHTML = `
           <td>#${esc(String(contador).padStart(3, '0'))}</td>
-          <td>${linkHtml}</td>
-          <td>${localidade}</td>
-          <td>${regional}</td>
-          <td>${centroCusto}</td>
-          <td>${esc(investimentoFmt)}</td>
-          <td>${dataInicio}</td>
-          <td>${dataTermino}</td>
-          <td>${status}</td>
-        </tr>
+          <td class="cel-nome">${linkHtml}</td>
+          <td class="cel-local">${localidade}</td>
+          <td class="cel-regional">${regional}</td>
+          <td class="cel-cc">${centroCusto}</td>
+          <td class="cel-custo">${esc(investimentoFmt)}</td>
+          <td class="cel-di">${dataInicio}</td>
+          <td class="cel-dt">${dataTermino}</td>
+          <td class="cel-status">${status}</td>
       `;
+      tbody.appendChild(tr);
+
+      if(!isConcluido){
+        tr.addEventListener('dblclick', ()=> iniciarEdicao(tr));
+      }
       contador++;
     });
 
@@ -408,6 +556,203 @@
     }
   }
 
+  /* ====== Filtro Centro de Custo (injetado) + Total ====== */
+  function ensureFiltroCentroCusto(){
+    const barra = document.querySelector('.filtros-container');
+    if(!barra) return;
+
+    // cria label/select se não existir
+    if(!document.getElementById('filtroCentroCusto')){
+      const lbl = document.createElement('label');
+      lbl.htmlFor = 'filtroCentroCusto';
+      lbl.textContent = 'Centro de Custo:';
+
+      const sel = document.createElement('select');
+      sel.id = 'filtroCentroCusto';
+      sel.onchange = filtrarProjetos;
+      sel.style.padding = '6px';
+      sel.style.marginLeft = '5px';
+      sel.style.marginRight = '10px';
+
+      // insere logo após o filtro Localidade
+      barra.appendChild(lbl);
+      barra.appendChild(sel);
+    }
+
+    // popula as opções com base nos dados carregados
+    const sel = document.getElementById('filtroCentroCusto');
+    const valores = Array.from(new Set(
+      (listaProjetos || []).map(p => String(p.centroCusto||'').trim()).filter(Boolean)
+    )).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+
+    sel.innerHTML = '';
+    const optTodas = document.createElement('option');
+    optTodas.value = '';
+    optTodas.textContent = 'Todos';
+    sel.appendChild(optTodas);
+    valores.forEach(v=>{
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = v;
+      sel.appendChild(o);
+    });
+
+    // cria/garante selo de total
+    if(!document.getElementById('totalFiltrado')){
+      const total = document.createElement('span');
+      total.id = 'totalFiltrado';
+      total.style.marginLeft = '12px';
+      total.style.fontWeight = 'bold';
+      total.style.color = '#007E7A';
+      total.textContent = 'Total filtrado: R$ 0,00';
+      barra.appendChild(total);
+    }
+  }
+
+  /* ===== Edição inline (sem alterar estrutura) ===== */
+  let linhaEditando = null;
+
+  function iniciarEdicao(tr){
+    if(linhaEditando && linhaEditando !== tr){
+      cancelarEdicao();
+    }
+    linhaEditando = tr;
+    tr.classList.add('editando');
+
+    const original = {
+      nomeHTML: tr.querySelector('.cel-nome').innerHTML,
+      local: tr.querySelector('.cel-local').textContent,
+      regional: tr.querySelector('.cel-regional').textContent,
+      cc: tr.querySelector('.cel-cc').textContent,
+      custo: tr.querySelector('.cel-custo').textContent,
+      di: tr.querySelector('.cel-di').textContent,
+      dt: tr.querySelector('.cel-dt').textContent,
+      status: tr.querySelector('.cel-status').textContent
+    };
+    tr._orig = original;
+
+    const nomeTexto = original.nomeHTML.replace(/<[^>]*>/g,'');
+    tr.querySelector('.cel-nome').classList.add('cel-edit');
+    tr.querySelector('.cel-nome').innerHTML = `<input type="text" value="${nomeTexto}">`;
+
+    tr.querySelector('.cel-local').classList.add('cel-edit');
+    tr.querySelector('.cel-local').innerHTML = `<input type="text" value="${original.local}">`;
+
+    tr.querySelector('.cel-regional').classList.add('cel-edit');
+    tr.querySelector('.cel-regional').innerHTML = `<input type="text" value="${original.regional}">`;
+
+    tr.querySelector('.cel-cc').classList.add('cel-edit');
+    tr.querySelector('.cel-cc').innerHTML = `<input type="text" value="${original.cc}">`;
+
+    tr.querySelector('.cel-custo').classList.add('cel-edit');
+    tr.querySelector('.cel-custo').innerHTML = `<input type="text" value="${original.custo}">`;
+
+    tr.querySelector('.cel-di').classList.add('cel-edit');
+    // para o input date, converte de dd/mm/aaaa -> yyyy-mm-dd
+    const diISO = (function(){ const m=original.di.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m?`${m[3]}-${m[2]}-${m[1]}`:''; })();
+    tr.querySelector('.cel-di').innerHTML = `<input type="date" value="${diISO}">`;
+
+    tr.querySelector('.cel-dt').classList.add('cel-edit');
+    const dtISO = (function(){ const m=original.dt.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m?`${m[3]}-${m[2]}-${m[1]}`:''; })();
+    tr.querySelector('.cel-dt').innerHTML = `<input type="date" value="${dtISO}">`;
+
+    tr.querySelector('.cel-status').classList.add('cel-edit');
+    tr.querySelector('.cel-status').innerHTML = `
+      <select>
+        <option ${/planejado/i.test(original.status)?'selected':''}>Planejado</option>
+        <option ${/andamento/i.test(original.status)?'selected':''}>Em andamento</option>
+        <option ${/atrasad/i.test(original.status)?'selected':''}>Atrasada</option>
+        <option ${/conclu/i.test(original.status)?'selected':''}>Concluído</option>
+      </select>`;
+
+    mostrarToolbar();
+  }
+
+  function mostrarToolbar(){
+    document.getElementById('toolbar').style.display = 'flex';
+  }
+  function esconderToolbar(){
+    document.getElementById('toolbar').style.display = 'none';
+  }
+
+  async function salvarEdicao(){
+    if(!linhaEditando) return;
+    // 🔒 verifica senha antes de prosseguir (assíncrono)
+    if(!(await pedirSenhaAntesDeSalvar())){
+      alert('Senha incorreta ou cancelada. As alterações não foram salvas.');
+      return;
+    }
+
+    const tr = linhaEditando;
+    const val = sel => tr.querySelector(sel+' input, '+sel+' select')?.value || '';
+
+    const dados = {
+      nomeProjeto : val('.cel-nome'),
+      localidade  : val('.cel-local'),
+      regional    : val('.cel-regional'),
+      centroCusto : val('.cel-cc'),
+      investimento: parseMoedaBR(val('.cel-custo')),
+      dataInicio  : tr.querySelector('.cel-di input').value || '',
+      dataTermino : tr.querySelector('.cel-dt input').value || '',
+    };
+    const statusNovo = tr.querySelector('.cel-status select').value;
+
+    try{
+      await db.collection('projetos').doc(tr.dataset.id).update(dados);
+      await db.collection('projetos_atualizados').add({
+        projetoId: tr.dataset.id,
+        dataAtualizacao: new Date(),
+        statusNovo,
+        investimentoAcumulado: dados.investimento ?? 0
+      });
+
+      const it = listaProjetos.find(x=>x.id===tr.dataset.id);
+      if(it){
+        it.nomeProjeto = dados.nomeProjeto;
+        it.localidade  = dados.localidade;
+        it.regional    = dados.regional;
+        it.centroCusto = dados.centroCusto;
+        it.investimento= dados.investimento;
+        it.dataInicio  = dados.dataInicio;
+        it.dataTermino = dados.dataTermino;
+        it._statusCalc = statusNovo;
+      }
+      linhaEditando = null;
+      esconderToolbar();
+      atualizarTabela();
+      filtrarProjetos();
+      alert('Projeto atualizado com sucesso!');
+    }catch(e){
+      console.error(e);
+      alert('Erro ao salvar: ' + e.message);
+    }
+  }
+
+  function cancelarEdicao(){
+    if(!linhaEditando) return;
+    const tr = linhaEditando;
+    const o = tr._orig || {};
+
+    tr.querySelector('.cel-nome').innerHTML = o.nomeHTML || '';
+    tr.querySelector('.cel-local').textContent = o.local || '';
+    tr.querySelector('.cel-regional').textContent = o.regional || '';
+    tr.querySelector('.cel-cc').textContent = o.cc || '';
+    tr.querySelector('.cel-custo').textContent = o.custo || '';
+    tr.querySelector('.cel-di').textContent = o.di || '';
+    tr.querySelector('.cel-dt').textContent = o.dt || '';
+    tr.querySelector('.cel-status').textContent = o.status || '';
+
+    tr.classList.remove('editando');
+    tr.querySelectorAll('.cel-edit').forEach(el=>el.classList.remove('cel-edit'));
+    delete tr._orig;
+    linhaEditando = null;
+    esconderToolbar();
+  }
+
+  // Toolbar
+  document.getElementById('btnSalvar').addEventListener('click', salvarEdicao);
+  document.getElementById('btnCancelar').addEventListener('click', cancelarEdicao);
+
   /* 🔧 Atualizamos localidades ANTES de aplicar os filtros */
   function filtrarProjetos() {
     atualizarLocalidades(true);
@@ -415,22 +760,41 @@
     const filtroRegional = document.getElementById('filtroRegional').value.toLowerCase();
     const filtroLocalidade = document.getElementById('filtroLocalidade').value.toLowerCase();
     const filtroStatus = document.getElementById('filtroStatus').value.toLowerCase();
+    const filtroCC = (document.getElementById('filtroCentroCusto')?.value || '').toLowerCase();
+
+    let total = 0;
 
     document.querySelectorAll("#tabelaProjetos tbody tr").forEach(linha => {
-      const regional = linha.cells[3].textContent.toLowerCase();
-      const localidade = linha.cells[2].textContent.toLowerCase();
-      const status = linha.cells[8].textContent.toLowerCase();
+      const cells = linha.querySelectorAll('td');
+      if(cells.length < 9) return; // linha "Nenhum projeto..."
 
-      linha.style.display = (
+      const regional = cells[3].textContent.toLowerCase();
+      const localidade = cells[2].textContent.toLowerCase();
+      const centroCusto = cells[4].textContent.toLowerCase();
+      const status = cells[8].textContent.toLowerCase();
+
+      const visivel = (
         (filtroRegional === "" || regional.includes(filtroRegional)) &&
         (filtroLocalidade === "" || localidade.includes(filtroLocalidade)) &&
-        (filtroStatus === "" || status.includes(filtroStatus))
-      ) ? "" : "none";
+        (filtroStatus === "" || status.includes(filtroStatus)) &&
+        (filtroCC === "" || centroCusto.includes(filtroCC))
+      );
+
+      linha.style.display = visivel ? "" : "none";
+      if(visivel){
+        // soma custo da coluna 6
+        const custoTxt = cells[5].querySelector('input') ? cells[5].querySelector('input').value : cells[5].textContent;
+        total += parseMoedaBR(custoTxt);
+      }
     });
+
+    const alvoTotal = document.getElementById('totalFiltrado');
+    if(alvoTotal){
+      alvoTotal.textContent = `Total filtrado: ${fmtMoedaBR(total)}`;
+    }
   }
 
   window.onload = async () => {
-    /* captura localidades padrão do select */
     const selLocalidade = document.getElementById('filtroLocalidade');
     DEFAULT_LOCALIDADES = Array.from(selLocalidade.options)
       .map(o => o.value)
@@ -450,11 +814,18 @@
         }
       }
     }
-    /* garante coerência inicial */
     atualizarLocalidades(false);
     filtrarProjetos();
+
+    // Teclas de atalho enquanto edita
+    document.addEventListener('keydown', (e)=>{
+      if(!linhaEditando) return;
+      if(e.key === 'Escape'){ e.preventDefault(); cancelarEdicao(); }
+      if(e.key === 'Enter'){  e.preventDefault(); salvarEdicao(); }
+    });
   };
 </script>
 
 </body>
 </html>
+
