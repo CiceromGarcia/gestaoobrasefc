@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="pt-BR">
 <head>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
@@ -27,32 +27,43 @@
 
     h1 { text-align: center; color: #007E7A; }
 
-    .select-container {
-      display: flex;
-      gap: 10px;
-      margin: 10px 0;
-      flex-wrap: wrap;
+    /* Filtros responsivos */
+    .select-container{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin:10px 0;
+      align-items:flex-end;
     }
-    .select-container .form-group {
-      flex: 1;
-      min-width: 150px;
-      display: flex;
-      flex-direction: column;
+    .select-container .form-group{
+      box-sizing:border-box;
+      display:flex;
+      flex-direction:column;
+      min-width: 200px;
+      flex: 1 1 100%;
     }
-    .select-container label {
-      font-weight: bold;
-      font-size: 14px;
-      text-align: left;
-      margin-bottom: 3px;
-      padding-left: 3px;
+    @media (min-width: 600px){
+      .select-container .form-group{ flex: 1 1 calc(50% - 12px); }
+    }
+    @media (min-width: 900px){
+      .select-container .form-group{ flex: 1 1 calc(33.333% - 12px); }
+    }
+    .select-container label{
+      font-weight:bold;
+      font-size:14px;
+      text-align:left;
+      margin-bottom:6px;
+      padding-left:3px;
+      min-height:18px;
     }
 
     select, button {
       width: 100%;
       padding: 10px;
       border: 1px solid #ccc;
-      border-radius: 5px;
+      border-radius: 6px;
       font-size: 14px;
+      background:#fff;
     }
 
     /* Resumo do projeto */
@@ -75,11 +86,7 @@
       margin-bottom:4px;
     }
 
-    /* 🔹 Valor excedente em vermelho */
-    .over-budget {
-      color: #C62828;
-      font-weight: bold;
-    }
+    .over-budget { color:#C62828; font-weight:bold; }
 
     table {
       width: 100%;
@@ -114,6 +121,8 @@
       transition: 0.3s;
     }
     button:hover { background-color: #007E7A; }
+
+    .linha-total-avanco td { background: #f7fffd; font-weight: bold; }
   </style>
 <script>
 function esc(v){
@@ -142,6 +151,7 @@ function esc(v){
           <option value="">Selecione uma regional primeiro</option>
         </select>
       </div>
+      <!-- Localidade é injetada via JS aqui -->
     </div>
 
     <!-- RESUMO DO PROJETO -->
@@ -186,7 +196,7 @@ function esc(v){
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script> <!-- ADICIONADO -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 
   <script>
@@ -219,8 +229,6 @@ function esc(v){
 
   <script>
   document.addEventListener("DOMContentLoaded", () => {
-    // --- tudo que já existia no seu DOMContentLoaded foi movido para uma função
-    // --- e será executado somente após o usuário estar autenticado.
     window.__startHistorico = () => {
       const db = window.db;
 
@@ -236,10 +244,14 @@ function esc(v){
       const resumoCusto     = document.getElementById("resumoCusto");
       const resumoExecutado = document.getElementById("resumoExecutado");
 
+      // Dinâmicos
+      let selectLocalidade = null;
+
       let custoOrcadoAtual = 0;
+      let cacheProjetosRegional = [];
 
       const fmtBRL = v => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-      const fmtDT  = ts => ts?.toDate ? ts.toDate().toLocaleString("pt-BR") : "-";
+      const fmtDT  = ts => ts?.toDate ? ts.toDate().toLocaleDateString("pt-BR") : "-";
       const fmtPct = v => `${(Number(v || 0)).toFixed(2)}%`;
 
       const fmtDataSimples = (val) => {
@@ -266,6 +278,53 @@ function esc(v){
         return 0;
       };
 
+      // Normalização do status
+      function normalizaStatus(txt){
+        const s = String(txt || "").trim().toLowerCase();
+        if (!s) return "";
+        if (s.includes("andament")) return "Em andamento";
+        if (s.includes("conclu"))   return "Concluído";
+        return s; // outros valores
+      }
+
+      // Busca o último statusNovo da obra
+      async function obterUltimoStatus(projetoId){
+        const snap = await db.collection("projetos_atualizados")
+          .where("projetoId","==", projetoId)
+          .orderBy("dataAtualizacao","desc")
+          .limit(1)
+          .get();
+        if (snap.empty) return "";
+        const d = snap.docs[0].data();
+        return normalizaStatus(d.statusNovo);
+      }
+
+      // Injeta Localidade entre Regional e Projeto (sem alterar HTML fixo)
+      function ensureFiltroLocalidade(){
+        const barra = document.querySelector('.select-container');
+        const grpProjeto = document.querySelector('label[for="selectProjeto"]')?.closest('.form-group');
+
+        if (!document.getElementById('selectLocalidade')) {
+          const fg = document.createElement('div');
+          fg.className = 'form-group';
+          fg.id = 'grpLocalidade';
+          fg.innerHTML = `
+            <label for="selectLocalidade">Localidade:</label>
+            <select id="selectLocalidade">
+              <option value="">Todas</option>
+            </select>`;
+          if (grpProjeto) barra.insertBefore(fg, grpProjeto); else barra.appendChild(fg);
+        } else {
+          const fg = document.getElementById('selectLocalidade').closest('.form-group');
+          if (fg && grpProjeto && fg.nextSibling !== grpProjeto) {
+            barra.insertBefore(fg, grpProjeto);
+          }
+        }
+
+        selectLocalidade = document.getElementById('selectLocalidade');
+        selectLocalidade.onchange = carregarProjetos;
+      }
+
       async function carregarRegionais() {
         const snap = await db.collection("projetos").get();
         const regionais = [...new Set(snap.docs.map(d => d.data().regional).filter(Boolean))].sort();
@@ -273,37 +332,78 @@ function esc(v){
           ? `<option value="">Selecione a regional</option>` +
             regionais.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("")
           : `<option value="">Nenhuma regional encontrada</option>`;
+
+        ensureFiltroLocalidade();
       }
 
       async function carregarProjetos() {
         selectProjeto.innerHTML = `<option value="">Carregando...</option>`;
+        limparHistoricoETotal();
+        resumoWrap.hidden = true;
+
         const regionalSelecionada = selectRegional.value;
         if (!regionalSelecionada) {
           selectProjeto.innerHTML = `<option value="">Selecione uma regional primeiro</option>`;
-          tabelaHistorico.innerHTML = `<tr><td colspan="4">Selecione um projeto para visualizar o histórico.</td></tr>`;
-          resumoWrap.hidden = true;
+          popularLocalidades([]);
           return;
         }
 
+        // 1) Busca projetos da regional
         const snap = await db.collection("projetos")
           .where("regional", "==", regionalSelecionada)
           .get();
 
-        if (snap.empty) {
+        // 2) Monta base e puxa último status de cada projeto (em paralelo)
+        const base = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const statusList = await Promise.all(
+          base.map(p => obterUltimoStatus(p.id).catch(()=> "")) // tolerante a erro
+        );
+
+        // 3) Anexa status normalizado à base
+        cacheProjetosRegional = base.map((p, idx) => ({ ...p, __statusObra: statusList[idx] }));
+
+        // 4) Filtra somente "Em andamento" e "Concluído"
+        cacheProjetosRegional = cacheProjetosRegional.filter(p =>
+          p.__statusObra === "Em andamento" || p.__statusObra === "Concluído"
+        );
+
+        // 5) Popular localidades com base no conjunto filtrado
+        popularLocalidades(cacheProjetosRegional);
+
+        // 6) Aplica filtro de localidade (se houver)
+        const locSel = (selectLocalidade?.value || '').toLowerCase();
+        const projetosFiltrados = cacheProjetosRegional.filter(p =>
+          !locSel || String(p.localidade || '').toLowerCase() === locSel
+        );
+
+        if (!projetosFiltrados.length) {
           selectProjeto.innerHTML = `<option value="">Nenhum projeto encontrado</option>`;
-          tabelaHistorico.innerHTML = `<tr><td colspan="4">Nenhum projeto nessa regional.</td></tr>`;
-          resumoWrap.hidden = true;
+          tabelaHistorico.innerHTML = `<tr><td colspan="4">Nenhum projeto nessa combinação.</td></tr>`;
           return;
         }
 
+        // 7) Popula <select> de projetos
         let opts = `<option value="">Selecione um projeto</option>`;
-        snap.forEach(doc => {
-          const d = doc.data();
-          opts += `<option value="${doc.id}">${esc(d.nomeProjeto || d.nome || "Sem nome")}</option>`;
+        projetosFiltrados.forEach(p => {
+          opts += `<option value="${p.id}">${esc(p.nomeProjeto || p.nome || "Sem nome")}</option>`;
         });
         selectProjeto.innerHTML = opts;
+      }
+
+      function popularLocalidades(lista){
+        if (!selectLocalidade) return;
+        const locs = [...new Set(lista.map(p => String(p.localidade || '').trim()).filter(Boolean))]
+          .sort((a,b)=>a.localeCompare(b,'pt-BR'));
+        const sel = selectLocalidade;
+        const antiga = sel.value;
+        sel.innerHTML = `<option value="">Todas</option>` + locs.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('');
+        if (locs.includes(antiga)) sel.value = antiga;
+      }
+
+      function limparHistoricoETotal(){
         tabelaHistorico.innerHTML = `<tr><td colspan="4">Selecione um projeto para visualizar o histórico.</td></tr>`;
-        resumoWrap.hidden = true;
+        const totalRow = document.getElementById('linhaTotalAvanco');
+        if (totalRow) totalRow.remove();
       }
 
       async function carregarResumoProjeto(projetoId) {
@@ -328,9 +428,12 @@ function esc(v){
 
       async function carregarHistorico() {
         tabelaHistorico.innerHTML = `<tr><td colspan="4">Carregando histórico...</td></tr>`;
+        const totalRowOld = document.getElementById('linhaTotalAvanco');
+        if (totalRowOld) totalRowOld.remove();
+
         const projetoId = selectProjeto.value;
         if (!projetoId) {
-          tabelaHistorico.innerHTML = `<tr><td colspan="4">Selecione um projeto para visualizar o histórico.</td></tr>`;
+          limparHistoricoETotal();
           resumoWrap.hidden = true;
           return;
         }
@@ -346,6 +449,7 @@ function esc(v){
           tabelaHistorico.innerHTML = `<tr><td colspan="4">Nenhuma atualização encontrada para este projeto.</td></tr>`;
           resumoExecutado.textContent = fmtBRL(0);
           resumoWrap.hidden = false;
+          renderLinhaTotalAvanco(0);
           return;
         }
 
@@ -358,7 +462,7 @@ function esc(v){
             <tr>
               <td>${fmtDT(d.dataAtualizacao)}</td>
               <td>${fmtBRL(d.investimentoNovo)}</td>
-              <td>${fmtPct(d.avancoFisicoNovo)}</td>
+              <td data-pct="${toNum(d.avancoFisicoNovo)}">${fmtPct(d.avancoFisicoNovo)}</td>
               <td>${esc(d.statusNovo) || "-"}</td>
             </tr>`;
         });
@@ -370,6 +474,37 @@ function esc(v){
           resumoExecutado.classList.add("over-budget");
         }
         resumoWrap.hidden = false;
+
+        somarPercentualHistorico();
+      }
+
+      function renderLinhaTotalAvanco(totalNumero){
+        const old = document.getElementById('linhaTotalAvanco');
+        if (old) old.remove();
+
+        const tr = document.createElement('tr');
+        tr.id = 'linhaTotalAvanco';
+        tr.className = 'linha-total-avanco';
+        tr.innerHTML = `
+          <td></td>
+          <td></td>
+          <td><strong>Σ ${totalNumero.toFixed(2).replace('.', ',')}%</strong></td>
+          <td></td>
+        `;
+        tabelaHistorico.appendChild(tr);
+      }
+
+      function somarPercentualHistorico(){
+        let soma = 0;
+        Array.from(tabelaHistorico.querySelectorAll('tr')).forEach(tr=>{
+          const tds = tr.querySelectorAll('td');
+          if (tds.length !== 4) return;
+          if (tr.id === 'linhaTotalAvanco') return;
+          const cell = tr.querySelector('td:nth-child(3)');
+          const val = cell ? toNum(cell.getAttribute('data-pct') || cell.textContent) : 0;
+          soma += val;
+        });
+        renderLinhaTotalAvanco(soma);
       }
 
       btnVoltar.addEventListener("click", () => (window.location.href = "menu.html"));
@@ -378,11 +513,9 @@ function esc(v){
       selectRegional.addEventListener("change", carregarProjetos);
       selectProjeto.addEventListener("change", carregarHistorico);
 
-      // inicia o fluxo normal
       carregarRegionais();
     };
 
-    // Se o auth já estiver pronto quando o DOM carregar, inicia já
     if (window.__AUTH_OK__) {
       window.__startHistorico();
     }
