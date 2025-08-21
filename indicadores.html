@@ -1,328 +1,343 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Indicadores - Sistema Quéops</title>
-    <link rel="stylesheet" href="indicadores.css">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Indicadores - Sistema Quéops</title>
+  <link rel="stylesheet" href="indicadores.css">
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    <!-- ✅ Auth compat para guard de sessão -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-    <style>
-        .graficos {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            gap: 20px;
-            margin-top: 20px;
-            flex-wrap: nowrap;
-        }
+  <style>
+    .graficos{display:flex;justify-content:center;align-items:flex-start;gap:20px;margin-top:20px;flex-wrap:nowrap}
+    .grafico-card{background:#fff;padding:14px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1);width:48%;min-width:400px;height:380px}
+    .grafico-card canvas{width:100%!important;height:290px!important}
+    /* ↓↓↓ Ajuste solicitado: fonte menor da tabela */
+    table{font-size:13px}
+    table th,table td{padding:6px 8px}
+  </style>
 
-        .grafico-card {
-            background: #fff;
-            padding: 14px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            width: 48%;
-            min-width: 400px;
-            height: 380px;
-        }
+  <script>
+  function safeNorm(s){ try{ return String(s).normalize('NFKC'); }catch(e){ return String(s); } }
+  function esc(v){ if(v===undefined||v===null) return ''; return String(v).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s])); }
 
-        .grafico-card canvas {
-            width: 100% !important;
-            height: 290px !important;
-        }
-    </style>
-<script>
-function esc(v){
-  if(v===undefined||v===null) return '';
-  return String(v).replace(/[&<>"']/g, function(s){
-    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]);
-  });
-}
-</script>
+  /* --- Mapa Localidade -> Regional --- */
+  const MAP_LOC_REGION = {
+    'arari':'Regional 1',
+    'vitória do mearim':'Regional 1','vitoria do mearim':'Regional 1',
+    'santa inês':'Regional 1','santa ines':'Regional 1',
+    'alto alegre':'Regional 1',
+
+    'açailândia':'Regional 2','acailandia':'Regional 2','açailandia':'Regional 2',
+    'nova vida':'Regional 2',
+
+    'marabá':'Regional 3','maraba':'Regional 3',
+    "são pedro d’água branca":'Regional 3',"sao pedro d'agua branca":'Regional 3',
+    'itainópolis':'Regional 3','itainopolis':'Regional 3'
+  };
+
+  /* Normaliza “Regional X” e extrai número */
+  function canonicalRegional(raw){
+    if(raw==null) return '';
+    let s = safeNorm(raw).replace(/\u00A0/g,' ').replace(/[–—-]/g,'-').trim().replace(/\s+/g,' ');
+    if(/^\s*0*([1-3])\s*$/.test(s)) return `Regional ${RegExp.$1}`;
+    const m = s.match(/(?:^|\b)r(?:eg(?:ional)?)?\.?\s*0*([1-3])(?:\b|$)/i);
+    if(m) return `Regional ${m[1]}`;
+    if(/^regional\s+[1-3]$/i.test(s)) return s.replace(/^regional\s+([1-3])$/i,'Regional $1');
+    return s;
+  }
+  function regNum(raw){
+    const s = canonicalRegional(raw);
+    const m = s.match(/([1-3])(?!.*[1-3])/);
+    return m ? m[1] : '';
+  }
+
+  function regionalByLocalidade(localidade){
+    if(!localidade) return '';
+    const k = safeNorm(localidade).toLowerCase().trim()
+      .replace(/\s+/g,' ')
+      .replace(/\s*-\s*ma$/,'');
+    return MAP_LOC_REGION[k] || '';
+  }
+  function getRegional(rawRegional, localidade){
+    return canonicalRegional(rawRegional) || regionalByLocalidade(localidade) || '-';
+  }
+  </script>
 </head>
 <body>
-    <h1>📊 Indicadores de Obras</h1>
+  <h1>📊 Indicadores de Obras</h1>
 
-    <div class="btn-voltar-container">
-        <button onclick="window.location.href='menu.html'">⬅ Voltar para o Menu</button>
-    </div>
+  <div class="btn-voltar-container">
+    <button onclick="window.location.href='menu.html'">⬅ Voltar para o Menu</button>
+  </div>
 
-    <div class="filtros">
-        <select id="filtroStatus"></select>
-        <select id="filtroRegional"></select>
-        <select id="filtroLocalidade"></select>
-    </div>
- 
-    <div class="cards">
-        <div class="card">Total de Obras: <span id="totalObras">0</span></div>
-        <div class="card">Planejadas: <span id="planejadas">0</span></div>
-        <div class="card">Em Andamento: <span id="andamento">0</span></div>
-        <div class="card">Paralisadas: <span id="paralisadas">0</span></div>
-        <div class="card">Concluídas: <span id="concluidas">0</span></div>
-    </div>
+  <div class="filtros">
+    <select id="filtroStatus"></select>
+    <select id="filtroRegional"></select>
+    <select id="filtroLocalidade"></select>
+  </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Nome do Projeto</th>
-                <th>Localidade</th>
-                <th>Regional</th>
-                <th>Custo Orçado (R$)</th>      <!-- 🔹 novo -->
-                <th>Custo Executado (R$)</th>   <!-- 🔹 novo -->
-                <th>Avanço (%)</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody id="tabelaProjetos"></tbody>
-    </table>
+  <!-- ↓↓↓ Ajuste solicitado: ordem dos cards e rótulo Validadas -->
+  <div class="cards">
+    <div class="card">Total de Obras: <span id="totalObras">0</span></div>
+    <div class="card">Validadas: <span id="validadas">0</span></div>
+    <div class="card">Planejadas: <span id="planejadas">0</span></div>
+    <div class="card">Em Andamento: <span id="andamento">0</span></div>
+    <div class="card">Concluídas: <span id="concluidas">0</span></div>
+  </div>
 
-    <div class="graficos">
-        <div class="grafico-card">
-            <h3>Status das Obras</h3>
-            <canvas id="graficoStatus"></canvas>
-        </div>
-        <div class="grafico-card">
-            <h3>Custos por Regional</h3>
-            <canvas id="graficoCustos"></canvas>
-        </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Nome do Projeto</th><th>Localidade</th><th>Regional</th>
+        <th>Custo Orçado (R$)</th><th>Custo Executado (R$)</th><th>Avanço (%)</th><th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaProjetos"></tbody>
+  </table>
+
+  <div class="graficos">
+    <div class="grafico-card">
+      <h3>Status das Obras</h3>
+      <canvas id="graficoStatus"></canvas>
     </div>
+    <div class="grafico-card">
+      <h3>Custos por Regional</h3>
+      <canvas id="graficoCustos"></canvas>
+    </div>
+  </div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
-        authDomain: "queops-84feb.firebaseapp.com",
-        projectId: "queops-84feb",
-        storageBucket: "queops-84feb.appspot.com",
-        messagingSenderId: "415710636047",
-        appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyCIN_N1vkthW3G9E7HubFg-C_61-WnFSRU",
+    authDomain: "queops-84feb.firebaseapp.com",
+    projectId: "queops-84feb",
+    storageBucket: "queops-84feb.appspot.com",
+    messagingSenderId: "415710636047",
+    appId: "1:415710636047:web:58feb0b3fa8b5bcc199b7a"
+  };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-    // ✅ Auth para proteger a página (sessão até fechar o navegador)
-    const auth = firebase.auth();
-    window.auth = auth;
-    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
-    auth.onAuthStateChanged((user) => {
-        if (!user) {
-            // Não autenticado: volta pro login (impede voltar com "Voltar")
-            location.replace('login.html');
-        }
+  const auth = firebase.auth();
+  auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+  auth.onAuthStateChanged((user)=>{ if(!user) location.replace('login.html'); });
+
+  let projetos = [];
+  let chartStatus, chartCustos;
+
+  /* === MERGE DE COLEÇÕES: projetos + projetos_atualizados === */
+  function carregarProjetos(){
+    // 1) Carrega todos os projetos base
+    db.collection("projetos").get().then((baseSnap) => {
+      const base = {};
+      baseSnap.forEach(doc => {
+        const p = doc.data();
+        const id = doc.id;
+        const reg = getRegional(p.regional, p.localidade);
+        base[id] = {
+          projetoId: id,
+          nomeProjeto: p.nomeProjeto || p.nome || '-',
+          localidade: p.localidade || '-',
+          regional: reg, _regionalCalc: reg,
+          custoOrcado: (typeof p.investimento === 'number' ? p.investimento :
+                       typeof p.custoOrcado === 'number' ? p.custoOrcado : 0),
+          investimentoNovo: 0,
+          avancoFisicoNovo: 0,
+          statusNovo: p.status || '-',  // status original
+          ultimaData: null
+        };
+      });
+
+      // 2) Aplica as atualizações por cima (escuta em tempo real)
+      db.collection("projetos_atualizados")
+        .orderBy("dataAtualizacao","asc")
+        .onSnapshot((snap)=>{
+          const acumulados = JSON.parse(JSON.stringify(base)); // clona a base
+
+          const toNum = (v)=>{
+            if(typeof v === 'number' && isFinite(v)) return v;
+            if(typeof v === 'string'){
+              const n = Number(v.replace(/\s/g,'').replace('R$','').replace(/\./g,'').replace(',','.').replace('%',''));
+              return isFinite(n) ? n : 0;
+            }
+            return 0;
+          };
+
+          snap.forEach(doc=>{
+            const d = doc.data();
+            const id = (d.projetoId ?? '').toString().trim();
+            if(!id) return;
+
+            if(!acumulados[id]){
+              // Caso raro: atualização sem documento base
+              const reg = getRegional(d.regional, d.localidade);
+              acumulados[id] = {
+                projetoId:id,
+                nomeProjeto:d.nomeProjeto||'-',
+                localidade:d.localidade||'-',
+                regional:reg, _regionalCalc:reg,
+                custoOrcado:0, investimentoNovo:0, avancoFisicoNovo:0,
+                statusNovo:'-', ultimaData:null
+              };
+            }
+
+            // somatórios e "último status"
+            const incCusto  = toNum(d.investimentoNovo);
+            const incAvanco = toNum(d.avancoFisicoNovo);
+            if(incCusto  > 0) acumulados[id].investimentoNovo += incCusto;
+            if(incAvanco > 0) acumulados[id].avancoFisicoNovo += incAvanco;
+
+            const tsAtual  = d.dataAtualizacao?.toMillis?.() || 0;
+            const tsUltimo = acumulados[id].ultimaData?.toMillis?.() || 0;
+            if(tsAtual >= tsUltimo){
+              acumulados[id].statusNovo  = d.statusNovo || acumulados[id].statusNovo || '-';
+              acumulados[id].ultimaData  = d.dataAtualizacao || null;
+              acumulados[id].nomeProjeto = d.nomeProjeto || acumulados[id].nomeProjeto;
+              acumulados[id].localidade  = d.localidade  || acumulados[id].localidade;
+              const reg = getRegional(d.regional, d.localidade);
+              if(reg){ acumulados[id].regional = reg; acumulados[id]._regionalCalc = reg; }
+            }
+          });
+
+          Object.keys(acumulados).forEach(id=>{
+            acumulados[id].avancoFisicoNovo = Math.min(100, Number(acumulados[id].avancoFisicoNovo || 0));
+          });
+
+          projetos = Object.values(acumulados);
+          preencherFiltros();
+          atualizarIndicadores();
+        });
+    });
+  }
+
+  function preencherFiltros(){
+    const statusList = [...new Set(projetos.map(p=>(p.statusNovo||'').trim()))].filter(Boolean).sort();
+    const regionais  = ['1','2','3']; // valores numéricos
+    const localidades = [...new Set(projetos.map(p=>(p.localidade||'').trim()))].filter(Boolean).sort();
+
+    const selStatus = document.getElementById('filtroStatus').value;
+    const selRegional = document.getElementById('filtroRegional').value;
+    const selLocal = document.getElementById('filtroLocalidade').value;
+
+    document.getElementById('filtroStatus').innerHTML =
+      `<option value="">Todos os status</option>` +
+      statusList.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+
+    document.getElementById('filtroRegional').innerHTML =
+      `<option value="">Todas as regionais</option>` +
+      regionais.map(n=>`<option value="${n}">Regional ${n}</option>`).join('');
+
+    document.getElementById('filtroLocalidade').innerHTML =
+      `<option value="">Todas as localidades</option>` +
+      localidades.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('');
+
+    if(selStatus) document.getElementById('filtroStatus').value = selStatus;
+    if(selRegional) document.getElementById('filtroRegional').value = selRegional;
+    if(selLocal) document.getElementById('filtroLocalidade').value = selLocal;
+  }
+
+  function atualizarIndicadores(){
+    const status     = document.getElementById('filtroStatus').value;
+    const regionalV  = document.getElementById('filtroRegional').value; // "1"|"2"|"3"|""
+    const localidade = document.getElementById('filtroLocalidade').value;
+
+    const filtrados = projetos.filter(p=>{
+      const reg = p._regionalCalc || getRegional(p.regional, p.localidade);
+      const okStatus   = (!status || (p.statusNovo||'').trim()===status);
+      const okRegional = (!regionalV || regNum(reg) === regionalV);
+      const okLocal    = (!localidade || (p.localidade||'').trim()===localidade);
+      return okStatus && okRegional && okLocal;
     });
 
-    let projetos = [];
-    let chartStatus, chartCustos;
+    // ↓↓↓ Ajuste: contagem de Validadas (inclui dados antigos "Paralisado/Paralisada")
+    document.getElementById('totalObras').textContent = filtrados.length;
+    document.getElementById('validadas').textContent  = filtrados.filter(p=>{
+      const st = (p.statusNovo||"").toLowerCase();
+      return st==="paralisado" || st==="paralisada" || st==="validado" || st==="validadas";
+    }).length;
+    document.getElementById('planejadas').textContent = filtrados.filter(p=>p.statusNovo==="Planejado").length;
+    document.getElementById('andamento').textContent  = filtrados.filter(p=>p.statusNovo==="Em andamento").length;
+    document.getElementById('concluidas').textContent = filtrados.filter(p=>p.statusNovo==="Concluído").length;
 
-    function carregarProjetos() {
-        db.collection("projetos_atualizados")
-            .orderBy("dataAtualizacao", "asc")
-            .onSnapshot((snapshot) => {
-                const acumulados = {};
+    document.getElementById('tabelaProjetos').innerHTML = filtrados.map(p=>{
+      const reg = p._regionalCalc || getRegional(p.regional, p.localidade);
+      // ↓↓↓ Ajuste: exibir "Validado" na tabela quando vier "Paralisado/Paralisada"
+      let statusMostrado = p.statusNovo || "-";
+      if(/paralisad[ao]/i.test(statusMostrado)) statusMostrado = "Validado";
+      return `
+        <tr>
+          <td>${esc(p.nomeProjeto)||"-"}</td>
+          <td>${esc(p.localidade)||"-"}</td>
+          <td>${esc(reg)||"-"}</td>
+          <td>R$ ${(p.custoOrcado||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+          <td>R$ ${(p.investimentoNovo||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+          <td>${(p.avancoFisicoNovo||0).toFixed(2)}%</td>
+          <td>${esc(statusMostrado)||"-"}</td>
+        </tr>`;
+    }).join('');
 
-                // helper p/ converter "10", "10,5", "1.000,50", "10%" etc.
-                const toNum = (v) => {
-                    if (typeof v === "number" && isFinite(v)) return v;
-                    if (typeof v === "string") {
-                        const n = Number(
-                            v.replace(/\s/g, "")
-                             .replace("R$", "")
-                             .replace(/\./g, "")
-                             .replace(",", ".")
-                             .replace("%", "")
-                        );
-                        return isFinite(n) ? n : 0;
-                    }
-                    return 0;
-                };
+    gerarGraficos(filtrados);
+  }
 
-                snapshot.forEach(doc => {
-                    const dados = doc.data();
-                    const id = (dados.projetoId ?? "").toString().trim();
-                    if (!id) return;
+  function gerarGraficos(dados){
+    // ↓↓↓ Ajuste: substituir categoria "Paralisado" por "Validado" nos gráficos
+    const statusCounts = {"Planejado":0,"Em andamento":0,"Validado":0,"Concluído":0};
+    const custosRegionais = {};
+    dados.forEach(p=>{
+      let st = p.statusNovo || "-";
+      if(/paralisad[ao]/i.test(st)) st = "Validado"; // normaliza antigo → novo
+      if(/validad[aoas]/i.test(st)) st = "Validado";
 
-                    if (!acumulados[id]) {
-                        acumulados[id] = { 
-                            projetoId: id,
-                            nomeProjeto: dados.nomeProjeto || "-",
-                            localidade:  dados.localidade  || "-",
-                            regional:    dados.regional    || "-",
-                            custoOrcado: 0,               // 🔹 preenchido pela coleção "projetos"
-                            investimentoNovo: 0,          // soma dos incrementos = EXECUTADO
-                            avancoFisicoNovo: 0,          // soma dos incrementos de avanço
-                            statusNovo: "-",
-                            ultimaData: null
-                        };
-                    }
+      if(statusCounts[st]===undefined) statusCounts[st]=0;
+      statusCounts[st]++;
+      const reg = p._regionalCalc || getRegional(p.regional, p.localidade) || "-";
+      const val = (typeof p.investimentoNovo==='number'? p.investimentoNovo:0);
+      custosRegionais[reg] = (custosRegionais[reg]||0)+val;
+    });
 
-                    // 🔹 Soma dos incrementos (executado)
-                    const incCusto  = toNum(dados.investimentoNovo);
-                    const incAvanco = toNum(dados.avancoFisicoNovo);
+    if(chartStatus) chartStatus.destroy();
+    chartStatus = new Chart(document.getElementById('graficoStatus'),{
+      type:'bar',
+      data:{ labels:Object.keys(statusCounts),
+        datasets:[{label:'Quantidade de Obras',data:Object.values(statusCounts),backgroundColor:["#999","#007E7A","#f39c12","#27ae60"],borderRadius:6}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        // ↓↓↓ Ajuste: valores no topo
+        plugins:{ datalabels:{ anchor:'end', align:'end', color:'#000', font:{weight:'bold'} } }
+      },
+      plugins:[ChartDataLabels]
+    });
 
-                    if (incCusto  > 0) acumulados[id].investimentoNovo += incCusto;
-                    if (incAvanco > 0) acumulados[id].avancoFisicoNovo += incAvanco;
+    if(chartCustos) chartCustos.destroy();
+    chartCustos = new Chart(document.getElementById('graficoCustos'),{
+      type:'bar',
+      data:{ labels:Object.keys(custosRegionais),
+        datasets:[{label:'Custos Executados (R$)',data:Object.values(custosRegionais),backgroundColor:"#007E7A",borderRadius:6}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        // ↓↓↓ Ajuste: valores (R$) no topo
+        plugins:{ datalabels:{
+          anchor:'end', align:'end', color:'#000', font:{weight:'bold'},
+          formatter:(v)=> v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
+        }}
+      },
+      plugins:[ChartDataLabels]
+    });
+  }
 
-                    // 🔹 Mantém status/metadados do registro mais recente
-                    const tsAtual  = dados.dataAtualizacao?.toMillis?.() || 0;
-                    const tsUltimo = acumulados[id].ultimaData?.toMillis?.() || 0;
-                    if (tsAtual >= tsUltimo) {
-                        acumulados[id].statusNovo  = dados.statusNovo || "-";
-                        acumulados[id].ultimaData  = dados.dataAtualizacao || null;
-                        acumulados[id].nomeProjeto = dados.nomeProjeto || acumulados[id].nomeProjeto;
-                        acumulados[id].localidade  = dados.localidade  || acumulados[id].localidade;
-                        acumulados[id].regional    = dados.regional    || acumulados[id].regional;
-                    }
-                });
+  document.getElementById('filtroStatus').addEventListener('change', atualizarIndicadores);
+  document.getElementById('filtroRegional').addEventListener('change', atualizarIndicadores);
+  document.getElementById('filtroLocalidade').addEventListener('change', atualizarIndicadores);
 
-                // 🔹 Limita avanço em 100%
-                Object.keys(acumulados).forEach(id => {
-                    acumulados[id].avancoFisicoNovo = Math.min(100, acumulados[id].avancoFisicoNovo);
-                });
-
-                // 🔹 Busca CUSTO ORÇADO na coleção "projetos" usando o mesmo projetoId
-                (async () => {
-                    const ids = Object.keys(acumulados);
-                    if (ids.length === 0) {
-                        projetos = [];
-                        preencherFiltros();
-                        atualizarIndicadores();
-                        return;
-                    }
-
-                    const gets = ids.map(id => db.collection("projetos").doc(id).get());
-                    const docs = await Promise.all(gets);
-
-                    docs.forEach((snap, i) => {
-                        if (!snap.exists) return;
-                        const p = snap.data();
-                        const bruto = p.investimento ?? p.custoOrcado ?? 0; // aceita investimento OU custoOrcado
-                        acumulados[ids[i]].custoOrcado = (typeof bruto === 'number' ? bruto : 0);
-
-                        // prioriza metadados do projeto base quando disponíveis
-                        acumulados[ids[i]].nomeProjeto = p.nomeProjeto || p.nome || acumulados[ids[i]].nomeProjeto;
-                        acumulados[ids[i]].localidade  = p.localidade  || acumulados[ids[i]].localidade;
-                        acumulados[ids[i]].regional    = p.regional    || acumulados[ids[i]].regional;
-                    });
-
-                    projetos = Object.values(acumulados);
-                    preencherFiltros();
-                    atualizarIndicadores();
-                })();
-            });
-    }
-
-    function preencherFiltros() {
-        const statusList = [...new Set(projetos.map(p => p.statusNovo))].filter(Boolean);
-        const regionais = [...new Set(projetos.map(p => p.regional))].filter(Boolean);
-        const localidades = [...new Set(projetos.map(p => p.localidade))].filter(Boolean);
-
-        document.getElementById("filtroStatus").innerHTML =
-            `<option value="">Todos os status</option>` +
-            statusList.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
-
-        document.getElementById("filtroRegional").innerHTML =
-            `<option value="">Todas as regionais</option>` +
-            regionais.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
-
-        document.getElementById("filtroLocalidade").innerHTML =
-            `<option value="">Todas as localidades</option>` +
-            localidades.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join("");
-    }
-
-    function atualizarIndicadores() {
-        const status = document.getElementById("filtroStatus").value;
-        const regional = document.getElementById("filtroRegional").value;
-        const localidade = document.getElementById("filtroLocalidade").value;
-
-        let filtrados = projetos.filter(p => 
-            (!status || p.statusNovo == status) &&
-            (!regional || p.regional == regional) &&
-            (!localidade || p.localidade == localidade)
-        );
-
-        document.getElementById("totalObras").textContent = filtrados.length;
-        document.getElementById("planejadas").textContent = filtrados.filter(p => p.statusNovo === "Planejado").length;
-        document.getElementById("andamento").textContent  = filtrados.filter(p => p.statusNovo === "Em andamento").length;
-        document.getElementById("paralisadas").textContent= filtrados.filter(p => p.statusNovo === "Paralisado" || p.statusNovo === "Paralisada").length;
-        document.getElementById("concluidas").textContent = filtrados.filter(p => p.statusNovo === "Concluído").length;
-
-        const tabela = document.getElementById("tabelaProjetos");
-        tabela.innerHTML = filtrados.map(p => `
-            <tr>
-                <td>${esc(p.nomeProjeto) || "-"}</td>
-                <td>${esc(p.localidade) || "-"}</td>
-                <td>${esc(p.regional) || "-"}</td>
-                <td>R$ ${(p.custoOrcado || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>      <!-- Orçado -->
-                <td>R$ ${(p.investimentoNovo || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td> <!-- Executado -->
-                <td>${(p.avancoFisicoNovo || 0).toFixed(2)}%</td>
-                <td>${esc(p.statusNovo) || "-"}</td>
-            </tr>
-        `).join("");
-
-        gerarGraficos(filtrados);
-    }
-
-    function gerarGraficos(dados) {
-        const statusCounts = { "Planejado": 0, "Em andamento": 0, "Paralisado": 0, "Concluído": 0 };
-        const custosRegionais = {};
-
-        dados.forEach(p => {
-            const st = p.statusNovo || "-";
-            if (statusCounts[st] === undefined) statusCounts[st] = 0;
-            statusCounts[st]++;
-
-            // gráfico usa EXECUTADO
-            const reg = p.regional || "-";
-            const val = (typeof p.investimentoNovo === 'number' ? p.investimentoNovo : 0);
-            custosRegionais[reg] = (custosRegionais[reg] || 0) + val;
-        });
-
-        if(chartStatus) chartStatus.destroy();
-        chartStatus = new Chart(document.getElementById("graficoStatus"), {
-            type: 'bar',
-            data: {
-                labels: Object.keys(statusCounts),
-                datasets: [{
-                    label: 'Quantidade de Obras',
-                    data: Object.values(statusCounts),
-                    backgroundColor: ["#999", "#007E7A", "#f39c12", "#27ae60"],
-                    borderRadius: 6
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-
-        if(chartCustos) chartCustos.destroy();
-        chartCustos = new Chart(document.getElementById("graficoCustos"), {
-            type: 'bar',
-            data: {
-                labels: Object.keys(custosRegionais),
-                datasets: [{
-                    label: 'Custos Executados (R$)',  // 🔹 rótulo atualizado
-                    data: Object.values(custosRegionais),
-                    backgroundColor: "#007E7A",
-                    borderRadius: 6
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-    }
-
-    document.getElementById("filtroStatus").addEventListener("change", atualizarIndicadores);
-    document.getElementById("filtroRegional").addEventListener("change", atualizarIndicadores);
-    document.getElementById("filtroLocalidade").addEventListener("change", atualizarIndicadores);
-
-    carregarProjetos();
+  carregarProjetos();
 </script>
 </body>
 </html>
-
