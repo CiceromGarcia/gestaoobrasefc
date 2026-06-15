@@ -1,0 +1,219 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ==============================
+       FUNÇÕES BÁSICAS
+    ============================== */
+
+    function estaLogado() {
+      return request.auth != null;
+    }
+
+    function usuarioExiste() {
+      return estaLogado()
+        && exists(/databases/$(database)/documents/usuariosSistema/$(request.auth.uid));
+    }
+
+    function usuarioAtivo() {
+      return usuarioExiste()
+        && get(/databases/$(database)/documents/usuariosSistema/$(request.auth.uid)).data.status == "ativo";
+    }
+
+    function perfilUsuarioLogado() {
+      return get(/databases/$(database)/documents/usuariosSistema/$(request.auth.uid)).data.perfil;
+    }
+
+    function ehAdministrador() {
+      return usuarioAtivo()
+        && perfilUsuarioLogado() == "administrador";
+    }
+
+    function ehUsuarioSistema() {
+      return usuarioAtivo();
+    }
+
+    /* ==============================
+       USUÁRIOS DO SISTEMA
+    ============================== */
+
+    match /usuariosSistema/{uid} {
+
+      /*
+        LEITURA:
+        - Usuário logado pode ler o próprio cadastro,
+          mesmo se estiver pendente.
+        - Administrador pode ler todos.
+      */
+      allow read: if estaLogado()
+        && (
+          request.auth.uid == uid
+          || ehAdministrador()
+        );
+
+      /*
+        CRIAÇÃO:
+        - Administrador pode criar usuários pelo painel.
+        - Novo usuário só pode criar o próprio cadastro
+          com perfil "usuario" e status "pendente".
+      */
+      allow create: if estaLogado()
+        && (
+          ehAdministrador()
+          ||
+          (
+            request.auth.uid == uid
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.email == request.auth.token.email
+            && request.resource.data.perfil == "usuario"
+            && request.resource.data.status == "pendente"
+          )
+        );
+
+      /*
+        ATUALIZAÇÃO:
+        - Administrador pode aprovar, inativar, alterar perfil
+          e atualizar qualquer usuário.
+        - Usuário comum só pode atualizar o próprio cadastro
+          sem alterar uid, email, perfil ou status.
+      */
+      allow update: if estaLogado()
+        && (
+          ehAdministrador()
+          ||
+          (
+            request.auth.uid == uid
+            && request.resource.data.uid == resource.data.uid
+            && request.resource.data.email == resource.data.email
+            && request.resource.data.perfil == resource.data.perfil
+            && request.resource.data.status == resource.data.status
+          )
+        );
+
+      /*
+        EXCLUSÃO:
+        - Somente administrador.
+      */
+      allow delete: if ehAdministrador();
+    }
+
+    /* ==============================
+       OBRAS
+    ============================== */
+
+    match /obras/{obraId} {
+      allow read: if ehUsuarioSistema();
+      allow create: if ehUsuarioSistema();
+      allow update: if ehUsuarioSistema();
+      allow delete: if ehAdministrador();
+    }
+
+    /* ==============================
+       PLANEJAMENTO CURVA S
+    ============================== */
+
+    match /planejamentoCurvaS/{planejamentoId} {
+      allow read: if ehUsuarioSistema();
+      allow create: if ehUsuarioSistema();
+      allow update: if ehUsuarioSistema();
+      allow delete: if ehAdministrador();
+    }
+
+    /* ==============================
+       REALIZADO CURVA S
+    ============================== */
+
+    match /realizadoCurvaS/{realizadoId} {
+      allow read: if ehUsuarioSistema();
+      allow create: if ehUsuarioSistema();
+      allow update: if ehAdministrador();
+      allow delete: if ehAdministrador();
+    }
+
+    /* ==============================
+       ATUALIZAÇÕES DE PROJETOS
+    ============================== */
+
+    match /projetos_atualizados/{atualizacaoId} {
+      allow read: if ehUsuarioSistema();
+      allow create: if ehUsuarioSistema();
+      allow update: if ehAdministrador();
+      allow delete: if ehAdministrador();
+    }
+
+    /* ==============================
+       PROJETOS
+    ============================== */
+
+    match /projetos/{projetoId} {
+      allow read: if ehUsuarioSistema();
+      allow create: if ehUsuarioSistema();
+      allow update: if ehUsuarioSistema();
+      allow delete: if ehAdministrador();
+    }
+
+    /* ==============================
+       CRONOGRAMA SEMANAL
+    ============================== */
+
+    match /projetos/{projetoId}/cronogramaSemanal/{semanaId} {
+      allow read: if ehUsuarioSistema();
+      allow create: if ehUsuarioSistema();
+      allow update: if ehUsuarioSistema();
+      allow delete: if ehAdministrador();
+    }
+
+    /* ==============================
+       ROLLUPS POR PROJETO
+    ============================== */
+
+    match /projetos/{projetoId}/rollups/{rollupId} {
+      allow read: if ehUsuarioSistema();
+      allow write: if ehAdministrador();
+    }
+
+    /* ==============================
+       INDICADORES / ROLLUPS GERAIS
+    ============================== */
+
+    match /rollupsIndicadores/{id} {
+      allow read: if ehUsuarioSistema();
+      allow write: if ehAdministrador();
+    }
+
+    match /indicadoresObra_snapshot/{id} {
+      allow read: if ehUsuarioSistema();
+      allow write: if ehAdministrador();
+    }
+
+    match /indicadoresObra_semanal/{id} {
+      allow read: if ehUsuarioSistema();
+      allow write: if ehAdministrador();
+    }
+
+    match /indicadoresObra_mensal/{id} {
+      allow read: if ehUsuarioSistema();
+      allow write: if ehAdministrador();
+    }
+
+    /* ==============================
+       PESQUISAS DE OBRAS
+    ============================== */
+
+    match /pesquisasObras/{id} {
+      allow read: if ehUsuarioSistema();
+      allow create: if ehUsuarioSistema();
+      allow update: if ehAdministrador();
+      allow delete: if ehAdministrador();
+    }
+
+    /* ==============================
+       BLOQUEIO FINAL
+    ============================== */
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

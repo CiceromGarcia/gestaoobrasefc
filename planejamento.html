@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Planejamento Curva S
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="./planejamento.css"
+  >
+
+  <!-- CHART JS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- CHART DATA LABELS -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- HEADER -->
+
+    <div class="header">
+
+      <div>
+
+        <h1>
+          Planejamento da Curva S
+        </h1>
+
+        <p>
+          Planejamento físico e financeiro semanal da obra
+        </p>
+
+      </div>
+
+      <button
+        type="button"
+        id="btnVoltar"
+        class="btn-voltar"
+      >
+        Voltar
+      </button>
+
+    </div>
+
+    <!-- FILTROS -->
+
+    <div class="filtros">
+
+      <!-- OBRA -->
+
+      <div class="campo">
+
+        <label for="obra">
+          Obra
+        </label>
+
+        <select id="obra">
+
+          <option value="">
+            Carregando obras...
+          </option>
+
+        </select>
+
+      </div>
+
+      <!-- DATA INÍCIO -->
+
+      <div class="campo">
+
+        <label for="dataInicio">
+          Data Início
+        </label>
+
+        <input
+          type="date"
+          id="dataInicio"
+        >
+
+      </div>
+
+      <!-- DATA FINAL -->
+
+      <div class="campo">
+
+        <label for="dataFim">
+          Data Fim
+        </label>
+
+        <input
+          type="date"
+          id="dataFim"
+        >
+
+      </div>
+
+      <!-- VALOR TOTAL -->
+
+      <div class="campo">
+
+        <label for="valorTotal">
+          Valor Total da Obra
+        </label>
+
+        <input
+          type="text"
+          id="valorTotal"
+          placeholder="R$ 0,00"
+          readonly
+        >
+
+      </div>
+
+      <!-- AÇÕES -->
+
+      <div class="acoes">
+
+        <button
+          type="button"
+          id="btnGerarPlanejamento"
+          onclick="gerarPlanejamento()"
+        >
+
+          Gerar Planejamento
+
+        </button>
+
+        <button
+          type="button"
+          id="btnSalvarPlanejamento"
+          class="salvar"
+          onclick="salvarPlanejamento()"
+        >
+
+          Salvar Planejamento
+
+        </button>
+
+      </div>
+
+    </div>
+
+    <!-- TABELA -->
+
+    <div class="tabela-card">
+
+      <table>
+
+        <thead>
+
+          <tr>
+
+            <th>
+              Semana
+            </th>
+
+            <th>
+              Período
+            </th>
+
+            <th>
+              Físico (%)
+            </th>
+
+            <th>
+              Físico Acumulado
+            </th>
+
+            <th>
+              Financeiro
+            </th>
+
+            <th>
+              Financeiro Acumulado
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody id="tbodyPlanejamento">
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <!-- GRÁFICOS -->
+
+    <div class="graficos">
+
+      <!-- FÍSICO -->
+
+      <div class="grafico-card">
+
+        <h3>
+          Curva S Física
+        </h3>
+
+        <canvas id="graficoFisico">
+
+        </canvas>
+
+      </div>
+
+      <!-- FINANCEIRO -->
+
+      <div class="grafico-card">
+
+        <h3>
+          Curva S Financeira
+        </h3>
+
+        <canvas id="graficoFinanceiro">
+
+        </canvas>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- JS MODULAR -->
+
+  <script
+    type="module"
+    src="./planejamento.js"
+  ></script>
+
+</body>
+
+</html>

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Login | Sistema de Obras
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="./login.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  >
+
+</head>
+
+<body>
+
+  <main class="login-page">
+
+    <!-- =====================================
+         PAINEL ESQUERDO
+    ====================================== -->
+
+    <section class="brand-panel">
+
+      <div class="brand-content">
+
+        <div class="logo-box">
+
+          <img
+            src="./logo-vale.png"
+            alt="Logo"
+            class="logo-vale"
+          >
+
+        </div>
+
+        <h1>
+          Sistema de Obras
+        </h1>
+
+        <p>
+          Gestão, planejamento e acompanhamento de obras
+        </p>
+
+        <div class="brand-line"></div>
+
+        <span>
+          Ambiente seguro de acesso
+        </span>
+
+      </div>
+
+    </section>
+
+    <!-- =====================================
+         PAINEL DIREITO
+    ====================================== -->
+
+    <section class="auth-panel">
+
+      <div class="auth-card">
+
+        <div class="auth-header">
+
+          <h2 id="tituloTela">
+            Acessar sistema
+          </h2>
+
+          <p id="subtituloTela">
+            Informe seus dados para continuar
+          </p>
+
+        </div>
+
+        <!-- ABAS -->
+
+        <div class="tabs">
+
+          <button
+            type="button"
+            class="tab-btn active"
+            id="btnLogin"
+          >
+            Entrar
+          </button>
+
+          <button
+            type="button"
+            class="tab-btn"
+            id="btnCadastro"
+          >
+            Cadastrar
+          </button>
+
+        </div>
+
+        <!-- =====================================
+             FORMULÁRIO DE LOGIN
+        ====================================== -->
+
+        <form
+          class="form-area active"
+          id="formLogin"
+          autocomplete="on"
+        >
+
+          <label for="loginEmail">
+            E-mail
+          </label>
+
+          <div class="input-group">
+
+            <i class="fa-solid fa-envelope"></i>
+
+            <input
+              type="email"
+              id="loginEmail"
+              name="loginEmail"
+              placeholder="Digite seu e-mail"
+              autocomplete="username"
+              required
+            >
+
+          </div>
+
+          <label for="loginSenha">
+            Senha
+          </label>
+
+          <div class="input-group">
+
+            <i class="fa-solid fa-lock"></i>
+
+            <input
+              type="password"
+              id="loginSenha"
+              name="loginSenha"
+              placeholder="Digite sua senha"
+              autocomplete="current-password"
+              required
+            >
+
+            <button
+              type="button"
+              class="eye-btn"
+              data-target="loginSenha"
+              aria-label="Mostrar ou ocultar senha"
+            >
+              <i class="fa-solid fa-eye"></i>
+            </button>
+
+          </div>
+
+          <button
+            type="button"
+            class="forgot-link"
+            id="abrirRecuperacao"
+          >
+            Esqueci minha senha
+          </button>
+
+          <button
+            type="submit"
+            class="main-btn"
+          >
+            <i class="fa-solid fa-right-to-bracket"></i>
+            Entrar
+          </button>
+
+        </form>
+
+        <!-- =====================================
+             FORMULÁRIO DE CADASTRO
+        ====================================== -->
+
+        <form
+          class="form-area"
+          id="formCadastro"
+          autocomplete="on"
+        >
+
+          <label for="cadastroNome">
+            Nome completo
+          </label>
+
+          <div class="input-group">
+
+            <i class="fa-solid fa-user"></i>
+
+            <input
+              type="text"
+              id="cadastroNome"
+              name="cadastroNome"
+              placeholder="Digite seu nome"
+              autocomplete="name"
+              required
+            >
+
+          </div>
+
+          <label for="cadastroEmail">
+            E-mail
+          </label>
+
+          <div class="input-group">
+
+            <i class="fa-solid fa-envelope"></i>
+
+            <input
+              type="email"
+              id="cadastroEmail"
+              name="cadastroEmail"
+              placeholder="Digite seu e-mail"
+              autocomplete="email"
+              required
+            >
+
+          </div>
+
+          <label for="cadastroSenha">
+            Senha
+          </label>
+
+          <div class="input-group">
+
+            <i class="fa-solid fa-lock"></i>
+
+            <input
+              type="password"
+              id="cadastroSenha"
+              name="cadastroSenha"
+              placeholder="Crie uma senha"
+              autocomplete="new-password"
+              minlength="6"
+              required
+            >
+
+            <button
+              type="button"
+              class="eye-btn"
+              data-target="cadastroSenha"
+              aria-label="Mostrar ou ocultar senha"
+            >
+              <i class="fa-solid fa-eye"></i>
+            </button>
+
+          </div>
+
+          <label for="cadastroSenhaConfirmar">
+            Confirmar senha
+          </label>
+
+          <div class="input-group">
+
+            <i class="fa-solid fa-lock"></i>
+
+            <input
+              type="password"
+              id="cadastroSenhaConfirmar"
+              name="cadastroSenhaConfirmar"
+              placeholder="Confirme sua senha"
+              autocomplete="new-password"
+              minlength="6"
+              required
+            >
+
+            <button
+              type="button"
+              class="eye-btn"
+              data-target="cadastroSenhaConfirmar"
+              aria-label="Mostrar ou ocultar senha"
+            >
+              <i class="fa-solid fa-eye"></i>
+            </button>
+
+          </div>
+
+          <button
+            type="submit"
+            class="main-btn"
+          >
+            <i class="fa-solid fa-user-plus"></i>
+            Criar conta
+          </button>
+
+        </form>
+
+        <!-- =====================================
+             FORMULÁRIO DE RECUPERAÇÃO DE SENHA
+        ====================================== -->
+
+        <form
+          class="form-area"
+          id="formRecuperacao"
+          autocomplete="on"
+        >
+
+          <div class="info-box">
+
+            <i class="fa-solid fa-circle-info"></i>
+
+            <p>
+              Informe seu e-mail cadastrado. Você receberá um link para redefinir sua senha.
+            </p>
+
+          </div>
+
+          <label for="recuperarEmail">
+            E-mail
+          </label>
+
+          <div class="input-group">
+
+            <i class="fa-solid fa-envelope"></i>
+
+            <input
+              type="email"
+              id="recuperarEmail"
+              name="recuperarEmail"
+              placeholder="Digite seu e-mail"
+              autocomplete="email"
+              required
+            >
+
+          </div>
+
+          <button
+            type="submit"
+            class="main-btn"
+          >
+            <i class="fa-solid fa-paper-plane"></i>
+            Enviar recuperação
+          </button>
+
+          <button
+            type="button"
+            class="secondary-btn"
+            id="voltarLogin"
+          >
+            Voltar para login
+          </button>
+
+        </form>
+
+        <div
+          class="message"
+          id="mensagem"
+        ></div>
+
+      </div>
+
+      <!-- =====================================
+           PAINEL APÓS LOGIN
+      ====================================== -->
+
+      <div
+        class="dashboard-card hidden"
+        id="painelUsuario"
+      >
+
+        <div class="dashboard-header">
+
+          <div>
+
+            <h2>
+              Acesso liberado
+            </h2>
+
+            <p id="usuarioLogado">
+              Usuário conectado
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            class="logout-btn"
+            id="btnSair"
+          >
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            Sair
+          </button>
+
+        </div>
+
+        <div
+          class="admin-area hidden"
+          id="areaAdmin"
+        >
+
+          <h3>
+            Painel do Administrador
+          </h3>
+
+          <p>
+            Usuários cadastrados no sistema. Por segurança, senhas não são exibidas.
+          </p>
+
+          <div class="table-wrap">
+
+            <table>
+
+              <thead>
+
+                <tr>
+
+                  <th>
+                    Nome
+                  </th>
+
+                  <th>
+                    E-mail
+                  </th>
+
+                  <th>
+                    Perfil
+                  </th>
+
+                  <th>
+                    Cadastro
+                  </th>
+
+                </tr>
+
+              </thead>
+
+              <tbody id="listaUsuarios">
+
+                <tr>
+
+                  <td colspan="4">
+                    Nenhum usuário carregado.
+                  </td>
+
+                </tr>
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script
+    type="module"
+    src="./login.js"
+  ></script>
+
+</body>
+
+</html>

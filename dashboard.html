@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8"/>
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>
+    Quéops - Painel Executivo
+  </title>
+
+  <!-- CSS -->
+  <link
+    rel="stylesheet"
+    href="dashboard.css"
+  />
+
+  <!-- FONT AWESOME -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  />
+
+  <!-- CHART -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- CHART DATA LABELS -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+  <!-- PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+</head>
+
+<body>
+
+  <div class="layout">
+
+    <!-- =====================================
+         SIDEBAR
+    ====================================== -->
+
+    <aside class="sidebar">
+
+      <div class="sidebar-top">
+
+        <button
+          class="menu-btn"
+          type="button"
+        >
+
+          <i class="fa-solid fa-bars"></i>
+
+        </button>
+
+        <img
+          src="Colorida.png"
+          class="logo"
+          alt="Logo"
+        />
+
+        <h2>
+          Sistema de Gerenciamento Quéops
+        </h2>
+
+      </div>
+
+      <!-- =====================================
+           MENU
+      ====================================== -->
+
+      <nav class="menu">
+
+        <!-- DASHBOARD -->
+
+        <span class="menu-title">
+          DASHBOARD
+        </span>
+
+        <a
+          href="./dashboard.html"
+          class="active"
+        >
+
+          <i class="fa-solid fa-chart-pie"></i>
+
+          <span>
+            Painel Executivo
+          </span>
+
+        </a>
+
+        <!-- OBRAS -->
+
+        <span class="menu-title">
+          OBRAS
+        </span>
+
+        <a href="./cadastrar.html">
+
+          <i class="fa-solid fa-plus"></i>
+
+          <span>
+            Cadastrar Obras
+          </span>
+
+        </a>
+
+        <a href="./gestaodeobras.html">
+
+          <i class="fa-solid fa-building"></i>
+
+          <span>
+            Listagem de Obras
+          </span>
+
+        </a>
+
+        <!-- PLANEJAMENTO -->
+
+        <span class="menu-title">
+          PLANEJAMENTO
+        </span>
+
+        <a href="./planejamento.html">
+
+          <i class="fa-solid fa-calendar-days"></i>
+
+          <span>
+            Planejamento da Obra
+          </span>
+
+        </a>
+
+        <a href="./atualizar-curva-s.html">
+
+          <i class="fa-solid fa-chart-line"></i>
+
+          <span>
+            Curva S
+          </span>
+
+        </a>
+
+        <!-- ADMINISTRAÇÃO - SOMENTE ADMIN -->
+
+        <span
+          class="menu-title"
+          data-admin-only
+        >
+          ADMINISTRAÇÃO
+        </span>
+
+        <a
+          href="./admin-painel.html"
+          data-admin-only
+        >
+
+          <i class="fa-solid fa-users-gear"></i>
+
+          <span>
+            Painel de Usuários
+          </span>
+
+        </a>
+
+        <!-- CONTA -->
+
+        <span class="menu-title">
+          CONTA
+        </span>
+
+        <a
+          href="#"
+          id="btnSairSistema"
+          class="logout-link"
+        >
+
+          <i class="fa-solid fa-right-from-bracket"></i>
+
+          <span>
+            Sair
+          </span>
+
+        </a>
+
+      </nav>
+
+    </aside>
+
+    <!-- =====================================
+         MAIN
+    ====================================== -->
+
+    <main class="main">
+
+      <!-- TOPBAR -->
+
+      <div class="topbar">
+
+        <div>
+
+          <h1>
+            Painel Executivo de Obras
+          </h1>
+
+          <p>
+            Acompanhamento físico, financeiro e status das obras
+          </p>
+
+        </div>
+
+        <div class="top-buttons">
+
+          <button
+            class="btn white"
+            id="btnExportarPDF"
+            type="button"
+          >
+
+            <i class="fa-solid fa-file-pdf"></i>
+
+            Exportar PDF
+
+          </button>
+
+        </div>
+
+      </div>
+
+      <!-- =====================================
+           FILTROS
+      ====================================== -->
+
+      <div class="card">
+
+        <div class="filters">
+
+          <div class="field">
+
+            <label>
+              Regional
+            </label>
+
+            <select id="filtroRegional">
+
+              <option value="">
+                Todas
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="field">
+
+            <label>
+              Localidade
+            </label>
+
+            <select id="filtroLocalidade">
+
+              <option value="">
+                Todas
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="field">
+
+            <label>
+              Obra
+            </label>
+
+            <select id="filtroObra">
+
+              <option value="">
+                Todas
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="field">
+
+            <label>
+              Status
+            </label>
+
+            <select id="filtroStatus">
+
+              <option value="">
+                Todos
+              </option>
+
+              <option>
+                Em andamento
+              </option>
+
+              <option>
+                Concluída
+              </option>
+
+              <option>
+                Paralisada
+              </option>
+
+              <option>
+                Planejada
+              </option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- =====================================
+           RESUMO EXECUTIVO
+      ====================================== -->
+
+      <div class="card">
+
+        <div class="section-title">
+
+          <i class="fa-solid fa-list"></i>
+
+          Resumo Executivo das Obras
+
+        </div>
+
+        <div class="table-scroll">
+
+          <table class="tabela-obras">
+
+            <thead>
+
+              <tr>
+
+                <th>ID</th>
+
+                <th>Nome Obra</th>
+
+                <th>Localidade</th>
+
+                <th>Dt Início</th>
+
+                <th>Dt Conclusão</th>
+
+                <th>Centro Custo</th>
+
+                <th>Orçado(R$)</th>
+
+                <th>Executado(R$)</th>
+
+                <th>Desvio(R$)</th>
+
+                <th>Físico(%)</th>
+
+                <th>AFO(%)</th>
+
+              </tr>
+
+            </thead>
+
+            <tbody id="tbodyObras">
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+      <!-- =====================================
+           DETALHAMENTO
+      ====================================== -->
+
+      <div
+        id="detalhamentoPlanejamento"
+        style="display:none;"
+      >
+
+        <!-- =====================================
+             ACOMPANHAMENTO
+        ====================================== -->
+
+        <div class="card">
+
+          <div class="section-title">
+
+            <i class="fa-solid fa-table"></i>
+
+            Acompanhamento Físico-Financeiro Acumulado da Obra
+
+          </div>
+
+          <div class="table-scroll">
+
+            <table>
+
+              <thead>
+
+                <tr>
+
+                  <th>SEMANA</th>
+
+                  <th>PERÍODO</th>
+
+                  <th>ACUMULADO FÍSICO PLANEJADO (%)</th>
+
+                  <th>ACUMULADO FÍSICO REALIZADO (%)</th>
+
+                  <th>ACUMULADO FINANCEIRO PLANEJADO (R$)</th>
+
+                  <th>ACUMULADO FINANCEIRO EXECUTADO (R$)</th>
+
+                </tr>
+
+              </thead>
+
+              <tbody id="tbodyPlanejado">
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+
+        <!-- =====================================
+             GRÁFICOS
+        ====================================== -->
+
+        <section class="charts-bottom">
+
+          <div class="card chart-card">
+
+            <div class="section-title">
+
+              CURVA S FÍSICA ACUMULADA
+
+            </div>
+
+            <canvas id="graficoFisico">
+
+            </canvas>
+
+          </div>
+
+          <div class="card chart-card">
+
+            <div class="section-title">
+
+              CURVA S FINANCEIRA ACUMULADA
+
+            </div>
+
+            <canvas id="graficoFinanceiro">
+
+            </canvas>
+
+          </div>
+
+        </section>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- =====================================
+       JS
+  ====================================== -->
+
+  <script
+    type="module"
+    src="./dashboard.js"
+  ></script>
+
+</body>
+
+</html>

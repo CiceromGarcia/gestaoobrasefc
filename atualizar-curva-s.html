@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Atualização da Curva S
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="./atualizar-curva-s.css"
+  >
+
+</head>
+
+<body>
+
+  <!-- =====================================
+       CABEÇALHO
+  ====================================== -->
+
+  <header class="page-header">
+
+    <div>
+
+      <h1>
+        Atualização da Curva S
+      </h1>
+
+      <p>
+        Registro do avanço físico e financeiro realizado
+      </p>
+
+    </div>
+
+    <a
+      href="./dashboard.html"
+      class="btn-voltar"
+    >
+      Voltar
+    </a>
+
+  </header>
+
+  <!-- =====================================
+       CONTAINER
+  ====================================== -->
+
+  <div class="container">
+
+    <!-- =====================================
+         FILTROS
+    ====================================== -->
+
+    <div class="card filtros">
+
+      <div class="campo-filtro">
+
+        <label for="filtroRegional">
+          Regional
+        </label>
+
+        <select id="filtroRegional">
+
+          <option value="">
+            Regional
+          </option>
+
+        </select>
+
+      </div>
+
+      <div class="campo-filtro">
+
+        <label for="filtroLocalidade">
+          Localidade
+        </label>
+
+        <select id="filtroLocalidade">
+
+          <option value="">
+            Localidade
+          </option>
+
+        </select>
+
+      </div>
+
+      <div class="campo-filtro">
+
+        <label for="filtroObra">
+          Obra
+        </label>
+
+        <select id="filtroObra">
+
+          <option value="">
+            Obra
+          </option>
+
+        </select>
+
+      </div>
+
+      <div class="campo-filtro">
+
+        <label for="valorObra">
+          Valor Orçado
+        </label>
+
+        <input
+          type="text"
+          id="valorObra"
+          placeholder="R$ 0,00"
+          readonly
+        >
+
+      </div>
+
+      <div class="campo-filtro">
+
+        <label for="valorExecutado">
+          Valor Executado
+        </label>
+
+        <input
+          type="text"
+          id="valorExecutado"
+          placeholder="R$ 0,00"
+          readonly
+        >
+
+      </div>
+
+    </div>
+
+    <!-- =====================================
+         STATUS DA OBRA
+    ====================================== -->
+
+    <div class="card card-status-obra">
+
+      <div class="titulo-card">
+
+        <h3>
+          Status da Obra
+        </h3>
+
+        <span id="statusObraLabel">
+          Nenhuma obra selecionada
+        </span>
+
+      </div>
+
+      <div class="grid-status-obra">
+
+        <div class="campo-status">
+
+          <label for="statusObra">
+            Situação
+          </label>
+
+          <select id="statusObra">
+
+            <option value="">
+              Selecione uma obra
+            </option>
+
+            <option value="Em andamento">
+              Em andamento
+            </option>
+
+            <option value="Paralisada">
+              Paralisada
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="campo-status">
+
+          <label for="motivoParalisacao">
+            Motivo da paralisação
+          </label>
+
+          <input
+            type="text"
+            id="motivoParalisacao"
+            placeholder="Informe o motivo, caso a obra esteja paralisada"
+            autocomplete="off"
+            disabled
+          >
+
+        </div>
+
+      </div>
+
+      <div class="acoes-status">
+
+        <button
+          id="btnSalvarStatusObra"
+          type="button"
+          class="btn-status-paralisar"
+        >
+
+          Salvar Status da Obra
+
+        </button>
+
+        <button
+          id="btnReativarObra"
+          type="button"
+          class="btn-status-reativar"
+        >
+
+          Reativar Obra
+
+        </button>
+
+      </div>
+
+    </div>
+
+    <!-- =====================================
+         TABELA DE SEMANAS
+    ====================================== -->
+
+    <div class="card">
+
+      <div class="titulo-card">
+
+        <h3>
+          Planejamento e Realizado Semanal
+        </h3>
+
+        <span>
+          Clique em uma semana pendente para atualizar. Semanas já atualizadas só podem ser corrigidas por administrador.
+        </span>
+
+      </div>
+
+      <div class="table-scroll">
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>
+                Semana
+              </th>
+
+              <th>
+                Período
+              </th>
+
+              <th>
+                Físico Planejado
+              </th>
+
+              <th>
+                Financeiro Planejado
+              </th>
+
+              <th>
+                Físico Realizado
+              </th>
+
+              <th>
+                Financeiro Realizado
+              </th>
+
+              <th>
+                Centro de Custo
+              </th>
+
+              <th>
+                Anomalias
+              </th>
+
+              <th>
+                Data Atualização
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody id="tabelaSemanas">
+
+            <tr>
+
+              <td colspan="9">
+                Selecione uma obra para carregar o planejamento.
+              </td>
+
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+    <!-- =====================================
+         ATUALIZAÇÃO DA SEMANA
+    ====================================== -->
+
+    <div class="card card-atualizacao">
+
+      <div class="titulo-card">
+
+        <h3>
+          Atualização da Semana
+        </h3>
+
+        <span id="semanaSelecionadaLabel">
+          Nenhuma semana selecionada
+        </span>
+
+      </div>
+
+      <div class="grid-atualizacao">
+
+        <div class="campo-atualizacao">
+
+          <label for="fisicoReal">
+            Físico Realizado (%)
+          </label>
+
+          <input
+            type="number"
+            id="fisicoReal"
+            placeholder="0,00"
+            min="0"
+            max="100"
+            step="0.01"
+          >
+
+        </div>
+
+        <div class="campo-atualizacao">
+
+          <label for="financeiroReal">
+            Financeiro Realizado
+          </label>
+
+          <input
+            type="text"
+            id="financeiroReal"
+            placeholder="R$ 0,00"
+            autocomplete="off"
+          >
+
+        </div>
+
+      </div>
+
+      <div class="campo-atualizacao campo-full">
+
+        <label for="centroCustoApropriacao">
+          Centro de Custo de Apropriação
+        </label>
+
+        <input
+          type="text"
+          id="centroCustoApropriacao"
+          placeholder="Digite o centro de custo de apropriação"
+          autocomplete="off"
+        >
+
+      </div>
+
+      <div class="campo-atualizacao campo-full">
+
+        <label for="anomalias">
+          Anomalias
+        </label>
+
+        <textarea
+          id="anomalias"
+          placeholder="Anomalias encontradas na semana"
+        ></textarea>
+
+      </div>
+
+      <button
+        id="btnSalvar"
+        type="button"
+      >
+
+        Salvar Atualização
+
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- =====================================
+       JS
+  ====================================== -->
+
+  <script
+    type="module"
+    src="./atualizar-curva-s.js"
+  ></script>
+
+</body>
+
+</html>

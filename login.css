@@ -1,0 +1,538 @@
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Segoe UI',sans-serif;
+}
+
+body{
+  min-height:100vh;
+  background:#f4f5f7;
+  color:#50514F;
+}
+
+.login-page{
+  width:100%;
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:45% 55%;
+}
+
+/* ===============================
+   PAINEL ESQUERDO
+================================ */
+
+.brand-panel{
+  background:
+    linear-gradient(
+      135deg,
+      rgba(0,126,122,0.96),
+      rgba(10,187,152,0.92)
+    );
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:40px;
+  color:#fff;
+  position:relative;
+  overflow:hidden;
+}
+
+.brand-panel::before{
+  content:"";
+  position:absolute;
+  width:320px;
+  height:320px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.08);
+  right:-100px;
+  top:-80px;
+}
+
+.brand-panel::after{
+  content:"";
+  position:absolute;
+  width:420px;
+  height:420px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.06);
+  left:-160px;
+  bottom:-160px;
+}
+
+.brand-content{
+  width:100%;
+  max-width:420px;
+  position:relative;
+  z-index:1;
+}
+
+/* ===============================
+   LOGO VALE SEM RETÂNGULO
+================================ */
+
+.logo-box{
+  width:180px;
+  height:auto;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  margin-bottom:28px;
+  padding:0;
+  background:transparent;
+  border:none;
+  box-shadow:none;
+  border-radius:0;
+}
+
+.logo-vale{
+  width:100%;
+  max-width:170px;
+  height:auto;
+  object-fit:contain;
+  display:block;
+}
+
+.brand-content h1{
+  font-size:38px;
+  line-height:1.1;
+  margin-bottom:14px;
+  font-weight:800;
+}
+
+.brand-content p{
+  font-size:17px;
+  line-height:1.5;
+  opacity:0.96;
+}
+
+.brand-line{
+  width:90px;
+  height:4px;
+  background:#fff;
+  border-radius:50px;
+  margin:28px 0;
+}
+
+.brand-content span{
+  font-size:14px;
+  background:rgba(255,255,255,0.16);
+  padding:10px 16px;
+  border-radius:50px;
+  display:inline-flex;
+}
+
+/* ===============================
+   PAINEL DIREITO
+================================ */
+
+.auth-panel{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:35px;
+}
+
+.auth-card,
+.dashboard-card{
+  width:100%;
+  max-width:460px;
+  background:#fff;
+  border-radius:24px;
+  padding:28px;
+  box-shadow:0 24px 60px rgba(0,0,0,0.10);
+  border:1px solid #e5e7eb;
+}
+
+.auth-header{
+  margin-bottom:22px;
+}
+
+.auth-header h2,
+.dashboard-header h2{
+  font-size:26px;
+  color:#007E7A;
+  margin-bottom:6px;
+}
+
+.auth-header p,
+.dashboard-header p{
+  font-size:14px;
+  color:#6b7280;
+}
+
+/* ===============================
+   ABAS
+================================ */
+
+.tabs{
+  width:100%;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  background:#f1f5f4;
+  padding:5px;
+  border-radius:14px;
+  margin-bottom:22px;
+}
+
+.tab-btn{
+  border:none;
+  background:transparent;
+  padding:11px;
+  border-radius:11px;
+  font-size:14px;
+  font-weight:700;
+  color:#50514F;
+  cursor:pointer;
+  transition:0.25s;
+}
+
+.tab-btn.active{
+  background:#007E7A;
+  color:#fff;
+  box-shadow:0 8px 20px rgba(0,126,122,0.24);
+}
+
+/* ===============================
+   FORMULÁRIOS
+================================ */
+
+.form-area{
+  display:none;
+}
+
+.form-area.active{
+  display:block;
+}
+
+label{
+  display:block;
+  font-size:13px;
+  font-weight:700;
+  color:#374151;
+  margin-bottom:7px;
+}
+
+.input-group{
+  height:48px;
+  width:100%;
+  border:1px solid #d9dee3;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  padding:0 14px;
+  margin-bottom:15px;
+  background:#fff;
+  transition:0.25s;
+}
+
+.input-group:focus-within{
+  border-color:#0ABB98;
+  box-shadow:0 0 0 4px rgba(10,187,152,0.12);
+}
+
+.input-group i{
+  color:#007E7A;
+  margin-right:10px;
+  font-size:15px;
+}
+
+.input-group input{
+  width:100%;
+  height:100%;
+  border:none;
+  outline:none;
+  background:transparent;
+  font-size:14px;
+  color:#333;
+}
+
+.input-group input::placeholder{
+  color:#9ca3af;
+}
+
+.eye-btn{
+  border:none;
+  background:transparent;
+  cursor:pointer;
+  color:#6b7280;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.eye-btn i{
+  color:#6b7280;
+  margin:0;
+}
+
+/* ===============================
+   BOTÕES
+================================ */
+
+.forgot-link{
+  border:none;
+  background:transparent;
+  color:#007E7A;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  margin-bottom:18px;
+  display:block;
+}
+
+.forgot-link:hover{
+  text-decoration:underline;
+}
+
+.main-btn{
+  width:100%;
+  height:48px;
+  border:none;
+  border-radius:14px;
+  background:#007E7A;
+  color:#fff;
+  font-size:15px;
+  font-weight:800;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  transition:0.25s;
+}
+
+.main-btn:hover{
+  background:#006b68;
+  transform:translateY(-1px);
+}
+
+.secondary-btn{
+  width:100%;
+  height:46px;
+  border:1px solid #d9dee3;
+  border-radius:14px;
+  background:#fff;
+  color:#50514F;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  margin-top:12px;
+  transition:0.25s;
+}
+
+.secondary-btn:hover{
+  background:#f4f5f7;
+}
+
+/* ===============================
+   RECUPERAÇÃO
+================================ */
+
+.info-box{
+  display:flex;
+  gap:10px;
+  background:#eefbf8;
+  color:#007E7A;
+  border:1px solid rgba(10,187,152,0.25);
+  padding:13px;
+  border-radius:14px;
+  margin-bottom:18px;
+}
+
+.info-box i{
+  margin-top:2px;
+}
+
+.info-box p{
+  font-size:13px;
+  line-height:1.4;
+}
+
+/* ===============================
+   MENSAGENS
+================================ */
+
+.message{
+  display:none;
+  margin-top:15px;
+  padding:12px;
+  border-radius:12px;
+  font-size:13px;
+  font-weight:700;
+}
+
+.message.success{
+  display:block;
+  background:#ecfdf5;
+  color:#047857;
+  border:1px solid #a7f3d0;
+}
+
+.message.error{
+  display:block;
+  background:#fef2f2;
+  color:#b91c1c;
+  border:1px solid #fecaca;
+}
+
+/* ===============================
+   PAINEL USUÁRIO / ADMIN
+================================ */
+
+.hidden{
+  display:none !important;
+}
+
+.dashboard-card{
+  max-width:760px;
+}
+
+.dashboard-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:15px;
+  margin-bottom:22px;
+}
+
+.logout-btn{
+  border:none;
+  background:#f3f4f6;
+  color:#374151;
+  padding:10px 14px;
+  border-radius:12px;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  transition:0.25s;
+}
+
+.logout-btn:hover{
+  background:#e5e7eb;
+}
+
+.admin-area{
+  border-top:1px solid #e5e7eb;
+  padding-top:20px;
+}
+
+.admin-area h3{
+  color:#007E7A;
+  font-size:20px;
+  margin-bottom:6px;
+}
+
+.admin-area p{
+  color:#6b7280;
+  font-size:13px;
+  margin-bottom:15px;
+}
+
+.table-wrap{
+  width:100%;
+  overflow:auto;
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:650px;
+}
+
+thead{
+  background:#f4f7f7;
+}
+
+th,
+td{
+  padding:12px;
+  font-size:13px;
+  text-align:left;
+  border-bottom:1px solid #e5e7eb;
+}
+
+th{
+  color:#007E7A;
+  font-weight:800;
+}
+
+td{
+  color:#374151;
+}
+
+tbody tr:hover{
+  background:#f9fafb;
+}
+
+.badge{
+  display:inline-flex;
+  padding:5px 10px;
+  border-radius:50px;
+  font-size:12px;
+  font-weight:800;
+  background:#eefbf8;
+  color:#007E7A;
+}
+
+/* ===============================
+   RESPONSIVO
+================================ */
+
+@media(max-width:900px){
+
+  .login-page{
+    grid-template-columns:1fr;
+  }
+
+  .brand-panel{
+    min-height:260px;
+  }
+
+  .brand-content h1{
+    font-size:30px;
+  }
+
+}
+
+@media(max-width:520px){
+
+  .auth-panel{
+    padding:20px;
+  }
+
+  .auth-card,
+  .dashboard-card{
+    padding:22px;
+    border-radius:20px;
+  }
+
+  .dashboard-header{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .logout-btn{
+    width:100%;
+    justify-content:center;
+  }
+
+  .brand-panel{
+    padding:28px;
+  }
+
+  .logo-box{
+    width:160px;
+    margin-bottom:24px;
+  }
+
+  .logo-vale{
+    max-width:150px;
+  }
+
+}

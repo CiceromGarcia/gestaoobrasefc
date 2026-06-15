@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Cadastro de Obras
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="./cadastrar.css"
+  >
+
+</head>
+
+<body>
+
+  <!-- HEADER -->
+
+  <header class="page-header">
+
+    <h1>
+      Cadastro de Obras
+    </h1>
+
+  </header>
+
+  <!-- CONTAINER -->
+
+  <div class="container">
+
+    <form
+      id="formProjeto"
+      class="card"
+    >
+
+      <!-- =========================
+           INFORMAÇÕES GERAIS
+      ========================== -->
+
+      <div class="section">
+
+        <div class="section-title">
+          Informações Gerais
+        </div>
+
+        <div class="form-grid">
+
+          <div class="form-group">
+
+            <label for="nomeProjeto">
+              Nome da Obra
+            </label>
+
+            <input
+              type="text"
+              id="nomeProjeto"
+              placeholder="Digite o nome da obra"
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="tipoObra">
+              Tipo de Obra
+            </label>
+
+            <select id="tipoObra">
+
+              <option value="">
+                Selecione
+              </option>
+
+              <option>
+                Nova Construção
+              </option>
+
+              <option>
+                Reforma
+              </option>
+
+              <option>
+                Pavimentação
+              </option>
+
+              <option>
+                Demolição
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="numeroOM">
+              Número da OM
+            </label>
+
+            <input
+              type="text"
+              id="numeroOM"
+              placeholder="OM-2026100001"
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="status">
+              Status
+            </label>
+
+            <input
+              type="text"
+              id="status"
+              value="Planejado"
+              readonly
+            >
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- =========================
+           LOCALIDADE E CUSTOS
+      ========================== -->
+
+      <div class="section">
+
+        <div class="section-title">
+          Localidade e Custos
+        </div>
+
+        <div class="form-grid">
+
+          <div class="form-group">
+
+            <label for="localidade">
+              Localidade
+            </label>
+
+            <select id="localidade">
+
+              <option value="">
+                Selecione
+              </option>
+
+              <option>
+                São Luís
+              </option>
+
+              <option>
+                Arari
+              </option>
+
+              <option>
+                Vitória do Mearim
+              </option>
+
+              <option>
+                Santa Inês
+              </option>
+
+              <option>
+                Alto Alegre do Pindaré
+              </option>
+
+              <option>
+                Altamira
+              </option>
+
+              <option>
+                Auzilândia
+              </option>
+
+              <option>
+                Vila Pindaré
+              </option>
+
+              <option>
+                Nova Vida
+              </option>
+
+              <option>
+                Açailândia
+              </option>
+
+              <option>
+                Marabá
+              </option>
+
+              <option>
+                São Pedro d'agua branca
+              </option>
+
+              <option>
+                Itainópolis
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="regional">
+              Regional
+            </label>
+
+            <input
+              type="text"
+              id="regional"
+              placeholder="Automático"
+              readonly
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="centroCusto">
+              Centro de Custo
+            </label>
+
+            <input
+              type="text"
+              id="centroCusto"
+              placeholder="1480031"
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="investimento">
+              Valor da Obra
+            </label>
+
+            <input
+              type="text"
+              id="investimento"
+              placeholder="R$ 0,00"
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="areaM2">
+              Área (m²)
+            </label>
+
+            <input
+              type="number"
+              id="areaM2"
+              placeholder="250"
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="aprovacaoCliente">
+              Aprovação Cliente
+            </label>
+
+            <select id="aprovacaoCliente">
+
+              <option>
+                Aguardando
+              </option>
+
+              <option>
+                Aprovado
+              </option>
+
+              <option>
+                Reprovado
+              </option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- =========================
+           PLANEJAMENTO E GUT
+      ========================== -->
+
+      <div class="section">
+
+        <div class="section-title">
+          Planejamento e Prioridade
+        </div>
+
+        <div class="form-grid">
+
+          <div class="form-group">
+
+            <label for="dataInicioPrevisto">
+              Data Início
+            </label>
+
+            <input
+              type="date"
+              id="dataInicioPrevisto"
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="dataTerminoPrevisto">
+              Data Término
+            </label>
+
+            <input
+              type="date"
+              id="dataTerminoPrevisto"
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="gutGravidade">
+              Gravidade
+            </label>
+
+            <select id="gutGravidade">
+
+              <option value="">
+                Selecione
+              </option>
+
+              <option value="1">1</option>
+
+              <option value="2">2</option>
+
+              <option value="3">3</option>
+
+              <option value="4">4</option>
+
+              <option value="5">5</option>
+
+            </select>
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="gutUrgencia">
+              Urgência
+            </label>
+
+            <select id="gutUrgencia">
+
+              <option value="">
+                Selecione
+              </option>
+
+              <option value="1">1</option>
+
+              <option value="2">2</option>
+
+              <option value="3">3</option>
+
+              <option value="4">4</option>
+
+              <option value="5">5</option>
+
+            </select>
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="gutTendencia">
+              Tendência
+            </label>
+
+            <select id="gutTendencia">
+
+              <option value="">
+                Selecione
+              </option>
+
+              <option value="1">1</option>
+
+              <option value="2">2</option>
+
+              <option value="3">3</option>
+
+              <option value="4">4</option>
+
+              <option value="5">5</option>
+
+            </select>
+
+          </div>
+
+          <div class="form-group">
+
+            <label>
+              Prioridade
+            </label>
+
+            <div class="gut-badge">
+
+              <span id="gutScore">
+                --
+              </span>
+
+              <small id="gutNivel">
+                G/U/T
+              </small>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- =========================
+           ESCOPO
+      ========================== -->
+
+      <div class="section">
+
+        <div class="section-title">
+          Escopo da Obra
+        </div>
+
+        <div class="form-group">
+
+          <textarea
+            id="escopoObra"
+            placeholder="Descreva o escopo da obra"
+          ></textarea>
+
+        </div>
+
+      </div>
+
+      <!-- =========================
+           BOTÕES
+      ========================== -->
+
+      <div class="botoes-container">
+
+        <button
+          type="submit"
+          class="btn"
+        >
+
+          Salvar Obra
+
+        </button>
+
+        <button
+          type="button"
+          class="btn-voltar"
+          id="btnVoltar"
+        >
+
+          Voltar
+
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+  <script
+    type="module"
+    src="./cadastrar.js"
+  ></script>
+
+</body>
+
+</html>

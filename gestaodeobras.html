@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Painel Executivo de Obras
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="./gestaodeobras.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  >
+
+</head>
+
+<body>
+
+  <main
+    class="page"
+    id="painelPDF"
+  >
+
+    <!-- =====================================
+         CABEÇALHO
+    ====================================== -->
+
+    <header class="app-header">
+
+      <div class="header-left">
+
+        <div class="header-icon">
+
+          <i class="fa-solid fa-chart-line"></i>
+
+        </div>
+
+        <div>
+
+          <h1>
+            Painel Executivo de Obras
+          </h1>
+
+          <span>
+            Gestão estratégica, operacional e financeira das obras
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="header-actions">
+
+        <a
+          href="./dashboard.html"
+          class="btn-voltar"
+        >
+
+          <i class="fa-solid fa-arrow-left"></i>
+
+          Voltar
+
+        </a>
+
+        <button
+          class="btn-pdf"
+          onclick="exportarPDF()"
+          type="button"
+        >
+
+          <i class="fa-solid fa-file-pdf"></i>
+
+          Exportar PDF
+
+        </button>
+
+      </div>
+
+    </header>
+
+    <!-- =====================================
+         FILTROS
+    ====================================== -->
+
+    <section class="topbar">
+
+      <div class="filtros-container">
+
+        <div class="campo">
+
+          <label for="filtroRegional">
+            Regional
+          </label>
+
+          <select id="filtroRegional">
+
+            <option value="">
+              Todas
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="campo">
+
+          <label for="filtroLocalidade">
+            Localidade
+          </label>
+
+          <select id="filtroLocalidade">
+
+            <option value="">
+              Todas
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="campo">
+
+          <label for="filtroAno">
+            Ano
+          </label>
+
+          <select id="filtroAno">
+
+            <option value="">
+              Todos
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="campo">
+
+          <label for="filtroGutNivel">
+            Prioridade
+          </label>
+
+          <select id="filtroGutNivel">
+
+            <option value="">
+              Todas
+            </option>
+
+            <option value="Crítica">
+              Crítica
+            </option>
+
+            <option value="Muito Alta">
+              Muito Alta
+            </option>
+
+            <option value="Alta">
+              Alta
+            </option>
+
+            <option value="Moderada">
+              Moderada
+            </option>
+
+            <option value="Baixa">
+              Baixa
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="campo">
+
+          <label for="filtroStatus">
+            Status
+          </label>
+
+          <select id="filtroStatus">
+
+            <option value="">
+              Todos
+            </option>
+
+            <option value="Planejado">
+              Planejado
+            </option>
+
+            <option value="Em andamento">
+              Em andamento
+            </option>
+
+            <option value="Paralisada">
+              Paralisada
+            </option>
+
+            <option value="Concluído">
+              Concluído
+            </option>
+
+          </select>
+
+        </div>
+
+      </div>
+
+      <div class="resumo-financeiro">
+
+        <span>
+          Custo em execução
+        </span>
+
+        <strong id="totalFiltrado">
+          R$ 0,00
+        </strong>
+
+      </div>
+
+    </section>
+
+    <!-- =====================================
+         CARDS DE INDICADORES
+    ====================================== -->
+
+    <section class="kpis">
+
+      <div class="kpi-card total">
+
+        <div class="kpi-icon">
+
+          <i class="fa-solid fa-layer-group"></i>
+
+        </div>
+
+        <div>
+
+          <small>
+            Total de Obras
+          </small>
+
+          <h2 id="kpiTotal">
+            0
+          </h2>
+
+        </div>
+
+      </div>
+
+      <div class="kpi-card planejado">
+
+        <div class="kpi-icon">
+
+          <i class="fa-solid fa-calendar-check"></i>
+
+        </div>
+
+        <div>
+
+          <small>
+            Planejadas
+          </small>
+
+          <h2 id="kpiPlanejadas">
+            0
+          </h2>
+
+        </div>
+
+      </div>
+
+      <div class="kpi-card andamento">
+
+        <div class="kpi-icon">
+
+          <i class="fa-solid fa-person-digging"></i>
+
+        </div>
+
+        <div>
+
+          <small>
+            Em Andamento
+          </small>
+
+          <h2 id="kpiAndamento">
+            0
+          </h2>
+
+        </div>
+
+      </div>
+
+      <div class="kpi-card paralisada">
+
+        <div class="kpi-icon">
+
+          <i class="fa-solid fa-circle-pause"></i>
+
+        </div>
+
+        <div>
+
+          <small>
+            Paralisadas
+          </small>
+
+          <h2 id="kpiParalisadas">
+            0
+          </h2>
+
+        </div>
+
+      </div>
+
+      <div class="kpi-card concluido">
+
+        <div class="kpi-icon">
+
+          <i class="fa-solid fa-circle-check"></i>
+
+        </div>
+
+        <div>
+
+          <small>
+            Concluídas
+          </small>
+
+          <h2 id="kpiConcluidas">
+            0
+          </h2>
+
+        </div>
+
+      </div>
+
+      <div class="kpi-card aprovado">
+
+        <div class="kpi-icon">
+
+          <i class="fa-solid fa-thumbs-up"></i>
+
+        </div>
+
+        <div>
+
+          <small>
+            Validadas / Aprovadas
+          </small>
+
+          <h2 id="kpiValidadas">
+            0
+          </h2>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- =====================================
+         TABELA
+    ====================================== -->
+
+    <section class="table-wrap">
+
+      <div class="table-header">
+
+        <div>
+
+          <h2>
+            Carteira de Obras
+          </h2>
+
+          <span>
+            Obras organizadas por prioridade e status executivo
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="table-responsive">
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>
+                Código
+              </th>
+
+              <th>
+                Projeto
+              </th>
+
+              <th>
+                Regional
+              </th>
+
+              <th>
+                Localidade
+              </th>
+
+              <th>
+                Custo em Execução
+              </th>
+
+              <th>
+                Início
+              </th>
+
+              <th>
+                Término
+              </th>
+
+              <th>
+                Prioridade
+              </th>
+
+              <th>
+                Cliente
+              </th>
+
+              <th>
+                Status
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody id="tbodyProjetos">
+
+            <tr>
+
+              <td colspan="10">
+                Carregando projetos...
+              </td>
+
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script
+    type="module"
+    src="./gestaodeobras.js"
+  ></script>
+
+</body>
+
+</html>

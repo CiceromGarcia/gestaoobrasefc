@@ -1,0 +1,553 @@
+/* =========================================
+   RESET
+========================================= */
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:"Segoe UI", sans-serif;
+}
+
+/* =========================================
+   BODY
+========================================= */
+
+body{
+  background:#f4f6f9;
+  color:#333;
+  padding:20px;
+}
+
+/* =========================================
+   HEADER
+========================================= */
+
+.page-header{
+  margin-bottom:15px;
+}
+
+.page-header h1{
+  color:#007E7A;
+  font-size:24px;
+  font-weight:700;
+}
+
+/* =========================================
+   CONTAINER
+========================================= */
+
+.container{
+  width:100%;
+  max-width:1800px;
+  margin:auto;
+}
+
+/* =========================================
+   CARDS
+========================================= */
+
+.card{
+  background:#fff;
+  border-radius:14px;
+  padding:18px;
+  margin-bottom:18px;
+  box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+
+/* =========================================
+   FILTROS
+========================================= */
+
+.filtros{
+  display:grid;
+  grid-template-columns:170px 220px 1fr 180px 180px;
+  gap:10px;
+  align-items:end;
+}
+
+.campo-filtro{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.campo-filtro label{
+  font-size:12px;
+  font-weight:700;
+  color:#007E7A;
+  margin-left:2px;
+}
+
+/* =========================================
+   CAMPOS PADRÃO
+========================================= */
+
+input,
+select,
+textarea{
+  width:100%;
+  border:1px solid #d9dfe6;
+  border-radius:8px;
+  background:#fff;
+  color:#111827;
+  font-size:14px;
+  transition:.2s;
+}
+
+input,
+select{
+  height:38px;
+  padding:0 12px;
+}
+
+select{
+  cursor:pointer;
+}
+
+textarea{
+  resize:none;
+  min-height:90px;
+  padding:10px 12px;
+  line-height:1.4;
+  margin-bottom:10px;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+  outline:none;
+  border-color:#007E7A;
+  box-shadow:0 0 0 3px rgba(0,126,122,.12);
+}
+
+input[readonly]{
+  background:#f8fafc;
+  font-weight:600;
+  color:#111827;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled{
+  background:#eef2f7;
+  color:#6b7280;
+  cursor:not-allowed;
+}
+
+input::placeholder,
+textarea::placeholder{
+  color:#6b7280;
+}
+
+/* =========================================
+   CORREÇÃO VISUAL DOS DROPDOWNS
+========================================= */
+
+.campo-filtro select,
+.campo-status select{
+  height:38px;
+  line-height:38px;
+  padding-top:0;
+  padding-bottom:0;
+}
+
+/* =========================================
+   STATUS DA OBRA
+========================================= */
+
+.card-status-obra{
+  border-left:5px solid #007E7A;
+}
+
+.grid-status-obra{
+  display:grid;
+  grid-template-columns:220px 1fr;
+  gap:12px;
+  align-items:end;
+  margin-bottom:14px;
+}
+
+.campo-status{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.campo-status label{
+  font-size:12px;
+  font-weight:700;
+  color:#007E7A;
+}
+
+.campo-status input,
+.campo-status select{
+  height:42px;
+}
+
+.acoes-status{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.btn-status-paralisar{
+  background:#007E7A;
+  color:#fff;
+}
+
+.btn-status-paralisar:hover{
+  background:#006965;
+}
+
+.btn-status-reativar{
+  background:#0ABB98;
+  color:#fff;
+}
+
+.btn-status-reativar:hover{
+  background:#079f82;
+}
+
+#statusObraLabel{
+  background:#e0f2fe;
+  color:#0369a1;
+  padding:8px 14px;
+  border-radius:20px;
+  font-size:13px;
+  font-weight:600;
+}
+
+/* =========================================
+   TABELA
+========================================= */
+
+.table-scroll{
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+}
+
+table{
+  width:100%;
+  min-width:1250px;
+  border-collapse:collapse;
+}
+
+thead th{
+  background:#007E7A;
+  color:#fff;
+  font-size:13px;
+  font-weight:600;
+  padding:12px;
+  text-align:center;
+  white-space:nowrap;
+}
+
+tbody td{
+  padding:11px;
+  border-bottom:1px solid #edf0f2;
+  text-align:center;
+  font-size:13px;
+  vertical-align:middle;
+}
+
+tbody tr{
+  transition:.2s;
+}
+
+tbody tr:hover{
+  background:#f0fbfa;
+  cursor:pointer;
+}
+
+/* =========================================
+   LINHA SELECIONADA
+========================================= */
+
+.selecionada{
+  background:#d7f4f2 !important;
+  border-left:4px solid #007E7A;
+}
+
+/* =========================================
+   LINHA BLOQUEADA
+========================================= */
+
+.linha-bloqueada{
+  background:#f1f5f9;
+  opacity:.75;
+  cursor:not-allowed !important;
+}
+
+.linha-bloqueada:hover{
+  background:#f1f5f9;
+}
+
+/* =========================================
+   ALERTAS
+========================================= */
+
+.texto-vermelho{
+  color:#dc2626;
+  font-weight:600;
+}
+
+.texto-verde{
+  color:#16a34a;
+  font-weight:600;
+}
+
+/* =========================================
+   CARD ATUALIZAÇÃO
+========================================= */
+
+.card-atualizacao{
+  max-width:950px;
+  margin:auto;
+}
+
+/* =========================================
+   TOPO CARD
+========================================= */
+
+.titulo-card{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:15px;
+  gap:10px;
+}
+
+.titulo-card h3{
+  color:#007E7A;
+  font-size:20px;
+  font-weight:700;
+}
+
+.titulo-card span{
+  background:#e0f2fe;
+  color:#0369a1;
+  padding:8px 14px;
+  border-radius:20px;
+  font-size:13px;
+  font-weight:600;
+}
+
+/* =========================================
+   GRID ATUALIZAÇÃO
+========================================= */
+
+.grid-atualizacao{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.grid-atualizacao input{
+  height:44px;
+}
+
+/* =========================================
+   CENTRO DE CUSTO DE APROPRIAÇÃO
+========================================= */
+
+#centroCustoApropriacao{
+  height:44px;
+  margin-bottom:10px;
+  font-weight:500;
+}
+
+/* =========================================
+   BOTÕES PADRÃO
+========================================= */
+
+button{
+  width:100%;
+  border:none;
+  border-radius:8px;
+  padding:13px;
+  background:#007E7A;
+  color:#fff;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:.2s;
+}
+
+button:hover{
+  background:#006965;
+}
+
+/* =========================================
+   STATUS VISUAL
+========================================= */
+
+.atrasado{
+  color:#dc2626;
+  font-weight:700;
+}
+
+.adiantado{
+  color:#16a34a;
+  font-weight:700;
+}
+
+.estouro{
+  color:#dc2626;
+  font-weight:700;
+}
+
+.normal{
+  color:#16a34a;
+  font-weight:700;
+}
+
+/* =========================================
+   MODAL DE SENHA
+========================================= */
+
+.modal-senha{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+  padding:20px;
+}
+
+.modal-senha.ativo{
+  display:flex;
+}
+
+.modal-senha-conteudo{
+  width:100%;
+  max-width:380px;
+  background:#fff;
+  border-radius:16px;
+  padding:24px;
+  box-shadow:0 20px 45px rgba(0,0,0,.25);
+  animation:abrirModal .18s ease;
+}
+
+@keyframes abrirModal{
+  from{
+    opacity:0;
+    transform:translateY(-12px) scale(.97);
+  }
+
+  to{
+    opacity:1;
+    transform:translateY(0) scale(1);
+  }
+}
+
+.modal-senha-conteudo h3{
+  color:#007E7A;
+  font-size:20px;
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.modal-senha-conteudo p{
+  color:#475569;
+  font-size:14px;
+  line-height:1.4;
+  margin-bottom:14px;
+}
+
+.modal-senha-conteudo input{
+  height:44px;
+  margin-bottom:16px;
+  font-size:15px;
+}
+
+.modal-botoes{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+#btnCancelarSenha{
+  background:#e5e7eb;
+  color:#374151;
+}
+
+#btnCancelarSenha:hover{
+  background:#d1d5db;
+}
+
+#btnConfirmarSenha{
+  background:#007E7A;
+  color:#fff;
+}
+
+#btnConfirmarSenha:hover{
+  background:#006965;
+}
+
+/* =========================================
+   RESPONSIVO
+========================================= */
+
+@media(max-width:1400px){
+
+  .filtros{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .grid-status-obra{
+    grid-template-columns:1fr;
+  }
+
+}
+
+@media(max-width:900px){
+
+  .filtros{
+    grid-template-columns:1fr;
+  }
+
+  .grid-atualizacao{
+    grid-template-columns:1fr;
+  }
+
+  .acoes-status{
+    grid-template-columns:1fr;
+  }
+
+  .titulo-card{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+}
+
+@media(max-width:768px){
+
+  body{
+    padding:12px;
+  }
+
+  .page-header h1{
+    font-size:20px;
+  }
+
+  .card{
+    padding:12px;
+  }
+
+  thead th,
+  tbody td{
+    font-size:12px;
+    padding:10px;
+  }
+
+  .modal-senha-conteudo{
+    padding:20px;
+  }
+
+}

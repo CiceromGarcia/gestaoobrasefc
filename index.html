@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
+  >
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Verificando sessão...
+  </title>
+
+  <!-- Favicon padrão -->
+  <link
+    rel="icon"
+    type="image/png"
+    href="favicon.png"
+  >
+
+  <!-- Compatibilidade Apple / iOS -->
+  <link
+    rel="apple-touch-icon"
+    href="favicon.png"
+  >
+
+  <style>
+
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family:Arial, sans-serif;
+    }
+
+    body{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#f4f5f7;
+      color:#50514F;
+    }
+
+    .card{
+      background:#fff;
+      padding:28px 34px;
+      border-radius:16px;
+      box-shadow:0 18px 45px rgba(0,0,0,0.10);
+      text-align:center;
+      border:1px solid #e5e7eb;
+    }
+
+    .loader{
+      width:34px;
+      height:34px;
+      border-radius:50%;
+      border:4px solid #e5e7eb;
+      border-top-color:#007E7A;
+      animation:spin 1s linear infinite;
+      margin:0 auto 14px;
+    }
+
+    .card h1{
+      font-size:18px;
+      color:#007E7A;
+      margin-bottom:6px;
+    }
+
+    .card p{
+      font-size:14px;
+      color:#6b7280;
+    }
+
+    @keyframes spin{
+      to{
+        transform:rotate(360deg);
+      }
+    }
+
+    noscript{
+      position:fixed;
+      bottom:12px;
+      left:0;
+      right:0;
+      text-align:center;
+      font-size:14px;
+      color:#b91c1c;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <div class="card">
+
+    <div class="loader"></div>
+
+    <h1>
+      Verificando sessão...
+    </h1>
+
+    <p>
+      Aguarde, estamos abrindo o sistema.
+    </p>
+
+  </div>
+
+  <noscript>
+    Ative o JavaScript para continuar.
+  </noscript>
+
+  <script type="module">
+
+    import {
+      auth
+    } from "./firebaseConfig.js";
+
+    import {
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+
+    const PAGINA_LOGIN =
+    "login.html";
+
+    const PAGINA_DASHBOARD =
+    "dashboard.html";
+
+    onAuthStateChanged(
+      auth,
+      usuario => {
+
+        if(
+          usuario
+        ){
+
+          document.title =
+          "Abrindo dashboard...";
+
+          window.location.replace(
+            PAGINA_DASHBOARD
+          );
+
+        }else{
+
+          document.title =
+          "Abrindo login...";
+
+          window.location.replace(
+            PAGINA_LOGIN
+          );
+
+        }
+
+      }
+    );
+
+  </script>
+
+</body>
+
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8"/>
+
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0"/>
+
+  <title>Planejamento Semanal - Quéops</title>
+
+  <link rel="stylesheet"
+        href="./atualizacao.css"/>
+
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- TOPO -->
+
+  <div class="topo">
+
+    <div>
+
+      <h1>
+        Planejamento Semanal
+      </h1>
+
+      <p>
+        Planejamento físico e financeiro
+      </p>
+
+    </div>
+
+    <button id="btnSalvar">
+
+      <i class="fa-solid fa-floppy-disk"></i>
+
+      Salvar Planejamento
+
+    </button>
+
+  </div>
+
+  <!-- FILTROS -->
+
+  <div class="card">
+
+    <div class="grid">
+
+      <!-- LOCALIDADE -->
+
+      <div class="field">
+
+        <label>Localidade</label>
+
+        <select id="filtroLocalidade">
+          <option value="">Todas</option>
+        </select>
+
+      </div>
+
+      <!-- OBRA -->
+
+      <div class="field">
+
+        <label>Obra</label>
+
+        <select id="filtroObra">
+          <option value="">Selecione</option>
+        </select>
+
+      </div>
+
+      <!-- DATA INICIAL -->
+
+      <div class="field">
+
+        <label>Data Inicial</label>
+
+        <input type="date"
+               id="dataInicio"/>
+
+      </div>
+
+      <!-- DATA FINAL -->
+
+      <div class="field">
+
+        <label>Data Final</label>
+
+        <input type="date"
+               id="dataFim"/>
+
+      </div>
+
+      <!-- VALOR OBRA -->
+
+      <div class="field">
+
+        <label>Valor Orçado da Obra</label>
+
+        <input type="text"
+               id="valorObra"
+               readonly>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- TABELA -->
+
+  <div class="card">
+
+    <div class="titulo-card">
+
+      Planejamento Semanal
+
+    </div>
+
+    <div class="table-scroll">
+
+      <table>
+
+        <thead>
+
+          <tr>
+
+            <th>SEMANA</th>
+
+            <th>PERÍODO</th>
+
+            <th>PLANEJADO FÍSICO (%)</th>
+
+            <th>PLANEJADO ACUMULADO (%)</th>
+
+            <th>PLANEJADO FINANCEIRO (R$)</th>
+
+            <th>PLANEJADO FINANCEIRO ACUMULADO (R$)</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody id="tbodyPlanejado"></tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script type="module"
+        src="./atualizacao.js"></script>
+
+</body>
+</html>
