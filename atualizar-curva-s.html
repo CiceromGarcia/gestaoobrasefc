@@ -211,9 +211,7 @@
           type="button"
           class="btn-status-paralisar"
         >
-
           Salvar Status da Obra
-
         </button>
 
         <button
@@ -221,9 +219,7 @@
           type="button"
           class="btn-status-reativar"
         >
-
           Reativar Obra
-
         </button>
 
       </div>
@@ -285,7 +281,11 @@
               </th>
 
               <th>
-                Anomalias
+                Anomalia
+              </th>
+
+              <th>
+                Criticidade
               </th>
 
               <th>
@@ -300,7 +300,7 @@
 
             <tr>
 
-              <td colspan="9">
+              <td colspan="10">
                 Selecione uma obra para carregar o planejamento.
               </td>
 
@@ -383,16 +383,278 @@
 
       </div>
 
-      <div class="campo-atualizacao campo-full">
+      <!-- =====================================
+           REGISTRO E CLASSIFICAÇÃO DA ANOMALIA
+      ====================================== -->
 
-        <label for="anomalias">
-          Anomalias
-        </label>
+      <div class="bloco-anomalia">
 
-        <textarea
+        <div class="titulo-anomalia">
+
+          <h4>
+            Registro de Anomalia da Semana
+          </h4>
+
+          <span>
+            Classifique somente quando houver desvio, ocorrência ou impedimento.
+          </span>
+
+        </div>
+
+        <div class="grid-anomalia">
+
+          <div class="campo-atualizacao">
+
+            <label for="temAnomalia">
+              Houve Anomalia?
+            </label>
+
+            <select id="temAnomalia">
+
+              <option value="Não">
+                Não
+              </option>
+
+              <option value="Sim">
+                Sim
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="campo-atualizacao">
+
+            <label for="tipoAnomalia">
+              Tipo da Anomalia
+            </label>
+
+            <select id="tipoAnomalia">
+
+              <option value="">
+                Selecione o tipo
+              </option>
+
+              <option value="Segurança">
+                Segurança
+              </option>
+
+              <option value="Qualidade">
+                Qualidade
+              </option>
+
+              <option value="Prazo">
+                Prazo
+              </option>
+
+              <option value="Custo">
+                Custo
+              </option>
+
+              <option value="Escopo">
+                Escopo
+              </option>
+
+              <option value="Meio Ambiente">
+                Meio Ambiente
+              </option>
+
+              <option value="Interferência Operacional">
+                Interferência Operacional
+              </option>
+
+              <option value="Suprimentos">
+                Suprimentos
+              </option>
+
+              <option value="Mão de Obra">
+                Mão de Obra
+              </option>
+
+              <option value="Clima">
+                Clima
+              </option>
+
+              <option value="Documentação / Liberação">
+                Documentação / Liberação
+              </option>
+
+              <option value="Outro">
+                Outro
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="campo-atualizacao">
+
+            <label for="criticidadeAnomalia">
+              Criticidade
+            </label>
+
+            <select id="criticidadeAnomalia">
+
+              <option value="">
+                Selecione
+              </option>
+
+              <option value="Baixa">
+                Baixa
+              </option>
+
+              <option value="Média">
+                Média
+              </option>
+
+              <option value="Alta">
+                Alta
+              </option>
+
+              <option value="Crítica">
+                Crítica
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="campo-atualizacao">
+
+            <label for="impactoAnomalia">
+              Impacto Principal
+            </label>
+
+            <select id="impactoAnomalia">
+
+              <option value="">
+                Selecione o impacto
+              </option>
+
+              <option value="Sem impacto relevante">
+                Sem impacto relevante
+              </option>
+
+              <option value="Impacto no prazo">
+                Impacto no prazo
+              </option>
+
+              <option value="Impacto no custo">
+                Impacto no custo
+              </option>
+
+              <option value="Impacto no escopo">
+                Impacto no escopo
+              </option>
+
+              <option value="Impacto na qualidade">
+                Impacto na qualidade
+              </option>
+
+              <option value="Impacto na segurança">
+                Impacto na segurança
+              </option>
+
+              <option value="Impacto operacional">
+                Impacto operacional
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="campo-atualizacao">
+
+            <label for="statusAnomalia">
+              Status da Anomalia
+            </label>
+
+            <select id="statusAnomalia">
+
+              <option value="">
+                Selecione
+              </option>
+
+              <option value="Aberta">
+                Aberta
+              </option>
+
+              <option value="Em tratativa">
+                Em tratativa
+              </option>
+
+              <option value="Resolvida">
+                Resolvida
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="campo-atualizacao">
+
+            <label for="prazoTratativaAnomalia">
+              Prazo para Tratativa
+            </label>
+
+            <input
+              type="date"
+              id="prazoTratativaAnomalia"
+            >
+
+          </div>
+
+        </div>
+
+        <div class="campo-atualizacao campo-full">
+
+          <label for="descricaoAnomalia">
+            Descrição da Anomalia
+          </label>
+
+          <textarea
+            id="descricaoAnomalia"
+            placeholder="Descreva a anomalia encontrada. Exemplo: atraso por falta de material, interferência operacional, retrabalho, chuva, impedimento de acesso, desvio de qualidade..."
+          ></textarea>
+
+        </div>
+
+        <div class="grid-anomalia grid-anomalia-baixo">
+
+          <div class="campo-atualizacao campo-full">
+
+            <label for="acaoCorretivaAnomalia">
+              Ação Corretiva / Plano de Ação
+            </label>
+
+            <textarea
+              id="acaoCorretivaAnomalia"
+              placeholder="Informe a ação definida para tratar a anomalia"
+            ></textarea>
+
+          </div>
+
+          <div class="campo-atualizacao">
+
+            <label for="responsavelAnomalia">
+              Responsável
+            </label>
+
+            <input
+              type="text"
+              id="responsavelAnomalia"
+              placeholder="Nome do responsável pela tratativa"
+              autocomplete="off"
+            >
+
+          </div>
+
+        </div>
+
+        <input
+          type="hidden"
           id="anomalias"
-          placeholder="Anomalias encontradas na semana"
-        ></textarea>
+        >
 
       </div>
 
@@ -400,9 +662,7 @@
         id="btnSalvar"
         type="button"
       >
-
         Salvar Atualização
-
       </button>
 
     </div>

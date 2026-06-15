@@ -68,6 +68,37 @@ const inputAnomalias =
 document.getElementById("anomalias");
 
 /* =========================================
+   ELEMENTOS DA ANOMALIA
+========================================= */
+
+const selectTemAnomalia =
+document.getElementById("temAnomalia");
+
+const selectTipoAnomalia =
+document.getElementById("tipoAnomalia");
+
+const selectCriticidadeAnomalia =
+document.getElementById("criticidadeAnomalia");
+
+const selectImpactoAnomalia =
+document.getElementById("impactoAnomalia");
+
+const selectStatusAnomalia =
+document.getElementById("statusAnomalia");
+
+const inputPrazoTratativaAnomalia =
+document.getElementById("prazoTratativaAnomalia");
+
+const inputDescricaoAnomalia =
+document.getElementById("descricaoAnomalia");
+
+const inputAcaoCorretivaAnomalia =
+document.getElementById("acaoCorretivaAnomalia");
+
+const inputResponsavelAnomalia =
+document.getElementById("responsavelAnomalia");
+
+/* =========================================
    ELEMENTOS STATUS DA OBRA
 ========================================= */
 
@@ -455,6 +486,72 @@ function formatarDataAtualizacao(realizado) {
 
 }
 
+function formatarDataSimples(valor) {
+
+  if (!valor) {
+    return "";
+  }
+
+  if (
+    typeof valor === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(valor)
+  ) {
+
+    const partes =
+    valor.split("-");
+
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+
+  }
+
+  const data =
+  obterData(valor);
+
+  if (!data) {
+    return "";
+  }
+
+  return data.toLocaleDateString(
+    "pt-BR"
+  );
+
+}
+
+function normalizarDataParaInput(valor) {
+
+  if (!valor) {
+    return "";
+  }
+
+  if (
+    typeof valor === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(valor)
+  ) {
+    return valor;
+  }
+
+  const data =
+  obterData(valor);
+
+  if (!data) {
+    return "";
+  }
+
+  const ano =
+  data.getFullYear();
+
+  const mes =
+  String(data.getMonth() + 1)
+    .padStart(2, "0");
+
+  const dia =
+  String(data.getDate())
+    .padStart(2, "0");
+
+  return `${ano}-${mes}-${dia}`;
+
+}
+
 /* =========================================
    VALORES DA OBRA
 ========================================= */
@@ -462,14 +559,14 @@ function formatarDataAtualizacao(realizado) {
 function obterValorOrcadoObra(obra) {
 
   return converterMoeda(
-    obra?.valorObraNumero ||
-    obra?.investimentoNumero ||
-    obra?.valorObra ||
-    obra?.valorOrcado ||
-    obra?.valorTotal ||
-    obra?.investimento ||
-    obra?.orcado ||
-    obra?.valor ||
+    obra?.valorObraNumero ??
+    obra?.investimentoNumero ??
+    obra?.valorObra ??
+    obra?.valorOrcado ??
+    obra?.valorTotal ??
+    obra?.investimento ??
+    obra?.orcado ??
+    obra?.valor ??
     0
   );
 
@@ -518,10 +615,10 @@ function obterValorPlanejadoFinanceiro(item) {
 function obterFisicoRealizado(item) {
 
   return converterPercentual(
-    item?.fisicoRealAcum ||
-    item?.fisicoReal ||
-    item?.fisicoAcum ||
-    item?.fisico ||
+    item?.fisicoRealAcum ??
+    item?.fisicoReal ??
+    item?.fisicoAcum ??
+    item?.fisico ??
     0
   );
 
@@ -530,10 +627,10 @@ function obterFisicoRealizado(item) {
 function obterFinanceiroRealizado(item) {
 
   return converterMoeda(
-    item?.financeiroRealAcum ||
-    item?.financeiroReal ||
-    item?.financeiroAcum ||
-    item?.financeiro ||
+    item?.financeiroRealAcum ??
+    item?.financeiroReal ??
+    item?.financeiroAcum ??
+    item?.financeiro ??
     0
   );
 
@@ -547,6 +644,546 @@ function obterCentroCustoApropriacao(item) {
     item?.centroCustoReal ||
     "-"
   );
+
+}
+
+/* =========================================
+   ANOMALIAS
+========================================= */
+
+function obterCamposAnomalia() {
+
+  return [
+    selectTipoAnomalia,
+    selectCriticidadeAnomalia,
+    selectImpactoAnomalia,
+    selectStatusAnomalia,
+    inputPrazoTratativaAnomalia,
+    inputDescricaoAnomalia,
+    inputAcaoCorretivaAnomalia,
+    inputResponsavelAnomalia
+  ].filter(Boolean);
+
+}
+
+function limparDetalhesAnomalia() {
+
+  if (selectTipoAnomalia) {
+    selectTipoAnomalia.value = "";
+  }
+
+  if (selectCriticidadeAnomalia) {
+    selectCriticidadeAnomalia.value = "";
+  }
+
+  if (selectImpactoAnomalia) {
+    selectImpactoAnomalia.value = "";
+  }
+
+  if (selectStatusAnomalia) {
+    selectStatusAnomalia.value = "";
+  }
+
+  if (inputPrazoTratativaAnomalia) {
+    inputPrazoTratativaAnomalia.value = "";
+  }
+
+  if (inputDescricaoAnomalia) {
+    inputDescricaoAnomalia.value = "";
+  }
+
+  if (inputAcaoCorretivaAnomalia) {
+    inputAcaoCorretivaAnomalia.value = "";
+  }
+
+  if (inputResponsavelAnomalia) {
+    inputResponsavelAnomalia.value = "";
+  }
+
+  if (inputAnomalias) {
+    inputAnomalias.value = "";
+  }
+
+}
+
+function definirCamposAnomaliaHabilitados(habilitar) {
+
+  obterCamposAnomalia()
+    .forEach((campo) => {
+
+      campo.disabled =
+      !habilitar;
+
+    });
+
+}
+
+function montarDescricaoAnomalia() {
+
+  const houveAnomalia =
+  selectTemAnomalia?.value === "Sim";
+
+  if (!houveAnomalia) {
+    return "";
+  }
+
+  const tipo =
+  selectTipoAnomalia?.value || "";
+
+  const criticidade =
+  selectCriticidadeAnomalia?.value || "";
+
+  const impacto =
+  selectImpactoAnomalia?.value || "";
+
+  const status =
+  selectStatusAnomalia?.value || "";
+
+  const prazo =
+  inputPrazoTratativaAnomalia?.value || "";
+
+  const descricao =
+  inputDescricaoAnomalia?.value.trim() || "";
+
+  const acao =
+  inputAcaoCorretivaAnomalia?.value.trim() || "";
+
+  const responsavel =
+  inputResponsavelAnomalia?.value.trim() || "";
+
+  const partes = [];
+
+  if (tipo) {
+    partes.push(`Tipo: ${tipo}`);
+  }
+
+  if (criticidade) {
+    partes.push(`Criticidade: ${criticidade}`);
+  }
+
+  if (impacto) {
+    partes.push(`Impacto: ${impacto}`);
+  }
+
+  if (status) {
+    partes.push(`Status: ${status}`);
+  }
+
+  if (prazo) {
+    partes.push(`Prazo: ${formatarDataSimples(prazo)}`);
+  }
+
+  if (responsavel) {
+    partes.push(`Responsável: ${responsavel}`);
+  }
+
+  if (descricao) {
+    partes.push(`Descrição: ${descricao}`);
+  }
+
+  if (acao) {
+    partes.push(`Ação: ${acao}`);
+  }
+
+  return partes.join(" | ");
+
+}
+
+function atualizarCampoAnomaliasConsolidado() {
+
+  if (!inputAnomalias) {
+    return;
+  }
+
+  inputAnomalias.value =
+  montarDescricaoAnomalia();
+
+}
+
+function atualizarEstadoAnomalia() {
+
+  const houveAnomalia =
+  selectTemAnomalia?.value === "Sim";
+
+  if (!houveAnomalia) {
+    limparDetalhesAnomalia();
+  }
+
+  definirCamposAnomaliaHabilitados(
+    houveAnomalia
+  );
+
+  atualizarCampoAnomaliasConsolidado();
+
+}
+
+function obterDadosAnomaliaParaSalvar() {
+
+  const houveAnomalia =
+  selectTemAnomalia?.value === "Sim";
+
+  if (!houveAnomalia) {
+
+    return {
+      houveAnomalia: false,
+      temAnomalia: "Não",
+      tipoAnomalia: "",
+      criticidadeAnomalia: "",
+      impactoAnomalia: "",
+      statusAnomalia: "",
+      prazoTratativaAnomalia: "",
+      descricaoAnomalia: "",
+      acaoCorretivaAnomalia: "",
+      responsavelAnomalia: "",
+      anomalias: "",
+      anomalia: {
+        houve: false,
+        tipo: "",
+        criticidade: "",
+        impacto: "",
+        status: "",
+        prazoTratativa: "",
+        descricao: "",
+        acaoCorretiva: "",
+        responsavel: ""
+      }
+    };
+
+  }
+
+  const tipoAnomalia =
+  selectTipoAnomalia?.value || "";
+
+  const criticidadeAnomalia =
+  selectCriticidadeAnomalia?.value || "";
+
+  const impactoAnomalia =
+  selectImpactoAnomalia?.value || "";
+
+  const statusAnomalia =
+  selectStatusAnomalia?.value || "";
+
+  const prazoTratativaAnomalia =
+  inputPrazoTratativaAnomalia?.value || "";
+
+  const descricaoAnomalia =
+  inputDescricaoAnomalia?.value.trim() || "";
+
+  const acaoCorretivaAnomalia =
+  inputAcaoCorretivaAnomalia?.value.trim() || "";
+
+  const responsavelAnomalia =
+  inputResponsavelAnomalia?.value.trim() || "";
+
+  const anomalias =
+  montarDescricaoAnomalia();
+
+  return {
+    houveAnomalia: true,
+    temAnomalia: "Sim",
+    tipoAnomalia,
+    criticidadeAnomalia,
+    impactoAnomalia,
+    statusAnomalia,
+    prazoTratativaAnomalia,
+    descricaoAnomalia,
+    acaoCorretivaAnomalia,
+    responsavelAnomalia,
+    anomalias,
+    anomalia: {
+      houve: true,
+      tipo: tipoAnomalia,
+      criticidade: criticidadeAnomalia,
+      impacto: impactoAnomalia,
+      status: statusAnomalia,
+      prazoTratativa: prazoTratativaAnomalia,
+      descricao: descricaoAnomalia,
+      acaoCorretiva: acaoCorretivaAnomalia,
+      responsavel: responsavelAnomalia
+    }
+  };
+
+}
+
+function validarDadosAnomalia(dadosAnomalia) {
+
+  if (!dadosAnomalia.houveAnomalia) {
+    return true;
+  }
+
+  if (!dadosAnomalia.tipoAnomalia) {
+
+    alert(
+      "Selecione o tipo da anomalia."
+    );
+
+    selectTipoAnomalia?.focus();
+
+    return false;
+
+  }
+
+  if (!dadosAnomalia.criticidadeAnomalia) {
+
+    alert(
+      "Selecione a criticidade da anomalia."
+    );
+
+    selectCriticidadeAnomalia?.focus();
+
+    return false;
+
+  }
+
+  if (!dadosAnomalia.impactoAnomalia) {
+
+    alert(
+      "Selecione o impacto principal da anomalia."
+    );
+
+    selectImpactoAnomalia?.focus();
+
+    return false;
+
+  }
+
+  if (!dadosAnomalia.statusAnomalia) {
+
+    alert(
+      "Selecione o status da anomalia."
+    );
+
+    selectStatusAnomalia?.focus();
+
+    return false;
+
+  }
+
+  if (!dadosAnomalia.descricaoAnomalia) {
+
+    alert(
+      "Descreva a anomalia encontrada na semana."
+    );
+
+    inputDescricaoAnomalia?.focus();
+
+    return false;
+
+  }
+
+  return true;
+
+}
+
+function realizadoPossuiAnomalia(realizado) {
+
+  return (
+    realizado?.houveAnomalia === true ||
+    realizado?.temAnomalia === "Sim" ||
+    Boolean(realizado?.tipoAnomalia) ||
+    Boolean(realizado?.descricaoAnomalia) ||
+    Boolean(realizado?.anomalias && String(realizado.anomalias).trim() !== "")
+  );
+
+}
+
+function obterResumoAnomalia(realizado) {
+
+  if (!realizadoPossuiAnomalia(realizado)) {
+    return "-";
+  }
+
+  const tipo =
+  realizado?.tipoAnomalia ||
+  realizado?.anomalia?.tipo ||
+  "";
+
+  const descricao =
+  realizado?.descricaoAnomalia ||
+  realizado?.anomalia?.descricao ||
+  realizado?.anomalias ||
+  "";
+
+  if (tipo && descricao) {
+    return `${tipo} - ${descricao}`;
+  }
+
+  return tipo || descricao || "-";
+
+}
+
+function obterCriticidadeAnomalia(realizado) {
+
+  if (!realizadoPossuiAnomalia(realizado)) {
+    return "-";
+  }
+
+  return (
+    realizado?.criticidadeAnomalia ||
+    realizado?.anomalia?.criticidade ||
+    "-"
+  );
+
+}
+
+function obterClasseCriticidadeAnomalia(realizado) {
+
+  const criticidade =
+  normalizarTexto(
+    obterCriticidadeAnomalia(realizado)
+  );
+
+  if (
+    criticidade === "alta" ||
+    criticidade === "critica"
+  ) {
+    return "texto-vermelho";
+  }
+
+  return "";
+
+}
+
+function preencherCamposAnomalia(realizado) {
+
+  const possuiAnomalia =
+  realizadoPossuiAnomalia(
+    realizado
+  );
+
+  if (selectTemAnomalia) {
+
+    selectTemAnomalia.value =
+    possuiAnomalia
+    ? "Sim"
+    : "Não";
+
+  }
+
+  if (!possuiAnomalia) {
+
+    limparDetalhesAnomalia();
+
+    definirCamposAnomaliaHabilitados(false);
+
+    return;
+
+  }
+
+  if (selectTipoAnomalia) {
+
+    selectTipoAnomalia.value =
+    realizado?.tipoAnomalia ||
+    realizado?.anomalia?.tipo ||
+    "";
+
+  }
+
+  if (selectCriticidadeAnomalia) {
+
+    selectCriticidadeAnomalia.value =
+    realizado?.criticidadeAnomalia ||
+    realizado?.anomalia?.criticidade ||
+    "";
+
+  }
+
+  if (selectImpactoAnomalia) {
+
+    selectImpactoAnomalia.value =
+    realizado?.impactoAnomalia ||
+    realizado?.anomalia?.impacto ||
+    "";
+
+  }
+
+  if (selectStatusAnomalia) {
+
+    selectStatusAnomalia.value =
+    realizado?.statusAnomalia ||
+    realizado?.anomalia?.status ||
+    "";
+
+  }
+
+  if (inputPrazoTratativaAnomalia) {
+
+    inputPrazoTratativaAnomalia.value =
+    normalizarDataParaInput(
+      realizado?.prazoTratativaAnomalia ||
+      realizado?.anomalia?.prazoTratativa ||
+      ""
+    );
+
+  }
+
+  if (inputDescricaoAnomalia) {
+
+    inputDescricaoAnomalia.value =
+    realizado?.descricaoAnomalia ||
+    realizado?.anomalia?.descricao ||
+    realizado?.anomalias ||
+    "";
+
+  }
+
+  if (inputAcaoCorretivaAnomalia) {
+
+    inputAcaoCorretivaAnomalia.value =
+    realizado?.acaoCorretivaAnomalia ||
+    realizado?.anomalia?.acaoCorretiva ||
+    "";
+
+  }
+
+  if (inputResponsavelAnomalia) {
+
+    inputResponsavelAnomalia.value =
+    realizado?.responsavelAnomalia ||
+    realizado?.anomalia?.responsavel ||
+    "";
+
+  }
+
+  definirCamposAnomaliaHabilitados(true);
+
+  atualizarCampoAnomaliasConsolidado();
+
+}
+
+function configurarAnomalias() {
+
+  selectTemAnomalia?.addEventListener(
+    "change",
+    atualizarEstadoAnomalia
+  );
+
+  [
+    selectTipoAnomalia,
+    selectCriticidadeAnomalia,
+    selectImpactoAnomalia,
+    selectStatusAnomalia,
+    inputPrazoTratativaAnomalia,
+    inputDescricaoAnomalia,
+    inputAcaoCorretivaAnomalia,
+    inputResponsavelAnomalia
+  ]
+    .filter(Boolean)
+    .forEach((campo) => {
+
+      campo.addEventListener(
+        "input",
+        atualizarCampoAnomaliasConsolidado
+      );
+
+      campo.addEventListener(
+        "change",
+        atualizarCampoAnomaliasConsolidado
+      );
+
+    });
+
+  atualizarEstadoAnomalia();
 
 }
 
@@ -628,7 +1265,7 @@ function mostrarMensagemTabela(mensagem) {
   document.createElement("td");
 
   td.colSpan =
-  9;
+  10;
 
   td.textContent =
   mensagem;
@@ -657,9 +1294,13 @@ function limparCamposAtualizacao() {
     inputCentroCustoApropriacao.value = "";
   }
 
-  if (inputAnomalias) {
-    inputAnomalias.value = "";
+  if (selectTemAnomalia) {
+    selectTemAnomalia.value = "Não";
   }
+
+  limparDetalhesAnomalia();
+
+  atualizarEstadoAnomalia();
 
   semanaSelecionada = null;
 
@@ -1608,12 +2249,18 @@ async function carregarPlanejamento() {
       : "";
 
       const possuiAnomalia =
-      realizado?.anomalias &&
-      realizado.anomalias.trim() !== "";
+      realizado
+      ? realizadoPossuiAnomalia(realizado)
+      : false;
 
       const classeAnomalia =
       possuiAnomalia
       ? "texto-vermelho"
+      : "";
+
+      const classeCriticidade =
+      realizado
+      ? obterClasseCriticidadeAnomalia(realizado)
       : "";
 
       const tr =
@@ -1681,10 +2328,23 @@ async function carregarPlanejamento() {
 
       tr.appendChild(
         criarCelulaTexto(
-          possuiAnomalia
-          ? realizado.anomalias
+          realizado
+          ? obterResumoAnomalia(
+            realizado
+          )
           : "-",
           classeAnomalia
+        )
+      );
+
+      tr.appendChild(
+        criarCelulaTexto(
+          realizado
+          ? obterCriticidadeAnomalia(
+            realizado
+          )
+          : "-",
+          classeCriticidade
         )
       );
 
@@ -1812,9 +2472,13 @@ function selecionarSemanaPendente(tr, item) {
     inputCentroCustoApropriacao.value = "";
   }
 
-  if (inputAnomalias) {
-    inputAnomalias.value = "";
+  if (selectTemAnomalia) {
+    selectTemAnomalia.value = "Não";
   }
+
+  limparDetalhesAnomalia();
+
+  atualizarEstadoAnomalia();
 
   inputFisicoReal?.focus();
 
@@ -1884,12 +2548,9 @@ function prepararCorrecaoRealizado(
 
   }
 
-  if (inputAnomalias) {
-
-    inputAnomalias.value =
-    realizado.anomalias || "";
-
-  }
+  preencherCamposAnomalia(
+    realizado
+  );
 
   if (semanaSelecionadaLabel) {
 
@@ -2078,8 +2739,17 @@ async function salvarAtualizacaoRealizado() {
     const centroCustoApropriacao =
     inputCentroCustoApropriacao.value.trim();
 
-    const anomalias =
-    inputAnomalias?.value.trim() || "";
+    const dadosAnomalia =
+    obterDadosAnomaliaParaSalvar();
+
+    const anomaliaValida =
+    validarDadosAnomalia(
+      dadosAnomalia
+    );
+
+    if (!anomaliaValida) {
+      return;
+    }
 
     if (
       modoEdicao &&
@@ -2116,7 +2786,41 @@ async function salvarAtualizacaoRealizado() {
           centroCusto:
           centroCustoApropriacao,
 
-          anomalias,
+          houveAnomalia:
+          dadosAnomalia.houveAnomalia,
+
+          temAnomalia:
+          dadosAnomalia.temAnomalia,
+
+          tipoAnomalia:
+          dadosAnomalia.tipoAnomalia,
+
+          criticidadeAnomalia:
+          dadosAnomalia.criticidadeAnomalia,
+
+          impactoAnomalia:
+          dadosAnomalia.impactoAnomalia,
+
+          statusAnomalia:
+          dadosAnomalia.statusAnomalia,
+
+          prazoTratativaAnomalia:
+          dadosAnomalia.prazoTratativaAnomalia,
+
+          descricaoAnomalia:
+          dadosAnomalia.descricaoAnomalia,
+
+          acaoCorretivaAnomalia:
+          dadosAnomalia.acaoCorretivaAnomalia,
+
+          responsavelAnomalia:
+          dadosAnomalia.responsavelAnomalia,
+
+          anomalias:
+          dadosAnomalia.anomalias,
+
+          anomalia:
+          dadosAnomalia.anomalia,
 
           corrigidoPorUid:
           usuarioLogadoGlobal?.uid || "",
@@ -2214,7 +2918,41 @@ async function salvarAtualizacaoRealizado() {
         centroCusto:
         centroCustoApropriacao,
 
-        anomalias,
+        houveAnomalia:
+        dadosAnomalia.houveAnomalia,
+
+        temAnomalia:
+        dadosAnomalia.temAnomalia,
+
+        tipoAnomalia:
+        dadosAnomalia.tipoAnomalia,
+
+        criticidadeAnomalia:
+        dadosAnomalia.criticidadeAnomalia,
+
+        impactoAnomalia:
+        dadosAnomalia.impactoAnomalia,
+
+        statusAnomalia:
+        dadosAnomalia.statusAnomalia,
+
+        prazoTratativaAnomalia:
+        dadosAnomalia.prazoTratativaAnomalia,
+
+        descricaoAnomalia:
+        dadosAnomalia.descricaoAnomalia,
+
+        acaoCorretivaAnomalia:
+        dadosAnomalia.acaoCorretivaAnomalia,
+
+        responsavelAnomalia:
+        dadosAnomalia.responsavelAnomalia,
+
+        anomalias:
+        dadosAnomalia.anomalias,
+
+        anomalia:
+        dadosAnomalia.anomalia,
 
         criadoPorUid:
         usuarioLogadoGlobal?.uid || "",
@@ -2270,6 +3008,8 @@ function configurarEventos() {
   configurarMascaraFinanceiro();
 
   configurarStatusObra();
+
+  configurarAnomalias();
 
   configurarFiltroRegional();
 
