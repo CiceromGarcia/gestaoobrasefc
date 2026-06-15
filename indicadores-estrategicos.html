@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Indicadores Estratégicos de Obras
+  </title>
+
+  <!-- CSS -->
+  <link
+    rel="stylesheet"
+    href="indicadores-estrategicos.css"
+  >
+
+  <!-- FONT AWESOME -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  >
+
+  <!-- CHART JS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+  <main class="main">
+
+    <!-- =====================================
+         TOPO
+    ====================================== -->
+
+    <header class="topbar">
+
+      <div class="title-area">
+
+        <a
+          href="dashboard.html"
+          class="btn-voltar"
+        >
+          <i class="fa-solid fa-arrow-left"></i>
+          Voltar ao Dashboard
+        </a>
+
+        <div>
+
+          <h1>
+            Indicadores Estratégicos de Obras
+          </h1>
+
+          <p>
+            Visão consolidada física, financeira e status das obras conforme o período filtrado
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="top-actions">
+
+        <span id="ultimaAtualizacao">
+          Última atualização: --
+        </span>
+
+        <button
+          type="button"
+          id="btnExportar"
+        >
+          <i class="fa-solid fa-download"></i>
+          Exportar
+        </button>
+
+      </div>
+
+    </header>
+
+    <!-- =====================================
+         FILTROS PRINCIPAIS
+    ====================================== -->
+
+    <section class="filters filters-principais">
+
+      <div class="field">
+
+        <label for="filtroInicio">
+          Data Inicial
+        </label>
+
+        <input
+          type="date"
+          id="filtroInicio"
+        >
+
+      </div>
+
+      <div class="field">
+
+        <label for="filtroFim">
+          Data Final
+        </label>
+
+        <input
+          type="date"
+          id="filtroFim"
+        >
+
+      </div>
+
+      <div class="field">
+
+        <label for="filtroRegional">
+          Regional
+        </label>
+
+        <select id="filtroRegional">
+
+          <option value="">
+            Todas
+          </option>
+
+        </select>
+
+      </div>
+
+      <div class="field">
+
+        <label for="filtroCentroCusto">
+          Centro de Custo
+        </label>
+
+        <select id="filtroCentroCusto">
+
+          <option value="">
+            Todos
+          </option>
+
+        </select>
+
+      </div>
+
+      <div class="field">
+
+        <label for="filtroLocalidade">
+          Localidade
+        </label>
+
+        <select id="filtroLocalidade">
+
+          <option value="">
+            Todas
+          </option>
+
+        </select>
+
+      </div>
+
+      <div class="field">
+
+        <label for="filtroStatus">
+          Status da Obra
+        </label>
+
+        <select id="filtroStatus">
+
+          <option value="">
+            Todos
+          </option>
+
+          <option value="Planejado">
+            Planejado
+          </option>
+
+          <option value="Em andamento">
+            Em andamento
+          </option>
+
+          <option value="Concluído">
+            Concluído
+          </option>
+
+          <option value="Paralisado">
+            Paralisado
+          </option>
+
+        </select>
+
+      </div>
+
+      <div class="field">
+
+        <label for="filtroObra">
+          Obra
+        </label>
+
+        <select id="filtroObra">
+
+          <option value="">
+            Todas
+          </option>
+
+        </select>
+
+      </div>
+
+      <button
+        type="button"
+        class="btn-clean"
+        id="btnLimparFiltros"
+      >
+        <i class="fa-solid fa-filter-circle-xmark"></i>
+        Limpar
+      </button>
+
+    </section>
+
+    <!-- =====================================
+         RESUMO DO PERÍODO
+    ====================================== -->
+
+    <section class="periodo-info">
+
+      <div>
+
+        <i class="fa-solid fa-calendar-days"></i>
+
+        <span id="periodoAplicadoResumo">
+          Todos os indicadores abaixo consideram todo o histórico disponível.
+        </span>
+
+      </div>
+
+    </section>
+
+    <!-- =====================================
+         KPIS EXECUTIVOS
+    ====================================== -->
+
+    <section class="kpis kpis-compact">
+
+      <div class="kpi-card">
+
+        <i class="fa-solid fa-building"></i>
+
+        <span>
+          Total de Obras
+        </span>
+
+        <strong
+          id="kpiTotalObras"
+          class="valor-kpi"
+        >
+          0
+        </strong>
+
+        <small>
+          Obras dentro do período filtrado
+        </small>
+
+      </div>
+
+      <div class="kpi-card">
+
+        <i class="fa-solid fa-coins"></i>
+
+        <span>
+          Investimento Orçado
+        </span>
+
+        <strong
+          id="kpiOrcado"
+          class="valor-kpi"
+        >
+          R$ 0,00
+        </strong>
+
+        <small>
+          Valor previsto no período
+        </small>
+
+      </div>
+
+      <div class="kpi-card">
+
+        <i class="fa-solid fa-money-bill-trend-up"></i>
+
+        <span>
+          Investimento Executado
+        </span>
+
+        <strong
+          id="kpiExecutado"
+          class="valor-kpi"
+        >
+          R$ 0,00
+        </strong>
+
+        <small id="kpiExecutadoPerc">
+          0% do orçado
+        </small>
+
+      </div>
+
+      <div class="kpi-card">
+
+        <i class="fa-solid fa-wallet"></i>
+
+        <span>
+          Saldo a Executar
+        </span>
+
+        <strong
+          id="kpiSaldo"
+          class="valor-kpi"
+        >
+          R$ 0,00
+        </strong>
+
+        <small id="kpiSaldoPerc">
+          0% do orçado
+        </small>
+
+      </div>
+
+      <div class="kpi-card">
+
+        <i class="fa-solid fa-gauge-high"></i>
+
+        <span>
+          AFO Médio
+        </span>
+
+        <strong
+          id="kpiAFO"
+          class="valor-kpi indicador-status"
+        >
+          0%
+        </strong>
+
+        <small id="kpiAFOStatus">
+          Sem dados
+        </small>
+
+      </div>
+
+      <div class="kpi-card">
+
+        <i class="fa-solid fa-heart-pulse"></i>
+
+        <span>
+          Índice de Saúde
+        </span>
+
+        <strong
+          id="kpiSaude"
+          class="valor-kpi indicador-status"
+        >
+          0%
+        </strong>
+
+        <small id="kpiSaudeStatus">
+          Sem dados
+        </small>
+
+      </div>
+
+      <div class="kpi-card danger">
+
+        <i class="fa-solid fa-triangle-exclamation"></i>
+
+        <span>
+          Obras Críticas
+        </span>
+
+        <strong
+          id="kpiObrasCriticas"
+          class="valor-kpi indicador-alerta"
+        >
+          0
+        </strong>
+
+        <small>
+          Obras com baixa saúde
+        </small>
+
+      </div>
+
+    </section>
+
+    <!-- =====================================
+         CURVAS S CONSOLIDADAS
+    ====================================== -->
+
+    <section class="grid grid-curvas">
+
+      <div class="card chart-card chart-card-wide">
+
+        <div class="card-title">
+
+          <h2>
+            Curva S Física Consolidada
+          </h2>
+
+          <span>
+            Planejado x Realizado no período filtrado
+          </span>
+
+        </div>
+
+        <canvas id="chartFisico"></canvas>
+
+      </div>
+
+      <div class="card chart-card chart-card-wide">
+
+        <div class="card-title">
+
+          <h2>
+            Curva S Financeira Consolidada
+          </h2>
+
+          <span>
+            Planejado x Executado no período filtrado
+          </span>
+
+        </div>
+
+        <canvas id="chartFinanceiro"></canvas>
+
+      </div>
+
+    </section>
+
+    <!-- =====================================
+         INDICADORES DE DISTRIBUIÇÃO
+    ====================================== -->
+
+    <section class="grid grid-5">
+
+      <div class="card">
+
+        <h2>
+          Investimento por Regional
+        </h2>
+
+        <canvas id="chartRegional"></canvas>
+
+      </div>
+
+      <div class="card">
+
+        <h2>
+          Investimento por Centro de Custo
+        </h2>
+
+        <canvas id="chartCentroCusto"></canvas>
+
+      </div>
+
+      <div class="card">
+
+        <h2>
+          Status das Obras
+        </h2>
+
+        <canvas id="chartStatus"></canvas>
+
+      </div>
+
+      <div class="card semaforo">
+
+        <h2>
+          Semáforo das Obras
+        </h2>
+
+        <div class="semaforo-item green">
+
+          <strong id="semSaudaveis">
+            0
+          </strong>
+
+          <span>
+            Saudáveis
+          </span>
+
+          <small>
+            AFO ≥ 95%
+          </small>
+
+        </div>
+
+        <div class="semaforo-item yellow">
+
+          <strong id="semAtencao">
+            0
+          </strong>
+
+          <span>
+            Atenção
+          </span>
+
+          <small>
+            90% ≤ AFO &lt; 95%
+          </small>
+
+        </div>
+
+        <div class="semaforo-item red">
+
+          <strong id="semCriticas">
+            0
+          </strong>
+
+          <span>
+            Críticas
+          </span>
+
+          <small>
+            AFO &lt; 90%
+          </small>
+
+        </div>
+
+      </div>
+
+      <div class="card performance">
+
+        <h2>
+          Performance
+        </h2>
+
+        <div class="performance-box">
+
+          <span>
+            IPF Financeiro
+          </span>
+
+          <strong
+            id="ipfFinanceiro"
+            class="indicador-status"
+          >
+            0%
+          </strong>
+
+          <small>
+            Executado / Planejado
+          </small>
+
+        </div>
+
+        <div class="performance-box">
+
+          <span>
+            AFO Físico
+          </span>
+
+          <strong
+            id="afoFisico"
+            class="indicador-status"
+          >
+            0%
+          </strong>
+
+          <small>
+            Realizado / Planejado
+          </small>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- =====================================
+         RANKING E GESTÃO DE ANOMALIAS
+    ====================================== -->
+
+    <section class="grid grid-bottom">
+
+      <div class="card table-card">
+
+        <div class="card-title">
+
+          <h2>
+            Ranking de Obras por Criticidade
+          </h2>
+
+          <span>
+            Baseado nos dados do período filtrado
+          </span>
+
+        </div>
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+
+              <tr>
+                <th>#</th>
+                <th>Obra</th>
+                <th>Regional</th>
+                <th>Localidade</th>
+                <th>Centro de Custo</th>
+                <th>Status</th>
+                <th>AFO</th>
+                <th>Avanço</th>
+                <th>Orçado</th>
+                <th>Executado</th>
+                <th>Saldo</th>
+                <th>Anomalias</th>
+                <th>Abertas</th>
+                <th>Críticas</th>
+                <th>Vencidas</th>
+                <th>Saúde</th>
+              </tr>
+
+            </thead>
+
+            <tbody id="tabelaRanking">
+
+              <tr>
+                <td colspan="16">
+                  Carregando dados das obras...
+                </td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+      <div class="card anomalias-obra-card">
+
+        <div class="card-title">
+
+          <h2>
+            Gestão de Anomalias da Obra
+          </h2>
+
+          <span>
+            Selecione uma obra no ranking
+          </span>
+
+        </div>
+
+        <div
+          id="anomaliasObraSelecionada"
+          class="anomalias-obra-vazio"
+        >
+          Selecione uma obra no ranking para visualizar as anomalias registradas.
+        </div>
+
+        <div class="table-wrapper anomalias-descricao-wrapper">
+
+          <table class="tabela-anomalias-descricao">
+
+            <thead>
+
+              <tr>
+                <th>Data</th>
+                <th>Semana</th>
+                <th>Tipo</th>
+                <th>Criticidade</th>
+                <th>Impacto</th>
+                <th>Status Atual</th>
+                <th>Novo Status</th>
+                <th>Prazo</th>
+                <th>Responsável</th>
+                <th>Descrição</th>
+                <th>Ação Corretiva</th>
+                <th>Ação</th>
+              </tr>
+
+            </thead>
+
+            <tbody id="tabelaDescricaoAnomalias">
+
+              <tr>
+                <td colspan="12">
+                  Nenhuma obra selecionada.
+                </td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- =====================================
+       MODAL - ALTERAR STATUS DA ANOMALIA
+  ====================================== -->
+
+  <div
+    class="modal-status-anomalia"
+    id="modalStatusAnomalia"
+    aria-hidden="true"
+  >
+
+    <div class="modal-status-conteudo">
+
+      <div class="modal-status-header">
+
+        <h3>
+          Alterar Status da Anomalia
+        </h3>
+
+        <button
+          type="button"
+          id="btnFecharModalStatus"
+          class="btn-fechar-modal"
+        >
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
+      </div>
+
+      <input
+        type="hidden"
+        id="modalAnomaliaDocId"
+      >
+
+      <input
+        type="hidden"
+        id="modalAnomaliaOrigem"
+      >
+
+      <input
+        type="hidden"
+        id="modalAnomaliaObraId"
+      >
+
+      <input
+        type="hidden"
+        id="modalAnomaliaSemana"
+      >
+
+      <div class="modal-grid">
+
+        <div class="field">
+
+          <label for="modalObraAnomalia">
+            Obra
+          </label>
+
+          <input
+            type="text"
+            id="modalObraAnomalia"
+            readonly
+          >
+
+        </div>
+
+        <div class="field">
+
+          <label for="modalTipoAnomalia">
+            Tipo
+          </label>
+
+          <input
+            type="text"
+            id="modalTipoAnomalia"
+            readonly
+          >
+
+        </div>
+
+      </div>
+
+      <div class="modal-grid">
+
+        <div class="field">
+
+          <label for="modalStatusAtualAnomalia">
+            Status Atual
+          </label>
+
+          <input
+            type="text"
+            id="modalStatusAtualAnomalia"
+            readonly
+          >
+
+        </div>
+
+        <div class="field">
+
+          <label for="modalNovoStatusAnomalia">
+            Novo Status
+          </label>
+
+          <select id="modalNovoStatusAnomalia">
+
+            <option value="">
+              Selecione
+            </option>
+
+            <option value="Aberta">
+              Aberta
+            </option>
+
+            <option value="Em tratativa">
+              Em tratativa
+            </option>
+
+            <option value="Resolvida">
+              Resolvida
+            </option>
+
+          </select>
+
+        </div>
+
+      </div>
+
+      <div class="field">
+
+        <label for="modalObservacaoStatusAnomalia">
+          Observação da Alteração
+        </label>
+
+        <textarea
+          id="modalObservacaoStatusAnomalia"
+          placeholder="Informe uma observação sobre a alteração do status"
+        ></textarea>
+
+      </div>
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          id="btnCancelarStatusAnomalia"
+          class="btn-modal-cancelar"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          id="btnSalvarStatusAnomalia"
+          class="btn-modal-salvar"
+        >
+          Salvar Status
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- JS -->
+  <script
+    type="module"
+    src="indicadores-estrategicos.js"
+  ></script>
+
+</body>
+
+</html>

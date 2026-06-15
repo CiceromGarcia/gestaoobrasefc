@@ -13,9 +13,7 @@ import {
 
 import {
   collection,
-  getDocs,
-  query,
-  where
+  getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
 /* =====================================================
@@ -41,6 +39,10 @@ if (
 ===================================================== */
 
 let obras = [];
+
+let planejamentosBanco = [];
+
+let realizadosBanco = [];
 
 let graficoFisico = null;
 
@@ -97,6 +99,7 @@ const regionaisMap = {
 
   "Marabá": "Regional 3",
   "São Pedro d’Água Branca": "Regional 3",
+  "São Pedro d'Água Branca": "Regional 3",
   "Itainópolis": "Regional 3",
 
   "São Luís": "São Luís"
@@ -131,7 +134,9 @@ function normalizarStatus(valor) {
 
   if (
     texto === "em andamento" ||
-    texto === "andamento"
+    texto === "andamento" ||
+    texto === "execucao" ||
+    texto === "execução"
   ) {
     return "em andamento";
   }
@@ -158,13 +163,20 @@ function usuarioEhAdministrador(usuario) {
 
   const perfil =
   normalizarTexto(
-    usuario?.perfil
+    usuario?.perfil ||
+    usuario?.tipoUsuario ||
+    usuario?.nivelAcesso ||
+    usuario?.role ||
+    usuario?.acesso ||
+    ""
   );
 
   return (
     perfil === "administrador" ||
     perfil === "admin" ||
-    perfil === "administrator"
+    perfil === "administrator" ||
+    usuario?.admin === true ||
+    usuario?.isAdmin === true
   );
 
 }
@@ -173,27 +185,52 @@ function usuarioEhAdministrador(usuario) {
    STATUS DA OBRA
 ===================================================== */
 
-function calcularStatusObra(dadosObra, executadoFisico) {
+function calcularStatusObra(
+  dadosObra,
+  executadoFisico,
+  executadoFinanceiro
+) {
 
   const statusManual =
   normalizarStatus(
     dadosObra.status ||
+    dadosObra.statusNovo ||
     dadosObra.fase ||
     ""
   );
+
+  const fisico =
+  Number(executadoFisico || 0);
+
+  const financeiro =
+  Number(executadoFinanceiro || 0);
 
   if (statusManual === "paralisada") {
     return "Paralisada";
   }
 
-  const fisico =
-  Number(executadoFisico || 0);
-
-  if (fisico >= 100) {
+  if (
+    statusManual === "concluida" ||
+    fisico >= 100
+  ) {
     return "Concluída";
   }
 
-  if (fisico > 0) {
+  if (
+    fisico > 0 &&
+    fisico < 100
+  ) {
+    return "Em andamento";
+  }
+
+  if (
+    financeiro > 0 &&
+    fisico === 0
+  ) {
+    return "Paralisada";
+  }
+
+  if (statusManual === "em andamento") {
     return "Em andamento";
   }
 
@@ -317,6 +354,13 @@ function formatarData(data) {
     dt =
     data.toDate();
 
+  } else if (data?.seconds) {
+
+    dt =
+    new Date(
+      data.seconds * 1000
+    );
+
   } else {
 
     dt =
@@ -324,7 +368,7 @@ function formatarData(data) {
 
   }
 
-  if (isNaN(dt)) {
+  if (isNaN(dt.getTime())) {
     return "-";
   }
 
@@ -369,7 +413,7 @@ function converterDataBRParaDate(valor) {
     dia
   );
 
-  if (isNaN(data)) {
+  if (isNaN(data.getTime())) {
     return null;
   }
 
@@ -434,9 +478,19 @@ function obterDataGenerica(valor) {
   }
 
   if (valor?.seconds) {
+
     return new Date(
       valor.seconds * 1000
     );
+
+  }
+
+  if (valor instanceof Date) {
+
+    return isNaN(valor.getTime())
+    ? null
+    : valor;
+
   }
 
   if (
@@ -449,7 +503,7 @@ function obterDataGenerica(valor) {
   const data =
   new Date(valor);
 
-  if (isNaN(data)) {
+  if (isNaN(data.getTime())) {
     return null;
   }
 
@@ -527,7 +581,7 @@ function obterTimestampComparacao(item) {
     item?.atualizadoEm ||
     item?.criadoEm ||
     item?.dataAtualizacao ||
-    item?.ultimoLogin
+    item?.dataRegistro
   );
 
   return data
@@ -550,16 +604,28 @@ function obterFisicoRealizadoAcumulado(item) {
     return converterPercentual(item.fisicoRealAcum);
   }
 
-  if (item.fisicoReal !== undefined) {
-    return converterPercentual(item.fisicoReal);
-  }
-
   if (item.fisicoAcum !== undefined) {
     return converterPercentual(item.fisicoAcum);
   }
 
   if (item.fisicoAcumulado !== undefined) {
     return converterPercentual(item.fisicoAcumulado);
+  }
+
+  if (item.avancoFisicoAcumulado !== undefined) {
+    return converterPercentual(item.avancoFisicoAcumulado);
+  }
+
+  if (item.fisicoReal !== undefined) {
+    return converterPercentual(item.fisicoReal);
+  }
+
+  if (item.avancoFisicoNovo !== undefined) {
+    return converterPercentual(item.avancoFisicoNovo);
+  }
+
+  if (item.avancoFisico !== undefined) {
+    return converterPercentual(item.avancoFisico);
   }
 
   return converterPercentual(
@@ -578,16 +644,32 @@ function obterFinanceiroRealizadoAcumulado(item) {
     return converterValor(item.financeiroRealAcum);
   }
 
-  if (item.financeiroReal !== undefined) {
-    return converterValor(item.financeiroReal);
-  }
-
   if (item.financeiroAcum !== undefined) {
     return converterValor(item.financeiroAcum);
   }
 
+  if (item.financeiroRealAcumulado !== undefined) {
+    return converterValor(item.financeiroRealAcumulado);
+  }
+
   if (item.financeiroAcumulado !== undefined) {
     return converterValor(item.financeiroAcumulado);
+  }
+
+  if (item.valorExecutado !== undefined) {
+    return converterValor(item.valorExecutado);
+  }
+
+  if (item.executado !== undefined) {
+    return converterValor(item.executado);
+  }
+
+  if (item.financeiroReal !== undefined) {
+    return converterValor(item.financeiroReal);
+  }
+
+  if (item.investimentoNovo !== undefined) {
+    return converterValor(item.investimentoNovo);
   }
 
   return converterValor(
@@ -605,11 +687,57 @@ function obterValorOrcadoObra(dados) {
   return converterValor(
     dados.valorObra ||
     dados.valorOrcado ||
+    dados.valorOrçado ||
     dados.orcado ||
     dados.investimento ||
     dados.valorTotal ||
     dados.valor ||
+    dados.custoTotal ||
     0
+  );
+
+}
+
+/* =====================================================
+   MATCH ENTRE OBRA, PLANEJAMENTO E REALIZADO
+===================================================== */
+
+function registroPertenceAObra(
+  registro,
+  obra
+) {
+
+  if (!registro || !obra) {
+    return false;
+  }
+
+  const chavesObra = [
+    obra.firebaseId,
+    obra.idProjeto,
+    obra.idObra,
+    obra.obraId,
+    obra.nomeProjeto
+  ]
+    .filter(Boolean)
+    .map(normalizarTexto);
+
+  const chavesRegistro = [
+    registro.obraId,
+    registro.idObra,
+    registro.idProjeto,
+    registro.projetoId,
+    registro.obraDocId,
+    registro.obra,
+    registro.obraNome,
+    registro.nomeObra,
+    registro.nomeProjeto,
+    registro.projeto
+  ]
+    .filter(Boolean)
+    .map(normalizarTexto);
+
+  return chavesRegistro.some((chave) =>
+    chavesObra.includes(chave)
   );
 
 }
@@ -695,19 +823,39 @@ function aplicarPerfilVisual(usuario) {
     admin
   );
 
-  const elementosAdmin =
-  document.querySelectorAll(
-    "[data-admin-only]"
-  );
+}
 
-  elementosAdmin.forEach((elemento) => {
+/* =====================================================
+   MENU ATIVO
+===================================================== */
 
-    elemento.style.display =
-    admin
-    ? ""
-    : "none";
+function configurarMenuAtivo() {
 
-  });
+  const paginaAtual =
+  window.location.pathname
+    .split("/")
+    .pop() ||
+  "dashboard.html";
+
+  document
+    .querySelectorAll(".menu a")
+    .forEach((link) => {
+
+      const href =
+      link.getAttribute("href") || "";
+
+      const paginaLink =
+      href
+        .replace("./", "")
+        .split("/")
+        .pop();
+
+      link.classList.toggle(
+        "active",
+        paginaLink === paginaAtual
+      );
+
+    });
 
 }
 
@@ -897,6 +1045,32 @@ function configurarBotaoSair() {
 }
 
 /* =====================================================
+   CARREGAR COLEÇÕES BASE
+===================================================== */
+
+async function carregarColecao(nomeColecao) {
+
+  const snapshot =
+  await getDocs(
+    collection(
+      db,
+      nomeColecao
+    )
+  );
+
+  return snapshot.docs.map((documento) => ({
+    firebaseId:
+    documento.id,
+
+    docId:
+    documento.id,
+
+    ...documento.data()
+  }));
+
+}
+
+/* =====================================================
    CARREGAR OBRAS
 ===================================================== */
 
@@ -907,27 +1081,27 @@ async function carregarObrasFirebase() {
     obras = [];
 
     if (tbodyObras) {
+
       mostrarMensagemTabela(
         tbodyObras,
         "Carregando obras...",
         11
       );
+
     }
 
-    const snapshot =
-    await getDocs(
-      collection(
-        db,
-        "obras"
-      )
-    );
+    const obrasBanco =
+    await carregarColecao("obras");
+
+    planejamentosBanco =
+    await carregarColecao("planejamentoCurvaS");
+
+    realizadosBanco =
+    await carregarColecao("realizadoCurvaS");
 
     let contadorId = 1;
 
-    for (const documento of snapshot.docs) {
-
-      const dados =
-      documento.data();
+    for (const dados of obrasBanco) {
 
       const idPadrao =
       dados.idProjeto ||
@@ -937,39 +1111,79 @@ async function carregarObrasFirebase() {
       contadorId++;
 
       const nomeProjeto =
-      dados.nomeProjeto || "-";
+      dados.nomeProjeto ||
+      dados.nomeObra ||
+      dados.obraNome ||
+      dados.obra ||
+      "-";
+
+      const obraBase = {
+
+        firebaseId:
+        dados.firebaseId,
+
+        idProjeto:
+        idPadrao,
+
+        idObra:
+        dados.idObra || "",
+
+        obraId:
+        dados.obraId || "",
+
+        nomeProjeto:
+        nomeProjeto,
+
+        localidade:
+        dados.localidade || "-",
+
+        centroCusto:
+        dados.centroCusto ||
+        dados.centroDeCusto ||
+        dados.numeroOM ||
+        "-",
+
+        regional:
+        dados.regional ||
+        regionaisMap[
+          dados.localidade
+        ] ||
+        "Não definida",
+
+        investimento:
+        obterValorOrcadoObra(
+          dados
+        ),
+
+        gutScore:
+        Number(
+          dados.score ||
+          dados.gutScore ||
+          0
+        ),
+
+        statusOriginal:
+        dados.status ||
+        dados.statusNovo ||
+        dados.fase ||
+        "",
+
+        dadosOriginais:
+        dados
+
+      };
 
       /* =====================================
-         PLANEJAMENTO
+         PLANEJAMENTO DA OBRA
       ===================================== */
 
-      const qPlanejamento =
-      query(
-        collection(
-          db,
-          "planejamentoCurvaS"
-        ),
-        where(
-          "obra",
-          "==",
-          nomeProjeto
+      let planejamentoListaResumo =
+      planejamentosBanco.filter((item) =>
+        registroPertenceAObra(
+          item,
+          obraBase
         )
       );
-
-      const planejamentoSnapshot =
-      await getDocs(
-        qPlanejamento
-      );
-
-      let planejamentoListaResumo = [];
-
-      planejamentoSnapshot.forEach((docPlanejamento) => {
-
-        planejamentoListaResumo.push(
-          docPlanejamento.data()
-        );
-
-      });
 
       planejamentoListaResumo =
       deduplicarPorSemana(
@@ -1023,12 +1237,17 @@ async function carregarObrasFirebase() {
 
         const fisicoSemana =
         converterPercentual(
-          item.fisico || 0
+          item.fisico ||
+          item.fisicoPlanejado ||
+          0
         );
 
         const financeiroSemana =
         converterValor(
-          item.financeiro || 0
+          item.financeiro ||
+          item.financeiroPlanejado ||
+          item.valorPlanejado ||
+          0
         );
 
         acumuladoFisicoPlanejadoResumo =
@@ -1068,36 +1287,16 @@ async function carregarObrasFirebase() {
       });
 
       /* =====================================
-         REALIZADO
+         REALIZADO DA OBRA
       ===================================== */
 
-      const qRealizado =
-      query(
-        collection(
-          db,
-          "realizadoCurvaS"
-        ),
-        where(
-          "obra",
-          "==",
-          nomeProjeto
+      let realizadoListaResumo =
+      realizadosBanco.filter((item) =>
+        registroPertenceAObra(
+          item,
+          obraBase
         )
       );
-
-      const realizadoSnapshot =
-      await getDocs(
-        qRealizado
-      );
-
-      let realizadoListaResumo = [];
-
-      realizadoSnapshot.forEach((docRealizado) => {
-
-        realizadoListaResumo.push(
-          docRealizado.data()
-        );
-
-      });
 
       realizadoListaResumo =
       deduplicarPorSemana(
@@ -1121,12 +1320,17 @@ async function carregarObrasFirebase() {
       ? obterFinanceiroRealizadoAcumulado(
         ultimoRealizado
       )
-      : 0;
+      : converterValor(
+        dados.valorExecutado ||
+        dados.executado ||
+        0
+      );
 
       const statusCalculado =
       calcularStatusObra(
         dados,
-        executadoFisico
+        executadoFisico,
+        executadoFinanceiro
       );
 
       const numeroSemanaUltimoRealizado =
@@ -1151,50 +1355,15 @@ async function carregarObrasFirebase() {
       ) * 100
       : 0;
 
-      const investimento =
-      obterValorOrcadoObra(
-        dados
-      );
-
       obras.push({
 
-        firebaseId:
-        documento.id,
-
-        idProjeto:
-        idPadrao,
-
-        nomeProjeto:
-        nomeProjeto,
-
-        localidade:
-        dados.localidade || "-",
-
-        centroCusto:
-        dados.centroCusto ||
-        dados.numeroOM ||
-        "-",
-
-        regional:
-        dados.regional ||
-        regionaisMap[
-          dados.localidade
-        ] ||
-        "Não definida",
-
-        investimento:
-        investimento,
+        ...obraBase,
 
         planejadoFinanceiro:
         planejadoFinanceiro,
 
         executado:
-        executadoFinanceiro ||
-        converterValor(
-          dados.executado ||
-          dados.valorExecutado ||
-          0
-        ),
+        executadoFinanceiro,
 
         avancoFisico:
         executadoFisico,
@@ -1204,13 +1373,6 @@ async function carregarObrasFirebase() {
 
         afo:
         afo,
-
-        gutScore:
-        Number(
-          dados.score ||
-          dados.gutScore ||
-          0
-        ),
 
         fase:
         statusCalculado,
@@ -1254,6 +1416,9 @@ function carregarRegionais() {
     return;
   }
 
+  const valorAtual =
+  filtroRegional.value;
+
   limparSelect(
     filtroRegional,
     "Todas"
@@ -1285,6 +1450,10 @@ function carregarRegionais() {
 
   });
 
+  if (regionais.includes(valorAtual)) {
+    filtroRegional.value = valorAtual;
+  }
+
 }
 
 /* =====================================================
@@ -1296,6 +1465,9 @@ function carregarLocalidades() {
   if (!filtroLocalidade) {
     return;
   }
+
+  const valorAtual =
+  filtroLocalidade.value;
 
   limparSelect(
     filtroLocalidade,
@@ -1341,6 +1513,10 @@ function carregarLocalidades() {
 
   });
 
+  if (localidades.includes(valorAtual)) {
+    filtroLocalidade.value = valorAtual;
+  }
+
 }
 
 /* =====================================================
@@ -1352,6 +1528,9 @@ function carregarFiltroObras() {
   if (!filtroObra) {
     return;
   }
+
+  const valorAtual =
+  filtroObra.value;
 
   limparSelect(
     filtroObra,
@@ -1399,6 +1578,13 @@ function carregarFiltroObras() {
       );
 
     });
+
+  const obrasPermitidas =
+  lista.map((obra) => obra.nomeProjeto);
+
+  if (obrasPermitidas.includes(valorAtual)) {
+    filtroObra.value = valorAtual;
+  }
 
 }
 
@@ -1649,75 +1835,32 @@ async function abrirPlanejamento(idProjeto) {
     return;
   }
 
-  const nomeObra =
-  obraSelecionada.nomeProjeto;
-
   mostrarMensagemTabela(
     tbodyPlanejado,
     "Carregando planejamento...",
     6
   );
 
-  const qPlanejado =
-  query(
-    collection(
-      db,
-      "planejamentoCurvaS"
-    ),
-    where(
-      "obra",
-      "==",
-      nomeObra
+  let planejadoLista =
+  planejamentosBanco.filter((item) =>
+    registroPertenceAObra(
+      item,
+      obraSelecionada
     )
   );
-
-  const planejadoSnapshot =
-  await getDocs(
-    qPlanejado
-  );
-
-  let planejadoLista = [];
-
-  planejadoSnapshot.forEach((docPlanejado) => {
-
-    planejadoLista.push(
-      docPlanejado.data()
-    );
-
-  });
 
   planejadoLista =
   deduplicarPorSemana(
     planejadoLista
   );
 
-  const qRealizado =
-  query(
-    collection(
-      db,
-      "realizadoCurvaS"
-    ),
-    where(
-      "obra",
-      "==",
-      nomeObra
+  let realizadoLista =
+  realizadosBanco.filter((item) =>
+    registroPertenceAObra(
+      item,
+      obraSelecionada
     )
   );
-
-  const realizadoSnapshot =
-  await getDocs(
-    qRealizado
-  );
-
-  let realizadoLista = [];
-
-  realizadoSnapshot.forEach((docRealizado) => {
-
-    realizadoLista.push(
-      docRealizado.data()
-    );
-
-  });
 
   realizadoLista =
   deduplicarPorSemana(
@@ -1745,12 +1888,17 @@ async function abrirPlanejamento(idProjeto) {
 
     const fisico =
     converterPercentual(
-      item.fisico || 0
+      item.fisico ||
+      item.fisicoPlanejado ||
+      0
     );
 
     const financeiro =
     converterValor(
-      item.financeiro || 0
+      item.financeiro ||
+      item.financeiroPlanejado ||
+      item.valorPlanejado ||
+      0
     );
 
     acumuladoFisicoPlanejado =
@@ -1792,6 +1940,7 @@ async function abrirPlanejamento(idProjeto) {
     converterPercentual(
       item.fisicoReal ||
       item.fisico ||
+      item.avancoFisicoNovo ||
       0
     );
 
@@ -1799,6 +1948,7 @@ async function abrirPlanejamento(idProjeto) {
     converterValor(
       item.financeiroReal ||
       item.financeiro ||
+      item.investimentoNovo ||
       0
     );
 
@@ -2332,7 +2482,9 @@ function configurarExportarPDF() {
         await html2canvas(
           elemento,
           {
-            scale: 2
+            scale: 2,
+            useCORS: true,
+            backgroundColor: "#ffffff"
           }
         );
 
@@ -2351,17 +2503,44 @@ function configurarExportarPDF() {
         ) /
         canvas.width;
 
+        let position = 10;
+
+        let heightLeft =
+        imgHeight;
+
         pdf.addImage(
           imgData,
           "PNG",
           10,
-          10,
+          position,
           imgWidth,
           imgHeight
         );
 
+        heightLeft -= 277;
+
+        while (heightLeft > 0) {
+
+          position =
+          heightLeft - imgHeight + 10;
+
+          pdf.addPage();
+
+          pdf.addImage(
+            imgData,
+            "PNG",
+            10,
+            position,
+            imgWidth,
+            imgHeight
+          );
+
+          heightLeft -= 277;
+
+        }
+
         pdf.save(
-          "planejamento-obra.pdf"
+          "painel-executivo-obras.pdf"
         );
 
       } catch (error) {
@@ -2437,6 +2616,8 @@ document.addEventListener(
       aplicarPerfilVisual(
         usuarioLogadoGlobal
       );
+
+      configurarMenuAtivo();
 
       configurarMenuLateral();
 

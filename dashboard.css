@@ -48,7 +48,7 @@ body{
 }
 
 /* =========================================
-   LOGO MENOR E CENTRALIZADA
+   LOGO
 ========================================= */
 
 .logo{
@@ -63,6 +63,7 @@ body{
   color:#007E7A;
   font-weight:700;
   text-align:center;
+  line-height:1.25;
 }
 
 /* =========================================
@@ -99,6 +100,8 @@ body{
 .menu a i{
   color:#444;
   font-size:14px;
+  width:18px;
+  text-align:center;
 }
 
 .menu a:hover{
@@ -106,22 +109,19 @@ body{
   transform:translateX(3px);
 }
 
-/* ITEM ATIVO SEM FUNDO VERDE E SEM NEGRITO */
-
 .menu a.active{
-  background:transparent;
-  color:#444;
-  font-weight:400;
+  background:#eef7f7;
+  color:#007E7A;
+  font-weight:600;
 }
 
 .menu a.active i{
-  color:#444;
+  color:#007E7A;
 }
 
 .menu a.active:hover{
-  background:#f0f7f7;
-  color:#444;
-  font-weight:400;
+  background:#e6f3f3;
+  color:#007E7A;
   transform:translateX(3px);
 }
 
@@ -183,6 +183,12 @@ body.usuario-admin .menu a[data-admin-only]{
 
 .sidebar.collapsed a{
   justify-content:center;
+  padding:13px 10px;
+}
+
+.sidebar.collapsed a i{
+  width:auto;
+  font-size:16px;
 }
 
 .sidebar.collapsed .logo{
@@ -254,6 +260,7 @@ body.usuario-admin .menu a[data-admin-only]{
 .btn.white{
   background:#fff;
   border:1px solid #ddd;
+  color:#333;
 }
 
 .btn.white:hover{
@@ -371,6 +378,7 @@ body.usuario-admin .menu a[data-admin-only]{
 .field select:focus,
 .field input:focus{
   border-color:#007E7A;
+  box-shadow:0 0 0 3px rgba(0,126,122,.10);
 }
 
 /* =========================================
@@ -413,6 +421,7 @@ body.usuario-admin .menu a[data-admin-only]{
 
 .table-scroll{
   overflow:auto;
+  border-radius:10px;
 }
 
 table{
@@ -430,6 +439,7 @@ th{
   padding:10px;
   font-size:10px;
   font-weight:600;
+  white-space:nowrap;
 }
 
 td{
@@ -515,6 +525,28 @@ tbody input:focus{
 }
 
 /* =========================================
+   SCROLL
+========================================= */
+
+::-webkit-scrollbar{
+  width:8px;
+  height:8px;
+}
+
+::-webkit-scrollbar-track{
+  background:#f1f5f9;
+}
+
+::-webkit-scrollbar-thumb{
+  background:#cbd5e1;
+  border-radius:999px;
+}
+
+::-webkit-scrollbar-thumb:hover{
+  background:#94a3b8;
+}
+
+/* =========================================
    RESPONSIVO
 ========================================= */
 
@@ -549,6 +581,10 @@ tbody input:focus{
 
   .sidebar .menu a{
     justify-content:center;
+  }
+
+  .sidebar .logo{
+    width:34px;
   }
 
   .main{
