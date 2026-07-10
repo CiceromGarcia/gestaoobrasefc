@@ -17,7 +17,7 @@
   <!-- CSS -->
   <link
     rel="stylesheet"
-    href="./admin-painel.css"
+    href="./admin-painel.css?v=002"
   >
 
   <!-- FONT AWESOME -->
@@ -43,7 +43,7 @@
       </h1>
 
       <p>
-        Controle de acesso, aprovação e permissões do sistema
+        Controle de acesso, aprovação, permissões e responsáveis por Regional
       </p>
 
     </div>
@@ -99,7 +99,7 @@
           </h2>
 
           <p>
-            Use esta área para ajustar nome, perfil e status dos usuários.
+            Ajuste nome, perfil, status, Regional e permissão de aprovação de RM.
             Para novos acessos, o ideal é o usuário se cadastrar pela tela de login e o administrador aprovar aqui.
           </p>
 
@@ -152,7 +152,27 @@
             </option>
 
             <option value="administrador">
-              Administrador
+              Administrador Geral
+            </option>
+
+            <option value="administradorRegional">
+              Administrador Regional
+            </option>
+
+            <option value="gestor">
+              Gestor
+            </option>
+
+            <option value="planejador">
+              Planejador
+            </option>
+
+            <option value="engenharia">
+              Engenharia
+            </option>
+
+            <option value="editor">
+              Editor
             </option>
 
             <option value="usuario">
@@ -190,6 +210,76 @@
           </select>
 
         </div>
+
+        <div class="field">
+
+          <label for="regionalUsuario">
+            Regional
+          </label>
+
+          <select id="regionalUsuario">
+
+            <option value="">
+              Sem Regional
+            </option>
+
+            <option value="Regional 1">
+              Regional 1
+            </option>
+
+            <option value="Regional 2">
+              Regional 2
+            </option>
+
+            <option value="Regional 3">
+              Regional 3
+            </option>
+
+            <option value="São Luís">
+              São Luís
+            </option>
+
+            <option value="Todas">
+              Todas
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="field field-check">
+
+          <label>
+            Aprovação de RM
+          </label>
+
+          <div class="check-card">
+
+            <input
+              type="checkbox"
+              id="podeAprovarRM"
+            >
+
+            <label for="podeAprovarRM">
+              Pode aprovar ou reprovar RM
+            </label>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="alerta-permissao">
+
+        <i class="fa-solid fa-circle-info"></i>
+
+        <span>
+          Para aprovação regional, selecione o perfil
+          <strong>Administrador Regional</strong>,
+          escolha a <strong>Regional</strong> e marque
+          <strong>Pode aprovar ou reprovar RM</strong>.
+        </span>
 
       </div>
 
@@ -252,7 +342,27 @@
             </option>
 
             <option value="administrador">
-              Administrador
+              Administrador Geral
+            </option>
+
+            <option value="administradorRegional">
+              Administrador Regional
+            </option>
+
+            <option value="gestor">
+              Gestor
+            </option>
+
+            <option value="planejador">
+              Planejador
+            </option>
+
+            <option value="engenharia">
+              Engenharia
+            </option>
+
+            <option value="editor">
+              Editor
             </option>
 
             <option value="usuario">
@@ -281,6 +391,50 @@
 
             <option value="inativo">
               Inativo
+            </option>
+
+          </select>
+
+          <select id="filtroRegional">
+
+            <option value="todos">
+              Regional: todas
+            </option>
+
+            <option value="Regional 1">
+              Regional 1
+            </option>
+
+            <option value="Regional 2">
+              Regional 2
+            </option>
+
+            <option value="Regional 3">
+              Regional 3
+            </option>
+
+            <option value="São Luís">
+              São Luís
+            </option>
+
+            <option value="Todas">
+              Todas
+            </option>
+
+          </select>
+
+          <select id="filtroAprovacaoRM">
+
+            <option value="todos">
+              Aprovação RM: todos
+            </option>
+
+            <option value="sim">
+              Pode aprovar
+            </option>
+
+            <option value="nao">
+              Não aprova
             </option>
 
           </select>
@@ -322,6 +476,14 @@
               </th>
 
               <th>
+                Regional
+              </th>
+
+              <th>
+                Aprova RM
+              </th>
+
+              <th>
                 Status
               </th>
 
@@ -341,7 +503,7 @@
 
             <tr>
 
-              <td colspan="6">
+              <td colspan="8">
                 Carregando usuários...
               </td>
 
@@ -363,7 +525,7 @@
 
   <script
     type="module"
-    src="./admin-painel.js"
+    src="./admin-painel.js?v=002"
   ></script>
 
 </body>

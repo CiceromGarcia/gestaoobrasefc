@@ -5,7 +5,7 @@
 
   <meta
     http-equiv="Content-Security-Policy"
-    content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
+    content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
   >
 
   <meta charset="UTF-8">
@@ -23,13 +23,13 @@
   <link
     rel="icon"
     type="image/png"
-    href="favicon.png"
+    href="./favicon.png"
   >
 
   <!-- Compatibilidade Apple / iOS -->
   <link
     rel="apple-touch-icon"
-    href="favicon.png"
+    href="./favicon.png"
   >
 
   <style>
@@ -57,6 +57,8 @@
       box-shadow:0 18px 45px rgba(0,0,0,0.10);
       text-align:center;
       border:1px solid #e5e7eb;
+      max-width:360px;
+      width:calc(100% - 32px);
     }
 
     .loader{
@@ -78,6 +80,7 @@
     .card p{
       font-size:14px;
       color:#6b7280;
+      line-height:1.4;
     }
 
     @keyframes spin{
@@ -94,6 +97,7 @@
       text-align:center;
       font-size:14px;
       color:#b91c1c;
+      padding:0 16px;
     }
 
   </style>
@@ -106,11 +110,11 @@
 
     <div class="loader"></div>
 
-    <h1>
+    <h1 id="tituloStatus">
       Verificando sessão...
     </h1>
 
-    <p>
+    <p id="textoStatus">
       Aguarde, estamos abrindo o sistema.
     </p>
 
@@ -123,47 +127,85 @@
   <script type="module">
 
     import {
-      auth
-    } from "./firebaseConfig.js";
-
-    import {
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
-
-    const PAGINA_LOGIN =
-    "login.html";
+      protegerPagina
+    } from "./authGuard.js";
 
     const PAGINA_DASHBOARD =
-    "dashboard.html";
+    "./dashboard.html";
 
-    onAuthStateChanged(
-      auth,
-      usuario => {
+    const tituloStatus =
+    document.getElementById("tituloStatus");
 
-        if(
-          usuario
-        ){
+    const textoStatus =
+    document.getElementById("textoStatus");
 
-          document.title =
-          "Abrindo dashboard...";
+    async function iniciar() {
 
-          window.location.replace(
-            PAGINA_DASHBOARD
-          );
+      try {
 
-        }else{
+        if (tituloStatus) {
 
-          document.title =
-          "Abrindo login...";
+          tituloStatus.textContent =
+          "Verificando acesso...";
 
-          window.location.replace(
-            PAGINA_LOGIN
-          );
+        }
+
+        if (textoStatus) {
+
+          textoStatus.textContent =
+          "Validando usuário, status e permissões.";
+
+        }
+
+        await protegerPagina();
+
+        document.title =
+        "Abrindo dashboard...";
+
+        if (tituloStatus) {
+
+          tituloStatus.textContent =
+          "Acesso autorizado";
+
+        }
+
+        if (textoStatus) {
+
+          textoStatus.textContent =
+          "Abrindo o painel executivo.";
+
+        }
+
+        window.location.replace(
+          PAGINA_DASHBOARD
+        );
+
+      } catch (error) {
+
+        console.error(
+          "Erro ao verificar sessão:",
+          error
+        );
+
+        if (tituloStatus) {
+
+          tituloStatus.textContent =
+          "Falha ao verificar sessão";
+
+        }
+
+        if (textoStatus) {
+
+          textoStatus.textContent =
+          "Redirecionando para a tela de login.";
 
         }
 
       }
-    );
+
+    }
+
+    iniciar();
 
   </script>
 

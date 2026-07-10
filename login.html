@@ -3,6 +3,11 @@
 
 <head>
 
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com; script-src 'self' https://www.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https:; font-src 'self' https://cdnjs.cloudflare.com data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
+  >
+
   <meta charset="UTF-8">
 
   <meta
@@ -15,8 +20,19 @@
   </title>
 
   <link
+    rel="icon"
+    type="image/png"
+    href="./favicon.png"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="./favicon.png"
+  >
+
+  <link
     rel="stylesheet"
-    href="./login.css"
+    href="./login.css?v=002"
   >
 
   <link
@@ -176,6 +192,7 @@
           <button
             type="submit"
             class="main-btn"
+            id="btnEntrarSistema"
           >
             <i class="fa-solid fa-right-to-bracket"></i>
             Entrar
@@ -292,6 +309,7 @@
           <button
             type="submit"
             class="main-btn"
+            id="btnCriarConta"
           >
             <i class="fa-solid fa-user-plus"></i>
             Criar conta
@@ -341,6 +359,7 @@
           <button
             type="submit"
             class="main-btn"
+            id="btnEnviarRecuperacao"
           >
             <i class="fa-solid fa-paper-plane"></i>
             Enviar recuperação
@@ -464,7 +483,7 @@
 
   <script
     type="module"
-    src="./login.js"
+    src="./login.js?v=002"
   ></script>
 
 </body>

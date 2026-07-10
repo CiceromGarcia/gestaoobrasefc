@@ -1,3 +1,9 @@
+/* =====================================================
+   ADMIN PAINEL - USUÁRIOS DO SISTEMA
+   Arquivo: admin-painel.css
+   Versão: v002
+===================================================== */
+
 *{
   margin:0;
   padding:0;
@@ -102,7 +108,7 @@ body{
 
 .form-grid{
   display:grid;
-  grid-template-columns:1.2fr 1.2fr .9fr .8fr;
+  grid-template-columns:1.2fr 1.2fr .9fr .8fr .8fr 1fr;
   gap:14px;
   align-items:end;
 }
@@ -152,6 +158,48 @@ body{
   cursor:not-allowed;
 }
 
+/* =========================================
+   CHECKBOX / APROVAÇÃO RM
+========================================= */
+
+.field-check{
+  justify-content:end;
+}
+
+.check-card{
+  height:42px;
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:0 12px;
+  border:1px solid #d9dde3;
+  border-radius:12px;
+  background:#f8fafc;
+  transition:.2s ease;
+}
+
+.check-card:hover{
+  border-color:#007E7A;
+  background:#eef8f7;
+}
+
+.check-card input{
+  width:18px;
+  height:18px;
+  min-width:18px;
+  accent-color:#007E7A;
+  cursor:pointer;
+}
+
+.check-card label{
+  font-size:12px;
+  color:#374151;
+  font-weight:700;
+  cursor:pointer;
+  line-height:1.2;
+}
+
 .checkbox-field{
   align-items:center;
   justify-content:end;
@@ -169,6 +217,37 @@ body{
   accent-color:#007E7A;
   cursor:pointer;
 }
+
+/* =========================================
+   ALERTA DE PERMISSÃO
+========================================= */
+
+.alerta-permissao{
+  margin-top:16px;
+  padding:12px 14px;
+  border-radius:12px;
+  border:1px solid #bde8e3;
+  background:#e7f7f5;
+  color:#075e59;
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  font-size:12px;
+  line-height:1.45;
+}
+
+.alerta-permissao i{
+  margin-top:2px;
+  color:#007E7A;
+}
+
+.alerta-permissao strong{
+  color:#005f5b;
+}
+
+/* =========================================
+   AÇÕES DO FORMULÁRIO
+========================================= */
 
 .form-actions{
   margin-top:16px;
@@ -250,6 +329,11 @@ body{
   width:180px;
 }
 
+.table-actions #filtroRegional,
+.table-actions #filtroAprovacaoRM{
+  width:190px;
+}
+
 /* =========================================
    TABELA
 ========================================= */
@@ -263,7 +347,7 @@ body{
 
 table{
   width:100%;
-  min-width:980px;
+  min-width:1250px;
   border-collapse:collapse;
   background:#fff;
 }
@@ -296,6 +380,52 @@ tbody tr:hover td{
 
 tbody tr:last-child td{
   border-bottom:none;
+}
+
+/* =========================================
+   COLUNAS DA TABELA
+========================================= */
+
+th:nth-child(1),
+td:nth-child(1){
+  min-width:190px;
+}
+
+th:nth-child(2),
+td:nth-child(2){
+  min-width:230px;
+}
+
+th:nth-child(3),
+td:nth-child(3){
+  min-width:160px;
+}
+
+th:nth-child(4),
+td:nth-child(4){
+  min-width:120px;
+}
+
+th:nth-child(5),
+td:nth-child(5){
+  min-width:110px;
+  text-align:center;
+}
+
+th:nth-child(6),
+td:nth-child(6){
+  min-width:110px;
+  text-align:center;
+}
+
+th:nth-child(7),
+td:nth-child(7){
+  min-width:150px;
+}
+
+th:nth-child(8),
+td:nth-child(8){
+  min-width:260px;
 }
 
 /* =========================================
@@ -422,8 +552,38 @@ tbody tr:last-child td{
 }
 
 /* =========================================
+   SCROLL
+========================================= */
+
+::-webkit-scrollbar{
+  width:8px;
+  height:8px;
+}
+
+::-webkit-scrollbar-track{
+  background:#f1f5f9;
+}
+
+::-webkit-scrollbar-thumb{
+  background:#cbd5e1;
+  border-radius:999px;
+}
+
+::-webkit-scrollbar-thumb:hover{
+  background:#94a3b8;
+}
+
+/* =========================================
    RESPONSIVO
 ========================================= */
+
+@media(max-width:1300px){
+
+  .form-grid{
+    grid-template-columns:1fr 1fr 1fr;
+  }
+
+}
 
 @media(max-width:1100px){
 
@@ -431,8 +591,13 @@ tbody tr:last-child td{
     grid-template-columns:1fr 1fr;
   }
 
-  .checkbox-field{
+  .checkbox-field,
+  .field-check{
     align-items:flex-start;
+  }
+
+  .table-actions select{
+    width:170px;
   }
 
 }
@@ -478,8 +643,15 @@ tbody tr:last-child td{
   }
 
   .table-actions select,
-  .table-actions .btn{
-    flex:1;
+  .table-actions .btn,
+  .table-actions #filtroRegional,
+  .table-actions #filtroAprovacaoRM{
+    flex:1 1 100%;
+    width:100%;
+  }
+
+  .alerta-permissao{
+    font-size:11px;
   }
 
 }

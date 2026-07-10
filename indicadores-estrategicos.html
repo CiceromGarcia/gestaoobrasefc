@@ -17,7 +17,7 @@
   <!-- CSS -->
   <link
     rel="stylesheet"
-    href="indicadores-estrategicos.css"
+    href="indicadores-estrategicos.css?v=401"
   >
 
   <!-- FONT AWESOME -->
@@ -29,6 +29,9 @@
   <!-- CHART JS -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- CHART DATA LABELS -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
 </head>
 
 <body>
@@ -39,7 +42,7 @@
          TOPO
     ====================================== -->
 
-    <header class="topbar">
+    <header class="topbar topbar-compact">
 
       <div class="title-area">
 
@@ -47,18 +50,21 @@
           href="dashboard.html"
           class="btn-voltar"
         >
+
           <i class="fa-solid fa-arrow-left"></i>
-          Voltar ao Dashboard
+
+          Dashboard
+
         </a>
 
-        <div>
+        <div class="title-text">
 
           <h1>
             Indicadores Estratégicos de Obras
           </h1>
 
           <p>
-            Visão consolidada física, financeira e status das obras conforme o período filtrado
+            Visão executiva física, financeira, GUT, status e saúde das obras
           </p>
 
         </div>
@@ -75,8 +81,11 @@
           type="button"
           id="btnExportar"
         >
+
           <i class="fa-solid fa-download"></i>
+
           Exportar
+
         </button>
 
       </div>
@@ -84,7 +93,7 @@
     </header>
 
     <!-- =====================================
-         FILTROS PRINCIPAIS
+         FILTROS
     ====================================== -->
 
     <section class="filters filters-principais">
@@ -92,7 +101,7 @@
       <div class="field">
 
         <label for="filtroInicio">
-          Data Inicial
+          Início
         </label>
 
         <input
@@ -105,7 +114,7 @@
       <div class="field">
 
         <label for="filtroFim">
-          Data Final
+          Fim
         </label>
 
         <input
@@ -166,7 +175,7 @@
       <div class="field">
 
         <label for="filtroStatus">
-          Status da Obra
+          Status
         </label>
 
         <select id="filtroStatus">
@@ -195,7 +204,7 @@
 
       </div>
 
-      <div class="field">
+      <div class="field field-obra">
 
         <label for="filtroObra">
           Obra
@@ -216,8 +225,11 @@
         class="btn-clean"
         id="btnLimparFiltros"
       >
+
         <i class="fa-solid fa-filter-circle-xmark"></i>
+
         Limpar
+
       </button>
 
     </section>
@@ -233,7 +245,7 @@
         <i class="fa-solid fa-calendar-days"></i>
 
         <span id="periodoAplicadoResumo">
-          Todos os indicadores abaixo consideram todo o histórico disponível.
+          Todos os indicadores consideram o histórico disponível.
         </span>
 
       </div>
@@ -244,333 +256,205 @@
          KPIS EXECUTIVOS
     ====================================== -->
 
-    <section class="kpis kpis-compact">
+    <section class="kpis kpis-compact kpis-one-line">
 
       <div class="kpi-card">
 
-        <i class="fa-solid fa-building"></i>
+        <div class="kpi-icon">
 
-        <span>
-          Total de Obras
-        </span>
+          <i class="fa-solid fa-building"></i>
 
-        <strong
-          id="kpiTotalObras"
-          class="valor-kpi"
-        >
-          0
-        </strong>
+        </div>
 
-        <small>
-          Obras dentro do período filtrado
-        </small>
+        <div class="kpi-info">
+
+          <span>
+            Total de Obras
+          </span>
+
+          <strong
+            id="kpiTotalObras"
+            class="valor-kpi"
+          >
+            0
+          </strong>
+
+          <small>
+            Obras filtradas
+          </small>
+
+        </div>
 
       </div>
 
       <div class="kpi-card">
 
-        <i class="fa-solid fa-coins"></i>
+        <div class="kpi-icon">
 
-        <span>
-          Investimento Orçado
-        </span>
+          <i class="fa-solid fa-coins"></i>
 
-        <strong
-          id="kpiOrcado"
-          class="valor-kpi"
-        >
-          R$ 0,00
-        </strong>
+        </div>
 
-        <small>
-          Valor previsto no período
-        </small>
+        <div class="kpi-info">
 
-      </div>
+          <span>
+            Investimento Orçado
+          </span>
 
-      <div class="kpi-card">
+          <strong
+            id="kpiOrcado"
+            class="valor-kpi"
+          >
+            R$ 0,00
+          </strong>
 
-        <i class="fa-solid fa-money-bill-trend-up"></i>
+          <small>
+            Valor previsto
+          </small>
 
-        <span>
-          Investimento Executado
-        </span>
-
-        <strong
-          id="kpiExecutado"
-          class="valor-kpi"
-        >
-          R$ 0,00
-        </strong>
-
-        <small id="kpiExecutadoPerc">
-          0% do orçado
-        </small>
+        </div>
 
       </div>
 
       <div class="kpi-card">
 
-        <i class="fa-solid fa-wallet"></i>
+        <div class="kpi-icon">
 
-        <span>
-          Saldo a Executar
-        </span>
+          <i class="fa-solid fa-money-bill-trend-up"></i>
 
-        <strong
-          id="kpiSaldo"
-          class="valor-kpi"
-        >
-          R$ 0,00
-        </strong>
+        </div>
 
-        <small id="kpiSaldoPerc">
-          0% do orçado
-        </small>
+        <div class="kpi-info">
 
-      </div>
+          <span>
+            Investimento Executado
+          </span>
 
-      <div class="kpi-card">
+          <strong
+            id="kpiExecutado"
+            class="valor-kpi"
+          >
+            R$ 0,00
+          </strong>
 
-        <i class="fa-solid fa-gauge-high"></i>
+          <small id="kpiExecutadoPerc">
+            0% do orçado
+          </small>
 
-        <span>
-          AFO Médio
-        </span>
-
-        <strong
-          id="kpiAFO"
-          class="valor-kpi indicador-status"
-        >
-          0%
-        </strong>
-
-        <small id="kpiAFOStatus">
-          Sem dados
-        </small>
+        </div>
 
       </div>
 
       <div class="kpi-card">
 
-        <i class="fa-solid fa-heart-pulse"></i>
+        <div class="kpi-icon">
 
-        <span>
-          Índice de Saúde
-        </span>
+          <i class="fa-solid fa-wallet"></i>
 
-        <strong
-          id="kpiSaude"
-          class="valor-kpi indicador-status"
-        >
-          0%
-        </strong>
+        </div>
 
-        <small id="kpiSaudeStatus">
-          Sem dados
-        </small>
+        <div class="kpi-info">
+
+          <span>
+            Saldo a Executar
+          </span>
+
+          <strong
+            id="kpiSaldo"
+            class="valor-kpi"
+          >
+            R$ 0,00
+          </strong>
+
+          <small id="kpiSaldoPerc">
+            0% do orçado
+          </small>
+
+        </div>
+
+      </div>
+
+      <div class="kpi-card">
+
+        <div class="kpi-icon">
+
+          <i class="fa-solid fa-gauge-high"></i>
+
+        </div>
+
+        <div class="kpi-info">
+
+          <span>
+            AFO Médio
+          </span>
+
+          <strong
+            id="kpiAFO"
+            class="valor-kpi indicador-status"
+          >
+            0%
+          </strong>
+
+          <small id="kpiAFOStatus">
+            Sem dados
+          </small>
+
+        </div>
+
+      </div>
+
+      <div class="kpi-card">
+
+        <div class="kpi-icon">
+
+          <i class="fa-solid fa-heart-pulse"></i>
+
+        </div>
+
+        <div class="kpi-info">
+
+          <span>
+            Índice de Saúde
+          </span>
+
+          <strong
+            id="kpiSaude"
+            class="valor-kpi indicador-status"
+          >
+            0%
+          </strong>
+
+          <small id="kpiSaudeStatus">
+            Sem dados
+          </small>
+
+        </div>
 
       </div>
 
       <div class="kpi-card danger">
 
-        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div class="kpi-icon">
 
-        <span>
-          Obras Críticas
-        </span>
-
-        <strong
-          id="kpiObrasCriticas"
-          class="valor-kpi indicador-alerta"
-        >
-          0
-        </strong>
-
-        <small>
-          Obras com baixa saúde
-        </small>
-
-      </div>
-
-    </section>
-
-    <!-- =====================================
-         CURVAS S CONSOLIDADAS
-    ====================================== -->
-
-    <section class="grid grid-curvas">
-
-      <div class="card chart-card chart-card-wide">
-
-        <div class="card-title">
-
-          <h2>
-            Curva S Física Consolidada
-          </h2>
-
-          <span>
-            Planejado x Realizado no período filtrado
-          </span>
+          <i class="fa-solid fa-triangle-exclamation"></i>
 
         </div>
 
-        <canvas id="chartFisico"></canvas>
-
-      </div>
-
-      <div class="card chart-card chart-card-wide">
-
-        <div class="card-title">
-
-          <h2>
-            Curva S Financeira Consolidada
-          </h2>
+        <div class="kpi-info">
 
           <span>
-            Planejado x Executado no período filtrado
-          </span>
-
-        </div>
-
-        <canvas id="chartFinanceiro"></canvas>
-
-      </div>
-
-    </section>
-
-    <!-- =====================================
-         INDICADORES DE DISTRIBUIÇÃO
-    ====================================== -->
-
-    <section class="grid grid-5">
-
-      <div class="card">
-
-        <h2>
-          Investimento por Regional
-        </h2>
-
-        <canvas id="chartRegional"></canvas>
-
-      </div>
-
-      <div class="card">
-
-        <h2>
-          Investimento por Centro de Custo
-        </h2>
-
-        <canvas id="chartCentroCusto"></canvas>
-
-      </div>
-
-      <div class="card">
-
-        <h2>
-          Status das Obras
-        </h2>
-
-        <canvas id="chartStatus"></canvas>
-
-      </div>
-
-      <div class="card semaforo">
-
-        <h2>
-          Semáforo das Obras
-        </h2>
-
-        <div class="semaforo-item green">
-
-          <strong id="semSaudaveis">
-            0
-          </strong>
-
-          <span>
-            Saudáveis
-          </span>
-
-          <small>
-            AFO ≥ 95%
-          </small>
-
-        </div>
-
-        <div class="semaforo-item yellow">
-
-          <strong id="semAtencao">
-            0
-          </strong>
-
-          <span>
-            Atenção
-          </span>
-
-          <small>
-            90% ≤ AFO &lt; 95%
-          </small>
-
-        </div>
-
-        <div class="semaforo-item red">
-
-          <strong id="semCriticas">
-            0
-          </strong>
-
-          <span>
-            Críticas
-          </span>
-
-          <small>
-            AFO &lt; 90%
-          </small>
-
-        </div>
-
-      </div>
-
-      <div class="card performance">
-
-        <h2>
-          Performance
-        </h2>
-
-        <div class="performance-box">
-
-          <span>
-            IPF Financeiro
+            Obras Críticas
           </span>
 
           <strong
-            id="ipfFinanceiro"
-            class="indicador-status"
+            id="kpiObrasCriticas"
+            class="valor-kpi indicador-alerta"
           >
-            0%
+            0
           </strong>
 
           <small>
-            Executado / Planejado
-          </small>
-
-        </div>
-
-        <div class="performance-box">
-
-          <span>
-            AFO Físico
-          </span>
-
-          <strong
-            id="afoFisico"
-            class="indicador-status"
-          >
-            0%
-          </strong>
-
-          <small>
-            Realizado / Planejado
+            Baixa saúde
           </small>
 
         </div>
@@ -580,7 +464,207 @@
     </section>
 
     <!-- =====================================
-         RANKING E GESTÃO DE ANOMALIAS
+         PAINEL ANALÍTICO
+    ====================================== -->
+
+    <section class="painel-bloco">
+
+      <div class="painel-bloco-titulo">
+
+        <div>
+
+          <h2>
+            Painel Analítico das Obras
+          </h2>
+
+          <p>
+            Distribuição do investimento, status, semáforo e performance consolidada.
+          </p>
+
+        </div>
+
+      </div>
+
+      <section class="grid grid-indicadores">
+
+        <div class="card chart-mini-card">
+
+          <div class="card-title simple">
+
+            <h2>
+              Investimento por Regional
+            </h2>
+
+          </div>
+
+          <canvas id="chartRegional"></canvas>
+
+        </div>
+
+        <div class="card chart-mini-card">
+
+          <div class="card-title simple">
+
+            <h2>
+              Investimento por Centro de Custo
+            </h2>
+
+          </div>
+
+          <canvas id="chartCentroCusto"></canvas>
+
+        </div>
+
+        <div class="card chart-mini-card">
+
+          <div class="card-title simple">
+
+            <h2>
+              Status das Obras
+            </h2>
+
+          </div>
+
+          <canvas id="chartStatus"></canvas>
+
+        </div>
+
+        <div class="card semaforo">
+
+          <div class="card-title simple">
+
+            <h2>
+              Semáforo das Obras
+            </h2>
+
+          </div>
+
+          <div class="semaforo-lista">
+
+            <div class="semaforo-item green">
+
+              <strong id="semSaudaveis">
+                0
+              </strong>
+
+              <div>
+
+                <span>
+                  Saudáveis
+                </span>
+
+                <small>
+                  AFO ≥ 95%
+                </small>
+
+              </div>
+
+            </div>
+
+            <div class="semaforo-item yellow">
+
+              <strong id="semAtencao">
+                0
+              </strong>
+
+              <div>
+
+                <span>
+                  Atenção
+                </span>
+
+                <small>
+                  90% ≤ AFO &lt; 95%
+                </small>
+
+              </div>
+
+            </div>
+
+            <div class="semaforo-item red">
+
+              <strong id="semCriticas">
+                0
+              </strong>
+
+              <div>
+
+                <span>
+                  Críticas
+                </span>
+
+                <small>
+                  AFO &lt; 90%
+                </small>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="card performance">
+
+          <div class="card-title simple">
+
+            <h2>
+              Performance
+            </h2>
+
+          </div>
+
+          <div class="performance-grid">
+
+            <div class="performance-box">
+
+              <span>
+                IPF Financeiro
+              </span>
+
+              <strong
+                id="ipfFinanceiro"
+                class="indicador-status"
+              >
+                0%
+              </strong>
+
+              <small>
+                Executado / Planejado
+              </small>
+
+            </div>
+
+            <div class="performance-box">
+
+              <span>
+                AFO Físico
+              </span>
+
+              <strong
+                id="afoFisico"
+                class="indicador-status"
+              >
+                0%
+              </strong>
+
+              <small>
+                Realizado / Planejado
+              </small>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </section>
+
+    <!-- =====================================
+         RANKING E ANOMALIAS
     ====================================== -->
 
     <section class="grid grid-bottom">
@@ -589,13 +673,17 @@
 
         <div class="card-title">
 
-          <h2>
-            Ranking de Obras por Criticidade
-          </h2>
+          <div>
 
-          <span>
-            Baseado nos dados do período filtrado
-          </span>
+            <h2>
+              Ranking de Obras por Criticidade
+            </h2>
+
+            <span>
+              Priorização baseada em saúde, AFO, anomalias, custo e GUT
+            </span>
+
+          </div>
 
         </div>
 
@@ -646,13 +734,17 @@
 
         <div class="card-title">
 
-          <h2>
-            Gestão de Anomalias da Obra
-          </h2>
+          <div>
 
-          <span>
-            Selecione uma obra no ranking
-          </span>
+            <h2>
+              Gestão de Anomalias da Obra
+            </h2>
+
+            <span>
+              Selecione uma obra no ranking para visualizar as tratativas
+            </span>
+
+          </div>
 
         </div>
 
@@ -729,7 +821,9 @@
           id="btnFecharModalStatus"
           class="btn-fechar-modal"
         >
+
           <i class="fa-solid fa-xmark"></i>
+
         </button>
 
       </div>
@@ -872,7 +966,7 @@
   <!-- JS -->
   <script
     type="module"
-    src="indicadores-estrategicos.js"
+    src="indicadores-estrategicos.js?v=401"
   ></script>
 
 </body>

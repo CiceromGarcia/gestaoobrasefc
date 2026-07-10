@@ -1,6 +1,8 @@
 /* =====================================================
    LOGIN.JS
    Login, cadastro, recuperação de senha e redirecionamento
+   Arquivo: login.js
+   Versão: v002
 ===================================================== */
 
 import {
@@ -130,6 +132,12 @@ window.location.pathname
 const PAGINA_LOGIN =
 `./${ARQUIVO_LOGIN_ATUAL}`;
 
+const EMAILS_ADMIN_GERAL = [
+  "cicero.garcia@vale.com",
+  "c0706341@vale.com",
+  "ciceromgarcia@gmail.com"
+];
+
 /* =====================================================
    CONTROLES
 ===================================================== */
@@ -165,6 +173,28 @@ function logoutFoiSolicitado() {
 }
 
 /* =====================================================
+   NORMALIZAR TEXTO
+===================================================== */
+
+function normalizarTexto(valor) {
+
+  return String(valor || "")
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+}
+
+function emailNormalizado(valor) {
+
+  return String(valor || "")
+    .toLowerCase()
+    .trim();
+
+}
+
+/* =====================================================
    LIMPAR SESSÃO LOCAL
 ===================================================== */
 
@@ -185,26 +215,138 @@ function limparSessaoLocal() {
   localStorage.removeItem("cargo");
   localStorage.removeItem("nivel");
   localStorage.removeItem("permissao");
+  localStorage.removeItem("regional");
+  localStorage.removeItem("podeAprovarRM");
+  localStorage.removeItem("status");
+
+}
+
+/* =====================================================
+   PERFIL / STATUS / PERMISSÕES
+===================================================== */
+
+function obterStatusUsuario(dadosUsuario) {
+
+  return normalizarTexto(
+    dadosUsuario?.status ||
+    "pendente"
+  );
+
+}
+
+function usuarioEstaAtivo(dadosUsuario) {
+
+  const status =
+  obterStatusUsuario(
+    dadosUsuario
+  );
+
+  return (
+    status === "ativo" ||
+    status === "active"
+  );
+
+}
+
+function usuarioEstaPendente(dadosUsuario) {
+
+  const status =
+  obterStatusUsuario(
+    dadosUsuario
+  );
+
+  return (
+    status === "pendente" ||
+    status === "aguardando" ||
+    status === "aguardando aprovacao" ||
+    status === "aguardando aprovação"
+  );
+
+}
+
+function usuarioEhAdministrador(dadosUsuario) {
+
+  const perfil =
+  normalizarTexto(
+    dadosUsuario?.perfil
+  );
+
+  const email =
+  emailNormalizado(
+    dadosUsuario?.email ||
+    dadosUsuario?.emailAuth
+  );
+
+  return (
+    perfil === "administrador" ||
+    perfil === "admin" ||
+    perfil === "adm" ||
+    perfil === "administrator" ||
+    EMAILS_ADMIN_GERAL.includes(email)
+  );
+
+}
+
+function usuarioEhAdministradorRegional(dadosUsuario) {
+
+  const perfil =
+  normalizarTexto(
+    dadosUsuario?.perfil
+  );
+
+  return (
+    perfil === "administradorregional" ||
+    perfil === "adminregional" ||
+    perfil === "aprovadorrm"
+  );
+
+}
+
+function usuarioPodeAprovarRM(dadosUsuario) {
+
+  return Boolean(
+    usuarioEhAdministrador(dadosUsuario) ||
+    usuarioEhAdministradorRegional(dadosUsuario) ||
+    dadosUsuario?.podeAprovarRM === true
+  );
+
+}
+
+function usuarioPodeEditarObras(dadosUsuario) {
+
+  if (usuarioEhAdministrador(dadosUsuario)) {
+    return true;
+  }
+
+  const perfil =
+  normalizarTexto(
+    dadosUsuario?.perfil
+  );
+
+  return [
+    "gestor",
+    "planejador",
+    "engenharia",
+    "editor"
+  ].includes(perfil);
 
 }
 
 /* =====================================================
    SALVAR SESSÃO LOCAL
    Observação:
-   Esses dados são apenas apoio visual.
-   A permissão real vem do Firebase Auth + Firestore.
+   Esses dados são apoio visual.
+   A permissão real vem do Firebase Auth + Firestore Rules.
 ===================================================== */
 
 function salvarSessaoLocal(usuarioFirebase, dadosSistema) {
 
   const email =
-  String(
+  emailNormalizado(
     usuarioFirebase?.email ||
     dadosSistema?.email ||
     ""
-  )
-    .toLowerCase()
-    .trim();
+  );
 
   const usuarioFinal = {
 
@@ -227,6 +369,9 @@ function salvarSessaoLocal(usuarioFirebase, dadosSistema) {
     email:
     email,
 
+    emailAuth:
+    usuarioFirebase?.email || "",
+
     perfil:
     dadosSistema?.perfil ||
     "usuario",
@@ -234,6 +379,19 @@ function salvarSessaoLocal(usuarioFirebase, dadosSistema) {
     status:
     dadosSistema?.status ||
     "pendente",
+
+    regional:
+    dadosSistema?.regional ||
+    "",
+
+    podeAprovarRM:
+    usuarioPodeAprovarRM(dadosSistema),
+
+    podeEditarObras:
+    usuarioPodeEditarObras(dadosSistema),
+
+    administrador:
+    usuarioEhAdministrador(dadosSistema),
 
     autenticado:
     true,
@@ -266,6 +424,21 @@ function salvarSessaoLocal(usuarioFirebase, dadosSistema) {
   localStorage.setItem(
     "perfil",
     usuarioFinal.perfil
+  );
+
+  localStorage.setItem(
+    "status",
+    usuarioFinal.status
+  );
+
+  localStorage.setItem(
+    "regional",
+    usuarioFinal.regional
+  );
+
+  localStorage.setItem(
+    "podeAprovarRM",
+    usuarioFinal.podeAprovarRM ? "sim" : "nao"
   );
 
   sessionStorage.removeItem(
@@ -540,20 +713,6 @@ function configurarMostrarSenha() {
 }
 
 /* =====================================================
-   NORMALIZAR TEXTO
-===================================================== */
-
-function normalizarTexto(valor) {
-
-  return String(valor || "")
-    .toLowerCase()
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-
-}
-
-/* =====================================================
    TRADUZIR ERROS
 ===================================================== */
 
@@ -701,64 +860,6 @@ function formatarData(data) {
 }
 
 /* =====================================================
-   STATUS DO USUÁRIO
-===================================================== */
-
-function obterStatusUsuario(dadosUsuario) {
-
-  return normalizarTexto(
-    dadosUsuario?.status ||
-    "pendente"
-  );
-
-}
-
-function usuarioEstaAtivo(dadosUsuario) {
-
-  const status =
-  obterStatusUsuario(
-    dadosUsuario
-  );
-
-  return (
-    status === "ativo" ||
-    status === "active"
-  );
-
-}
-
-function usuarioEstaPendente(dadosUsuario) {
-
-  const status =
-  obterStatusUsuario(
-    dadosUsuario
-  );
-
-  return (
-    status === "pendente" ||
-    status === "aguardando" ||
-    status === "aguardando aprovacao" ||
-    status === "aguardando aprovação"
-  );
-
-}
-
-function usuarioEhAdministrador(dadosUsuario) {
-
-  const perfil =
-  normalizarTexto(
-    dadosUsuario?.perfil
-  );
-
-  return (
-    perfil === "administrador" ||
-    perfil === "admin" ||
-    perfil === "administrator"
-  );
-
-}
-
-/* =====================================================
    BUSCAR OU CRIAR USUÁRIO DO SISTEMA
    Regra:
    - Só acessa se status = ativo.
@@ -769,9 +870,9 @@ function usuarioEhAdministrador(dadosUsuario) {
 async function buscarOuCriarUsuarioSistema(usuarioFirebase) {
 
   const email =
-  String(usuarioFirebase?.email || "")
-    .toLowerCase()
-    .trim();
+  emailNormalizado(
+    usuarioFirebase?.email || ""
+  );
 
   const usuarioRef =
   doc(
@@ -790,7 +891,14 @@ async function buscarOuCriarUsuarioSistema(usuarioFirebase) {
     const dados =
     snapUsuario.data();
 
-    if (!usuarioEstaAtivo(dados)) {
+    const dadosComAuth = {
+      uid: usuarioFirebase.uid,
+      emailAuth: email,
+      email: dados.email || email,
+      ...dados
+    };
+
+    if (!usuarioEstaAtivo(dadosComAuth)) {
 
       await signOut(
         auth
@@ -798,7 +906,7 @@ async function buscarOuCriarUsuarioSistema(usuarioFirebase) {
 
       limparSessaoLocal();
 
-      if (usuarioEstaPendente(dados)) {
+      if (usuarioEstaPendente(dadosComAuth)) {
 
         throw {
           code: "usuario/pendente",
@@ -818,6 +926,12 @@ async function buscarOuCriarUsuarioSistema(usuarioFirebase) {
       usuarioRef,
       {
         ultimoLogin:
+        serverTimestamp(),
+
+        email:
+        dados.email || email,
+
+        atualizadoEm:
         serverTimestamp()
       },
       {
@@ -826,11 +940,7 @@ async function buscarOuCriarUsuarioSistema(usuarioFirebase) {
       }
     );
 
-    return {
-      uid: usuarioFirebase.uid,
-      emailAuth: email,
-      ...dados
-    };
+    return dadosComAuth;
 
   }
 
@@ -852,6 +962,12 @@ async function buscarOuCriarUsuarioSistema(usuarioFirebase) {
 
     status:
     "pendente",
+
+    regional:
+    "",
+
+    podeAprovarRM:
+    false,
 
     criadoEm:
     serverTimestamp(),
@@ -993,7 +1109,16 @@ function configurarCadastro() {
             status:
             "pendente",
 
+            regional:
+            "",
+
+            podeAprovarRM:
+            false,
+
             criadoEm:
+            serverTimestamp(),
+
+            atualizadoEm:
             serverTimestamp(),
 
             ultimoLogin:
@@ -1178,9 +1303,9 @@ async function enviarEmailRecuperacao(
   }
 
   const emailTratado =
-  String(email || "")
-    .trim()
-    .toLowerCase();
+  emailNormalizado(
+    email
+  );
 
   if (!emailTratado) {
 
@@ -1490,7 +1615,11 @@ async function verificarAdministrador(usuario) {
 
     return (
       usuarioEstaAtivo(dados) &&
-      usuarioEhAdministrador(dados)
+      usuarioEhAdministrador({
+        ...dados,
+        emailAuth:
+        usuario.email
+      })
     );
 
   } catch (erro) {

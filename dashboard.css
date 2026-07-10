@@ -1,3 +1,9 @@
+/* =====================================================
+   DASHBOARD - PAINEL EXECUTIVO DE OBRAS
+   Arquivo: dashboard.css
+   Versão: v010
+===================================================== */
+
 *{
   margin:0;
   padding:0;
@@ -34,7 +40,7 @@ body{
 }
 
 .sidebar-top{
-  padding:18px;
+  padding:4px 12px 12px;
   border-bottom:1px solid #eee;
 }
 
@@ -42,7 +48,7 @@ body{
   border:none;
   background:none;
   font-size:18px;
-  margin-bottom:12px;
+  margin-bottom:2px;
   cursor:pointer;
   color:#222;
 }
@@ -52,18 +58,19 @@ body{
 ========================================= */
 
 .logo{
-  width:80px;
-  margin:0 auto 8px auto;
+  width:58px;
+  margin:0 auto 4px auto;
   display:block;
   transition:.3s ease;
 }
 
 .sidebar-top h2{
-  font-size:17px;
+  font-size:14px;
   color:#007E7A;
   font-weight:700;
   text-align:center;
-  line-height:1.25;
+  line-height:1.15;
+  margin-top:-2px;
 }
 
 /* =========================================
@@ -71,7 +78,7 @@ body{
 ========================================= */
 
 .menu{
-  padding:15px 12px;
+  padding:14px 12px;
 }
 
 .menu-title{
@@ -192,8 +199,8 @@ body.usuario-admin .menu a[data-admin-only]{
 }
 
 .sidebar.collapsed .logo{
-  width:34px;
-  margin:0 auto 8px auto;
+  width:27px;
+  margin:0 auto 4px auto;
   display:block;
 }
 
@@ -289,7 +296,7 @@ body.usuario-admin .menu a[data-admin-only]{
 }
 
 /* =========================================
-   RESUMO EXECUTIVO
+   CARDS DE STATUS DAS OBRAS
 ========================================= */
 
 .resumo-topo{
@@ -298,8 +305,8 @@ body.usuario-admin .menu a[data-admin-only]{
 
 .kpi-grid-top{
   display:grid;
-  grid-template-columns:repeat(6, minmax(0,1fr));
-  gap:10px;
+  grid-template-columns:repeat(4, minmax(0,1fr));
+  gap:12px;
   width:100%;
   align-items:stretch;
 }
@@ -307,14 +314,25 @@ body.usuario-admin .menu a[data-admin-only]{
 .kpi{
   background:#fff;
   border:1px solid #e7e7e7;
-  border-radius:12px;
-  padding:8px 12px;
-  height:68px;
+  border-radius:14px;
+  padding:14px 16px;
+  min-height:82px;
   display:flex;
   flex-direction:column;
   justify-content:center;
   overflow:hidden;
   transition:.2s;
+  position:relative;
+}
+
+.kpi::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  width:5px;
+  height:100%;
+  background:#007E7A;
 }
 
 .kpi:hover{
@@ -323,21 +341,51 @@ body.usuario-admin .menu a[data-admin-only]{
 }
 
 .kpi span{
-  font-size:9px;
+  font-size:10px;
   color:#777;
-  font-weight:600;
-  margin-bottom:4px;
+  font-weight:700;
+  margin-bottom:8px;
   white-space:nowrap;
+  text-transform:uppercase;
+  letter-spacing:.3px;
 }
 
 .kpi h2{
   color:#007E7A;
-  font-size:13px;
+  font-size:26px;
   line-height:1;
-  font-weight:700;
+  font-weight:800;
 }
 
-.kpi.red h2{
+.kpi.em-andamento::before{
+  background:#007E7A;
+}
+
+.kpi.em-andamento h2{
+  color:#007E7A;
+}
+
+.kpi.concluida::before{
+  background:#2e7d32;
+}
+
+.kpi.concluida h2{
+  color:#2e7d32;
+}
+
+.kpi.planejada::before{
+  background:#1565c0;
+}
+
+.kpi.planejada h2{
+  color:#1565c0;
+}
+
+.kpi.paralisada::before{
+  background:#d93025;
+}
+
+.kpi.paralisada h2{
   color:#d93025;
 }
 
@@ -370,8 +418,15 @@ body.usuario-admin .menu a[data-admin-only]{
   border-radius:10px;
   padding:0 10px;
   background:#fff;
+  color:#222;
   outline:none;
   transition:.2s;
+  font-size:11px;
+}
+
+.field select option{
+  background:#fff;
+  color:#222;
   font-size:11px;
 }
 
@@ -473,27 +528,48 @@ tbody input:focus{
    GRÁFICOS
 ========================================= */
 
-.charts-bottom{
+#detalhamentoPlanejamento{
+  width:100%;
+}
+
+.charts-bottom,
+.charts-stack{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
-  gap:16px;
+  grid-template-columns:1fr;
+  gap:18px;
   margin-top:16px;
   width:100%;
   align-items:stretch;
 }
 
-.chart-card{
+.chart-card,
+.chart-card-full{
   position:relative;
   width:100%;
-  min-height:340px;
+  min-width:0;
+  height:500px;
   overflow:hidden;
+  display:flex;
+  flex-direction:column;
 }
 
-.chart-card canvas{
+.chart-card .section-title,
+.chart-card-full .section-title{
+  flex:0 0 auto;
+  font-size:14px;
+  font-weight:800;
+  color:#007E7A;
+}
+
+.chart-card canvas,
+.chart-card-full canvas{
   position:relative;
-  width:100% !important;
-  height:260px !important;
   display:block;
+  width:100% !important;
+  height:430px !important;
+  max-width:100%;
+  flex:1 1 auto;
+  font-family:'Segoe UI',sans-serif !important;
 }
 
 /* =========================================
@@ -525,6 +601,61 @@ tbody input:focus{
 }
 
 /* =========================================
+   EXPORTAÇÃO PDF
+========================================= */
+
+body.exportando-pdf{
+  background:#fff !important;
+}
+
+body.exportando-pdf .sidebar{
+  display:none !important;
+}
+
+body.exportando-pdf .main{
+  margin-left:0 !important;
+  width:100% !important;
+  padding:12px !important;
+}
+
+body.exportando-pdf .top-buttons{
+  display:none !important;
+}
+
+body.exportando-pdf .card{
+  box-shadow:none !important;
+  border:1px solid #e5e7eb !important;
+  page-break-inside:avoid;
+  break-inside:avoid;
+}
+
+body.exportando-pdf .table-scroll{
+  overflow:visible !important;
+}
+
+body.exportando-pdf table{
+  min-width:100% !important;
+}
+
+body.exportando-pdf th,
+body.exportando-pdf td{
+  font-size:8px !important;
+  padding:5px !important;
+}
+
+body.exportando-pdf .chart-card,
+body.exportando-pdf .chart-card-full{
+  height:420px !important;
+  page-break-inside:avoid;
+  break-inside:avoid;
+}
+
+body.exportando-pdf .chart-card canvas,
+body.exportando-pdf .chart-card-full canvas{
+  height:350px !important;
+}
+
+/* =========================================
    SCROLL
 ========================================= */
 
@@ -552,8 +683,19 @@ tbody input:focus{
 
 @media(max-width:1400px){
 
-  .charts-bottom{
+  .charts-bottom,
+  .charts-stack{
     grid-template-columns:1fr;
+  }
+
+  .chart-card,
+  .chart-card-full{
+    height:470px;
+  }
+
+  .chart-card canvas,
+  .chart-card-full canvas{
+    height:400px !important;
   }
 
 }
@@ -561,7 +703,7 @@ tbody input:focus{
 @media(max-width:1100px){
 
   .kpi-grid-top{
-    grid-template-columns:repeat(3,1fr);
+    grid-template-columns:repeat(2,1fr);
   }
 
 }
@@ -584,7 +726,7 @@ tbody input:focus{
   }
 
   .sidebar .logo{
-    width:34px;
+    width:27px;
   }
 
   .main{
@@ -620,12 +762,32 @@ tbody input:focus{
     align-items:flex-start;
   }
 
+  .chart-card,
+  .chart-card-full{
+    height:390px;
+  }
+
+  .chart-card canvas,
+  .chart-card-full canvas{
+    height:320px !important;
+  }
+
 }
 
 @media(max-width:520px){
 
   .kpi-grid-top{
     grid-template-columns:1fr;
+  }
+
+  .chart-card,
+  .chart-card-full{
+    height:350px;
+  }
+
+  .chart-card canvas,
+  .chart-card-full canvas{
+    height:285px !important;
   }
 
 }

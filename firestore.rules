@@ -11,27 +11,155 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function emailLogado() {
+      return estaLogado() ? request.auth.token.email : "";
+    }
+
+    function ehAdministradorPorEmail() {
+      return estaLogado()
+        && emailLogado() in [
+          "cicero.garcia@vale.com",
+          "c0706341@vale.com",
+          "ciceromgarcia@gmail.com"
+        ];
+    }
+
     function usuarioExiste() {
       return estaLogado()
         && exists(/databases/$(database)/documents/usuariosSistema/$(request.auth.uid));
     }
 
+    function dadosUsuarioLogado() {
+      return get(/databases/$(database)/documents/usuariosSistema/$(request.auth.uid)).data;
+    }
+
     function usuarioAtivo() {
       return usuarioExiste()
-        && get(/databases/$(database)/documents/usuariosSistema/$(request.auth.uid)).data.status == "ativo";
+        && dadosUsuarioLogado().status == "ativo";
     }
 
     function perfilUsuarioLogado() {
-      return get(/databases/$(database)/documents/usuariosSistema/$(request.auth.uid)).data.perfil;
+      return usuarioExiste()
+        ? dadosUsuarioLogado().perfil
+        : "";
+    }
+
+    function regionalUsuarioLogado() {
+      return usuarioExiste()
+        ? dadosUsuarioLogado().regional
+        : "";
+    }
+
+    function podeAprovarRMUsuarioLogado() {
+      return usuarioExiste()
+        && dadosUsuarioLogado().podeAprovarRM == true;
     }
 
     function ehAdministrador() {
+      return ehAdministradorPorEmail()
+        || (
+          usuarioAtivo()
+          && perfilUsuarioLogado() in [
+            "administrador",
+            "admin",
+            "adm"
+          ]
+        );
+    }
+
+    function ehAdministradorRegional() {
       return usuarioAtivo()
-        && perfilUsuarioLogado() == "administrador";
+        && (
+          perfilUsuarioLogado() in [
+            "administradorRegional",
+            "adminRegional",
+            "aprovadorRM"
+          ]
+          || podeAprovarRMUsuarioLogado()
+        );
     }
 
     function ehUsuarioSistema() {
-      return usuarioAtivo();
+      return usuarioAtivo()
+        || ehAdministrador();
+    }
+
+    function ehEditorObras() {
+      return ehAdministrador()
+        || (
+          usuarioAtivo()
+          && perfilUsuarioLogado() in [
+            "gestor",
+            "planejador",
+            "engenharia",
+            "editor"
+          ]
+        );
+    }
+
+    function podeAprovarRegional(regionalRM) {
+      return ehAdministrador()
+        || (
+          ehAdministradorRegional()
+          && regionalUsuarioLogado() == regionalRM
+        );
+    }
+
+    function donoDaRM(dados) {
+      return estaLogado()
+        && (
+          dados.criadoPorUid == request.auth.uid
+          || dados.criadoPor.uid == request.auth.uid
+          || dados.criadoPorEmail == emailLogado()
+          || dados.criadoPor.email == emailLogado()
+        );
+    }
+
+    function camposDeAprovacaoRM() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        "status",
+        "statusAprovacao",
+        "aplicada",
+
+        "aprovadoPorUid",
+        "aprovadoPorEmail",
+        "aprovadoPorNome",
+        "aprovadoPorRegional",
+        "aprovadoEm",
+
+        "reprovadoPorUid",
+        "reprovadoPorEmail",
+        "reprovadoPorNome",
+        "reprovadoPorRegional",
+        "reprovadoEm",
+        "motivoReprovacao",
+
+        "decididoEm",
+
+        "tempoAprovacaoMs",
+        "tempoAprovacaoMinutos",
+        "tempoAprovacaoHoras",
+        "tempoAprovacaoTexto",
+
+        "tempoDecisaoMs",
+        "tempoDecisaoMinutos",
+        "tempoDecisaoHoras",
+        "tempoDecisaoTexto",
+
+        "atualizadoEm"
+      ]);
+    }
+
+    function rmEstaPendente() {
+      return resource.data.statusAprovacao == "Pendente de Aprovação"
+        || resource.data.status == "Pendente";
+    }
+
+    function decisaoValidaRM() {
+      return request.resource.data.statusAprovacao in [
+        "Aprovada",
+        "Reprovada"
+      ];
     }
 
     /* ==============================
@@ -42,8 +170,7 @@ service cloud.firestore {
 
       /*
         LEITURA:
-        - Usuário logado pode ler o próprio cadastro,
-          mesmo se estiver pendente.
+        - Usuário logado pode ler o próprio cadastro.
         - Administrador pode ler todos.
       */
       allow read: if estaLogado()
@@ -55,8 +182,7 @@ service cloud.firestore {
       /*
         CRIAÇÃO:
         - Administrador pode criar usuários pelo painel.
-        - Novo usuário só pode criar o próprio cadastro
-          com perfil "usuario" e status "pendente".
+        - Novo usuário pode criar apenas o próprio cadastro pendente.
       */
       allow create: if estaLogado()
         && (
@@ -65,18 +191,17 @@ service cloud.firestore {
           (
             request.auth.uid == uid
             && request.resource.data.uid == request.auth.uid
-            && request.resource.data.email == request.auth.token.email
+            && request.resource.data.email == emailLogado()
             && request.resource.data.perfil == "usuario"
             && request.resource.data.status == "pendente"
+            && request.resource.data.podeAprovarRM != true
           )
         );
 
       /*
         ATUALIZAÇÃO:
-        - Administrador pode aprovar, inativar, alterar perfil
-          e atualizar qualquer usuário.
-        - Usuário comum só pode atualizar o próprio cadastro
-          sem alterar uid, email, perfil ou status.
+        - Administrador pode aprovar, inativar, alterar perfil, regional e permissão.
+        - Usuário comum só pode atualizar o próprio cadastro sem mudar dados críticos.
       */
       allow update: if estaLogado()
         && (
@@ -88,6 +213,8 @@ service cloud.firestore {
             && request.resource.data.email == resource.data.email
             && request.resource.data.perfil == resource.data.perfil
             && request.resource.data.status == resource.data.status
+            && request.resource.data.podeAprovarRM == resource.data.podeAprovarRM
+            && request.resource.data.regional == resource.data.regional
           )
         );
 
@@ -99,13 +226,67 @@ service cloud.firestore {
     }
 
     /* ==============================
+       REQUISIÇÕES DE MATERIAIS
+    ============================== */
+
+    match /requisicoes_materiais/{rmId} {
+
+      /*
+        LEITURA:
+        - Administrador geral lê tudo.
+        - Administrador Regional lê RMs da própria Regional.
+        - Usuário comum lê somente as próprias RMs.
+      */
+      allow get, list: if ehUsuarioSistema()
+        && (
+          ehAdministrador()
+          || podeAprovarRegional(resource.data.regional)
+          || donoDaRM(resource.data)
+        );
+
+      /*
+        CRIAÇÃO:
+        - Usuário ativo pode criar somente RM própria.
+        - A RM deve nascer pendente.
+      */
+      allow create: if ehUsuarioSistema()
+        && donoDaRM(request.resource.data)
+        && request.resource.data.statusAprovacao == "Pendente de Aprovação"
+        && request.resource.data.aplicada == false;
+
+      /*
+        ATUALIZAÇÃO:
+        - Administrador geral pode ajustar a RM.
+        - Administrador Regional só pode aprovar/reprovar RM da própria Regional.
+        - Usuário comum não altera aprovação.
+      */
+      allow update: if ehUsuarioSistema()
+        && (
+          ehAdministrador()
+          ||
+          (
+            podeAprovarRegional(resource.data.regional)
+            && rmEstaPendente()
+            && decisaoValidaRM()
+            && camposDeAprovacaoRM()
+          )
+        );
+
+      /*
+        EXCLUSÃO:
+        - Somente administrador geral.
+      */
+      allow delete: if ehAdministrador();
+    }
+
+    /* ==============================
        OBRAS
     ============================== */
 
     match /obras/{obraId} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehUsuarioSistema();
-      allow update: if ehUsuarioSistema();
+      allow create: if ehEditorObras();
+      allow update: if ehEditorObras();
       allow delete: if ehAdministrador();
     }
 
@@ -115,8 +296,8 @@ service cloud.firestore {
 
     match /planejamentoCurvaS/{planejamentoId} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehUsuarioSistema();
-      allow update: if ehUsuarioSistema();
+      allow create: if ehEditorObras();
+      allow update: if ehEditorObras();
       allow delete: if ehAdministrador();
     }
 
@@ -126,8 +307,8 @@ service cloud.firestore {
 
     match /realizadoCurvaS/{realizadoId} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehUsuarioSistema();
-      allow update: if ehAdministrador();
+      allow create: if ehEditorObras();
+      allow update: if ehEditorObras();
       allow delete: if ehAdministrador();
     }
 
@@ -137,8 +318,8 @@ service cloud.firestore {
 
     match /projetos_atualizados/{atualizacaoId} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehUsuarioSistema();
-      allow update: if ehAdministrador();
+      allow create: if ehEditorObras();
+      allow update: if ehEditorObras();
       allow delete: if ehAdministrador();
     }
 
@@ -148,8 +329,8 @@ service cloud.firestore {
 
     match /projetos/{projetoId} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehUsuarioSistema();
-      allow update: if ehUsuarioSistema();
+      allow create: if ehEditorObras();
+      allow update: if ehEditorObras();
       allow delete: if ehAdministrador();
     }
 
@@ -159,8 +340,44 @@ service cloud.firestore {
 
     match /projetos/{projetoId}/cronogramaSemanal/{semanaId} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehUsuarioSistema();
-      allow update: if ehUsuarioSistema();
+      allow create: if ehEditorObras();
+      allow update: if ehEditorObras();
+      allow delete: if ehAdministrador();
+    }
+
+    match /cronogramaSemanal/{semanaId} {
+      allow read: if ehUsuarioSistema();
+      allow create: if ehEditorObras();
+      allow update: if ehEditorObras();
+      allow delete: if ehAdministrador();
+    }
+
+    /* ==============================
+       CONTADORES
+    ============================== */
+
+    match /contador/{contadorId} {
+      allow read: if ehUsuarioSistema();
+      allow create: if ehEditorObras();
+      allow update: if ehEditorObras();
+      allow delete: if ehAdministrador();
+    }
+
+    /* ==============================
+       CUSTOS / ANOMALIAS
+    ============================== */
+
+    match /custos/{id} {
+      allow read: if ehUsuarioSistema();
+      allow create: if ehEditorObras();
+      allow update: if ehEditorObras();
+      allow delete: if ehAdministrador();
+    }
+
+    match /anomalias/{id} {
+      allow read: if ehUsuarioSistema();
+      allow create: if ehEditorObras();
+      allow update: if ehEditorObras();
       allow delete: if ehAdministrador();
     }
 

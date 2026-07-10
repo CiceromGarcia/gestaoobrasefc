@@ -1,0 +1,1974 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Requisição de Materiais
+  </title>
+
+  <!-- CSS -->
+  <link
+    rel="stylesheet"
+    href="./requisicao-materiais.css?v=008"
+  >
+
+  <!-- FONT AWESOME -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  >
+
+  <!-- PDF.JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- JSPDF PARA EXPORTAÇÃO PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+</head>
+
+<body>
+
+  <main
+    class="page"
+    id="paginaRequisicaoMateriais"
+  >
+
+    <!-- =====================================
+         CABEÇALHO
+    ====================================== -->
+
+    <header class="app-header">
+
+      <div class="header-left">
+
+        <div class="header-icon">
+
+          <i class="fa-solid fa-boxes-stacked"></i>
+
+        </div>
+
+        <div>
+
+          <h1>
+            Requisição de Materiais
+          </h1>
+
+          <span>
+            Cadastro, aprovação, custos e análise dos materiais aplicados
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="header-actions">
+
+        <a
+          href="./dashboard.html"
+          class="btn-voltar"
+        >
+
+          <i class="fa-solid fa-arrow-left"></i>
+
+          Dashboard
+
+        </a>
+
+        <a
+          href="./gestaodeobras.html"
+          class="btn-secundario"
+        >
+
+          <i class="fa-solid fa-building"></i>
+
+          Obras
+
+        </a>
+
+      </div>
+
+    </header>
+
+    <!-- =====================================
+         ABAS
+    ====================================== -->
+
+    <section class="abas-card">
+
+      <button
+        type="button"
+        class="aba-btn ativa"
+        id="btnAbaCadastro"
+        data-aba="cadastro"
+      >
+
+        <i class="fa-solid fa-file-circle-plus"></i>
+
+        Cadastrar RM
+
+      </button>
+
+      <button
+        type="button"
+        class="aba-btn"
+        id="btnAbaCadastradas"
+        data-aba="cadastradas"
+      >
+
+        <i class="fa-solid fa-table-list"></i>
+
+        RMs Cadastradas
+
+      </button>
+
+      <button
+        type="button"
+        class="aba-btn"
+        id="btnAbaCustos"
+        data-aba="custos"
+      >
+
+        <i class="fa-solid fa-chart-pie"></i>
+
+        Custos por Regional
+
+      </button>
+
+      <button
+        type="button"
+        class="aba-btn"
+        id="btnAbaProdutos"
+        data-aba="produtos"
+      >
+
+        <i class="fa-solid fa-ranking-star"></i>
+
+        Produtos com Mais Saída
+
+      </button>
+
+      <button
+        type="button"
+        class="aba-btn"
+        id="btnAbaAprovacoes"
+        data-aba="aprovacoes"
+        data-aprovacao-only
+      >
+
+        <i class="fa-solid fa-clipboard-check"></i>
+
+        Aprovações
+
+      </button>
+
+    </section>
+
+    <!-- =====================================
+         STATUS DA VISÃO DO USUÁRIO
+    ====================================== -->
+
+    <section
+      class="visao-card"
+      id="statusVisaoUsuario"
+    >
+
+      <div>
+
+        <strong id="tituloVisaoUsuario">
+          Carregando permissões...
+        </strong>
+
+        <span id="descricaoVisaoUsuario">
+          Aguarde enquanto o sistema identifica seu perfil de acesso.
+        </span>
+
+      </div>
+
+      <div>
+
+        <strong id="resumoUsuarioVisao">
+          -
+        </strong>
+
+        <span>
+          Visão atual
+        </span>
+
+      </div>
+
+    </section>
+
+    <!-- =====================================
+         ABA 1 — CADASTRAR RM
+    ====================================== -->
+
+    <section
+      class="aba-conteudo ativa"
+      id="abaCadastro"
+    >
+
+      <!-- =====================================
+           IMPORTAÇÃO DO PDF
+      ====================================== -->
+
+      <section class="card card-upload-compacto">
+
+        <div class="card-title card-title-compacto">
+
+          <div>
+
+            <h2>
+              Importar PDF da Requisição
+            </h2>
+
+            <p>
+              Selecione o arquivo PDF para leitura automática dos dados da RM e dos materiais.
+            </p>
+
+          </div>
+
+        </div>
+
+        <div class="upload-grid upload-grid-compacto">
+
+          <div
+            class="upload-area upload-area-compacta"
+            id="dropZonePDF"
+          >
+
+            <input
+              type="file"
+              id="arquivoPDF"
+              accept="application/pdf"
+              hidden
+            >
+
+            <div class="upload-icon upload-icon-compacto">
+
+              <i class="fa-solid fa-file-pdf"></i>
+
+            </div>
+
+            <div class="upload-texto">
+
+              <h3>
+                Arraste o PDF aqui
+              </h3>
+
+              <p>
+                Ou selecione o arquivo da RM.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              class="btn-principal"
+              id="btnSelecionarPDF"
+            >
+
+              <i class="fa-solid fa-upload"></i>
+
+              Selecionar PDF
+
+            </button>
+
+          </div>
+
+          <div class="arquivo-info arquivo-info-compacto">
+
+            <div class="info-linha">
+
+              <span>
+                Status
+              </span>
+
+              <strong id="statusImportacao">
+                Aguardando PDF
+              </strong>
+
+            </div>
+
+            <div class="info-linha">
+
+              <span>
+                Arquivo
+              </span>
+
+              <strong id="nomeArquivo">
+                Nenhum arquivo selecionado
+              </strong>
+
+            </div>
+
+            <div class="info-linha">
+
+              <span>
+                Tamanho
+              </span>
+
+              <strong id="tamanhoArquivo">
+                -
+              </strong>
+
+            </div>
+
+            <div class="info-linha">
+
+              <span>
+                Páginas lidas
+              </span>
+
+              <strong id="paginasLidas">
+                0
+              </strong>
+
+            </div>
+
+            <div class="info-linha">
+
+              <span>
+                Progresso
+              </span>
+
+              <div class="progress-box">
+
+                <div class="progress-bar">
+
+                  <div
+                    class="progress-fill"
+                    id="barraProgresso"
+                  ></div>
+
+                </div>
+
+                <small id="textoProgresso">
+                  0%
+                </small>
+
+              </div>
+
+            </div>
+
+            <div class="botoes-upload">
+
+              <button
+                type="button"
+                class="btn-principal"
+                id="btnLerPDF"
+                disabled
+              >
+
+                <i class="fa-solid fa-magnifying-glass-chart"></i>
+
+                Ler PDF
+
+              </button>
+
+              <button
+                type="button"
+                class="btn-cinza"
+                id="btnLimparPDF"
+              >
+
+                <i class="fa-solid fa-eraser"></i>
+
+                Limpar
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- =====================================
+           DADOS DA REQUISIÇÃO
+      ====================================== -->
+
+      <section class="card">
+
+        <div class="card-title">
+
+          <div>
+
+            <h2>
+              Dados da Requisição
+            </h2>
+
+            <p>
+              A RM será salva como pendente e passará pela aprovação do administrador da Regional.
+            </p>
+
+          </div>
+
+          <span
+            class="badge-status"
+            id="badgeConferencia"
+          >
+            Conferência pendente
+          </span>
+
+        </div>
+
+        <div class="resumo-rms">
+
+          <div class="resumo-card">
+
+            <span>
+              RM
+            </span>
+
+            <strong id="resumoRM">
+              -
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Total de Materiais
+            </span>
+
+            <strong id="totalMateriais">
+              0
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Quantidade Total
+            </span>
+
+            <strong id="quantidadeTotal">
+              0
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Materiais Cadastrados
+            </span>
+
+            <strong id="resumoQtdMateriais">
+              0
+            </strong>
+
+          </div>
+
+        </div>
+
+        <form id="formRequisicaoMateriais">
+
+          <div class="form-grid">
+
+            <div class="campo">
+
+              <label for="numeroRM">
+                Nº RM
+              </label>
+
+              <input
+                type="text"
+                id="numeroRM"
+                placeholder="Ex.: 05283"
+              >
+
+            </div>
+
+            <div class="campo">
+
+              <label for="numeroOM">
+                Nº Ordem de Manutenção
+              </label>
+
+              <input
+                type="text"
+                id="numeroOM"
+                placeholder="Ex.: 202501899029"
+              >
+
+            </div>
+
+            <div class="campo">
+
+              <label for="centroCusto">
+                Centro de Custo
+              </label>
+
+              <input
+                type="text"
+                id="centroCusto"
+                placeholder="Ex.: 1480080"
+              >
+
+            </div>
+
+            <div class="campo">
+
+              <label for="dataRequisicao">
+                Data da RM
+              </label>
+
+              <input
+                type="date"
+                id="dataRequisicao"
+              >
+
+            </div>
+
+            <div class="campo campo-2">
+
+              <label for="localRM">
+                Local
+              </label>
+
+              <input
+                type="text"
+                id="localRM"
+                placeholder="Ex.: ADMINISTRACAO CENTRAL"
+              >
+
+            </div>
+
+            <div class="campo campo-2">
+
+              <label for="tituloRequisicao">
+                Descrição da Ordem
+              </label>
+
+              <input
+                type="text"
+                id="tituloRequisicao"
+                placeholder="Ex.: Adequar guarda corpo"
+              >
+
+            </div>
+
+            <div class="campo">
+
+              <label for="contrato">
+                Contrato
+              </label>
+
+              <select id="contrato" required>
+
+                <option value="">
+                  Selecione
+                </option>
+
+                <option value="Manutenção Predial">
+                  Manutenção Predial
+                </option>
+
+                <option value="Pequenas Obras">
+                  Pequenas Obras
+                </option>
+
+              </select>
+
+            </div>
+
+            <div class="campo">
+
+              <label for="regional">
+                Regional
+              </label>
+
+              <select id="regional">
+
+                <option value="">
+                  Selecione
+                </option>
+
+                <option value="Regional 1">
+                  Regional 1
+                </option>
+
+                <option value="Regional 2">
+                  Regional 2
+                </option>
+
+                <option value="Regional 3">
+                  Regional 3
+                </option>
+
+                <option value="São Luís">
+                  São Luís
+                </option>
+
+              </select>
+
+            </div>
+
+            <div class="campo">
+
+              <label for="localidade">
+                Localidade
+              </label>
+
+              <select id="localidade">
+
+                <option value="">
+                  Selecione
+                </option>
+
+              </select>
+
+            </div>
+
+            <div class="campo">
+
+              <label for="viaRM">
+                Via
+              </label>
+
+              <input
+                type="text"
+                id="viaRM"
+                placeholder="Ex.: 1ª - VIA / 2ª - VIA"
+              >
+
+            </div>
+
+            <div class="campo">
+
+              <label for="valorTotalRM">
+                Valor Total da RM
+              </label>
+
+              <input
+                type="text"
+                id="valorTotalRM"
+                placeholder="Ex.: R$ 3.378,97"
+              >
+
+            </div>
+
+            <div class="campo">
+
+              <label for="solicitante">
+                Solicitante
+              </label>
+
+              <input
+                type="text"
+                id="solicitante"
+                placeholder="Nome do solicitante"
+              >
+
+            </div>
+
+            <div class="campo campo-full">
+
+              <label for="observacoesRequisicao">
+                Observações
+              </label>
+
+              <textarea
+                id="observacoesRequisicao"
+                placeholder="Observações gerais da requisição..."
+              ></textarea>
+
+            </div>
+
+          </div>
+
+        </form>
+
+      </section>
+
+      <!-- =====================================
+           MATERIAIS EXTRAÍDOS
+      ====================================== -->
+
+      <section class="card">
+
+        <div class="card-title">
+
+          <div>
+
+            <h2>
+              Materiais Extraídos
+            </h2>
+
+            <p>
+              Confira, edite, adicione ou remova os materiais antes de enviar para aprovação.
+            </p>
+
+          </div>
+
+          <div class="card-actions">
+
+            <button
+              type="button"
+              class="btn-secundario-outline"
+              id="btnAdicionarMaterial"
+            >
+
+              <i class="fa-solid fa-plus"></i>
+
+              Adicionar Item
+
+            </button>
+
+            <button
+              type="button"
+              class="btn-cinza"
+              id="btnLimparMateriais"
+            >
+
+              <i class="fa-solid fa-trash"></i>
+
+              Limpar Itens
+
+            </button>
+
+          </div>
+
+        </div>
+
+        <div class="table-wrapper">
+
+          <table class="tabela-materiais">
+
+            <thead>
+
+              <tr>
+
+                <th>#</th>
+                <th>Código</th>
+                <th>Descrição do Material</th>
+                <th>Unidade</th>
+                <th>Quantidade</th>
+                <th>Preço Unitário</th>
+                <th>Preço Total</th>
+                <th>Observação</th>
+                <th>Ações</th>
+
+              </tr>
+
+            </thead>
+
+            <tbody id="tbodyMateriais">
+
+              <tr>
+
+                <td colspan="9">
+                  Nenhum material extraído. Importe e leia um PDF para iniciar.
+                </td>
+
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+        <div class="rodape-tabela">
+
+          <div>
+
+            <strong>
+              Aprovação obrigatória:
+            </strong>
+
+            <span>
+              Após salvar, a RM ficará pendente de aprovação do administrador da Regional.
+            </span>
+
+          </div>
+
+          <button
+            type="button"
+            class="btn-salvar"
+            id="btnSalvarRequisicao"
+          >
+
+            <i class="fa-solid fa-paper-plane"></i>
+
+            Enviar para Aprovação
+
+          </button>
+
+        </div>
+
+      </section>
+
+      <!-- =====================================
+           RESULTADO DA IMPORTAÇÃO
+      ====================================== -->
+
+      <section class="card">
+
+        <div class="card-title">
+
+          <div>
+
+            <h2>
+              Resultado da Importação
+            </h2>
+
+            <p>
+              Mensagens do processamento e validações realizadas pelo sistema.
+            </p>
+
+          </div>
+
+        </div>
+
+        <div
+          class="log-box"
+          id="logImportacao"
+        >
+
+          <div class="log-item info">
+
+            <i class="fa-solid fa-circle-info"></i>
+
+            <span>
+              Aguardando importação do arquivo PDF.
+            </span>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </section>
+
+    <!-- =====================================
+         ABA 2 — RMs CADASTRADAS
+    ====================================== -->
+
+    <section
+      class="aba-conteudo"
+      id="abaCadastradas"
+    >
+
+      <section class="card">
+
+        <div class="card-title">
+
+          <div>
+
+            <h2>
+              RMs Cadastradas
+            </h2>
+
+            <p>
+              Acompanhe suas RMs, status de aprovação e tempo entre criação e aprovação.
+            </p>
+
+          </div>
+
+          <div class="card-actions">
+
+            <button
+              type="button"
+              class="btn-principal"
+              id="btnAtualizarListaRMs"
+            >
+
+              <i class="fa-solid fa-rotate"></i>
+
+              Atualizar
+
+            </button>
+
+            <button
+              type="button"
+              class="btn-secundario-outline"
+              id="btnExportarRMsPDF"
+            >
+
+              <i class="fa-solid fa-file-pdf"></i>
+
+              Exportar PDF
+
+            </button>
+
+          </div>
+
+        </div>
+
+        <div class="filtros-consulta filtros-rms">
+
+          <div class="campo">
+
+            <label for="filtroBuscaRM">
+              Buscar
+            </label>
+
+            <input
+              type="text"
+              id="filtroBuscaRM"
+              placeholder="RM, OM, contrato, descrição, localidade..."
+            >
+
+          </div>
+
+          <div class="campo">
+
+            <label for="filtroRegionalRM">
+              Regional
+            </label>
+
+            <select id="filtroRegionalRM">
+
+              <option value="">
+                Todas
+              </option>
+
+              <option value="Regional 1">
+                Regional 1
+              </option>
+
+              <option value="Regional 2">
+                Regional 2
+              </option>
+
+              <option value="Regional 3">
+                Regional 3
+              </option>
+
+              <option value="São Luís">
+                São Luís
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="campo">
+
+            <label for="filtroStatusAprovacaoRM">
+              Status Aprovação
+            </label>
+
+            <select id="filtroStatusAprovacaoRM">
+
+              <option value="">
+                Todos
+              </option>
+
+              <option value="Pendente de Aprovação">
+                Pendente
+              </option>
+
+              <option value="Aprovada">
+                Aprovada
+              </option>
+
+              <option value="Reprovada">
+                Reprovada
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="campo">
+
+            <label for="filtroDataInicioRM">
+              Data Inicial da RM
+            </label>
+
+            <input
+              type="date"
+              id="filtroDataInicioRM"
+            >
+
+          </div>
+
+          <div class="campo">
+
+            <label for="filtroDataFimRM">
+              Data Final da RM
+            </label>
+
+            <input
+              type="date"
+              id="filtroDataFimRM"
+            >
+
+          </div>
+
+        </div>
+
+        <div class="resumo-rms">
+
+          <div class="resumo-card">
+
+            <span>
+              Total de RMs
+            </span>
+
+            <strong id="resumoTotalRMs">
+              0
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Valor Total Aprovado
+            </span>
+
+            <strong id="resumoValorRMs">
+              R$ 0,00
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Pendentes
+            </span>
+
+            <strong id="resumoRMsPendentes">
+              0
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Tempo Médio Aprovação
+            </span>
+
+            <strong id="resumoTempoMedioAprovacao">
+              -
+            </strong>
+
+          </div>
+
+        </div>
+
+        <div class="table-wrapper tabela-rms-wrapper">
+
+          <table class="tabela-consulta-rms">
+
+            <thead>
+
+              <tr>
+
+                <th>RM</th>
+                <th>OM</th>
+                <th>Data RM</th>
+                <th>Regional</th>
+                <th>Localidade</th>
+                <th>Contrato</th>
+                <th>Descrição</th>
+                <th>Valor Total</th>
+                <th>Materiais</th>
+                <th>Status</th>
+                <th>Criado em</th>
+                <th>Aprovado em</th>
+                <th>Criado por</th>
+
+              </tr>
+
+            </thead>
+
+            <tbody id="tbodyRMsCadastradas">
+
+              <tr>
+
+                <td colspan="13">
+                  Carregando RMs cadastradas...
+                </td>
+
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </section>
+
+    </section>
+
+    <!-- =====================================
+         ABA 3 — CUSTOS POR REGIONAL
+    ====================================== -->
+
+    <section
+      class="aba-conteudo"
+      id="abaCustos"
+    >
+
+      <section class="card">
+
+        <div class="card-title">
+
+          <div>
+
+            <h2>
+              Custos por Regional das RMs Aprovadas
+            </h2>
+
+            <p>
+              Consolidação dos valores aprovados e aplicados por regional.
+            </p>
+
+          </div>
+
+        </div>
+
+        <div class="resumo-rms resumo-custos">
+
+          <div class="resumo-card">
+
+            <span>
+              Custo Geral Aprovado
+            </span>
+
+            <strong id="custoGeralRegional">
+              R$ 0,00
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              RMs Aprovadas
+            </span>
+
+            <strong id="qtdGeralRegional">
+              0
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Regional de Maior Custo
+            </span>
+
+            <strong id="maiorCustoRegional">
+              -
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Última Atualização
+            </span>
+
+            <strong id="ultimaAtualizacaoRegional">
+              -
+            </strong>
+
+          </div>
+
+        </div>
+
+        <div class="table-wrapper tabela-custos-wrapper">
+
+          <table class="tabela-consulta-rms tabela-custos-regionais">
+
+            <thead>
+
+              <tr>
+
+                <th>Regional</th>
+                <th>RMs Aprovadas</th>
+                <th>Quantidade de Materiais</th>
+                <th>Custo Total Aprovado</th>
+                <th>Participação</th>
+
+              </tr>
+
+            </thead>
+
+            <tbody id="tbodyCustosRegional">
+
+              <tr>
+
+                <td colspan="5">
+                  Carregando custos por regional...
+                </td>
+
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </section>
+
+    </section>
+
+    <!-- =====================================
+         ABA 4 — PRODUTOS COM MAIS SAÍDA
+    ====================================== -->
+
+    <section
+      class="aba-conteudo"
+      id="abaProdutos"
+    >
+
+      <section class="card">
+
+        <div class="card-title">
+
+          <div>
+
+            <h2>
+              Produtos com Mais Saída
+            </h2>
+
+            <p>
+              Visão consolidada apenas dos materiais aprovados e aplicados.
+            </p>
+
+          </div>
+
+          <div class="card-actions">
+
+            <button
+              type="button"
+              class="btn-principal"
+              id="btnAtualizarProdutos"
+            >
+
+              <i class="fa-solid fa-rotate"></i>
+
+              Atualizar
+
+            </button>
+
+          </div>
+
+        </div>
+
+        <div class="filtros-consulta filtros-produtos">
+
+          <div class="campo">
+
+            <label for="filtroBuscaProduto">
+              Buscar Produto
+            </label>
+
+            <input
+              type="text"
+              id="filtroBuscaProduto"
+              placeholder="Código, descrição ou unidade..."
+            >
+
+          </div>
+
+          <div class="campo">
+
+            <label for="filtroRegionalProduto">
+              Regional
+            </label>
+
+            <select id="filtroRegionalProduto">
+
+              <option value="">
+                Todas
+              </option>
+
+              <option value="Regional 1">
+                Regional 1
+              </option>
+
+              <option value="Regional 2">
+                Regional 2
+              </option>
+
+              <option value="Regional 3">
+                Regional 3
+              </option>
+
+              <option value="São Luís">
+                São Luís
+              </option>
+
+              <option value="Sem Regional">
+                Sem Regional
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="campo">
+
+            <label for="filtroOrdenacaoProduto">
+              Ordenar por
+            </label>
+
+            <select id="filtroOrdenacaoProduto">
+
+              <option value="quantidade">
+                Maior saída
+              </option>
+
+              <option value="custo">
+                Maior custo
+              </option>
+
+              <option value="rms">
+                Mais RMs
+              </option>
+
+              <option value="descricao">
+                Descrição
+              </option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+        <div class="resumo-rms resumo-produtos">
+
+          <div class="resumo-card">
+
+            <span>
+              Produtos Distintos
+            </span>
+
+            <strong id="resumoTotalProdutos">
+              0
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Quantidade Total
+            </span>
+
+            <strong id="resumoQuantidadeProdutos">
+              0
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Custo Total Aprovado
+            </span>
+
+            <strong id="resumoCustoProdutos">
+              R$ 0,00
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Produto com Mais Saída
+            </span>
+
+            <strong id="resumoProdutoMaisSaida">
+              -
+            </strong>
+
+          </div>
+
+        </div>
+
+        <div class="table-wrapper tabela-produtos-wrapper">
+
+          <table class="tabela-consulta-rms tabela-produtos-saida">
+
+            <thead>
+
+              <tr>
+
+                <th>Ranking</th>
+                <th>Código</th>
+                <th>Descrição do Produto</th>
+                <th>Unidade</th>
+                <th>Quantidade Total</th>
+                <th>Custo Total</th>
+                <th>Preço Médio</th>
+                <th>RMs Aplicadas</th>
+                <th>Regionais</th>
+
+              </tr>
+
+            </thead>
+
+            <tbody id="tbodyProdutosMaisSaida">
+
+              <tr>
+
+                <td colspan="9">
+                  Carregando produtos com mais saída...
+                </td>
+
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </section>
+
+    </section>
+
+    <!-- =====================================
+         ABA 5 — APROVAÇÕES
+    ====================================== -->
+
+    <section
+      class="aba-conteudo"
+      id="abaAprovacoes"
+    >
+
+      <section class="card">
+
+        <div class="card-title">
+
+          <div>
+
+            <h2>
+              Aprovações de Requisições
+            </h2>
+
+            <p>
+              Administrador geral aprova todas. Administrador Regional aprova somente as RMs da sua Regional.
+            </p>
+
+          </div>
+
+          <div class="card-actions">
+
+            <button
+              type="button"
+              class="btn-principal"
+              id="btnAtualizarAprovacoes"
+            >
+
+              <i class="fa-solid fa-rotate"></i>
+
+              Atualizar
+
+            </button>
+
+          </div>
+
+        </div>
+
+        <div class="filtros-consulta filtros-aprovacoes">
+
+          <div class="campo">
+
+            <label for="filtroBuscaAprovacao">
+              Buscar
+            </label>
+
+            <input
+              type="text"
+              id="filtroBuscaAprovacao"
+              placeholder="RM, OM, descrição, localidade, solicitante..."
+            >
+
+          </div>
+
+          <div class="campo">
+
+            <label for="filtroRegionalAprovacao">
+              Regional
+            </label>
+
+            <select id="filtroRegionalAprovacao">
+
+              <option value="">
+                Todas
+              </option>
+
+              <option value="Regional 1">
+                Regional 1
+              </option>
+
+              <option value="Regional 2">
+                Regional 2
+              </option>
+
+              <option value="Regional 3">
+                Regional 3
+              </option>
+
+              <option value="São Luís">
+                São Luís
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="campo">
+
+            <label for="filtroStatusAprovacao">
+              Status
+            </label>
+
+            <select id="filtroStatusAprovacao">
+
+              <option value="Pendente de Aprovação">
+                Pendentes
+              </option>
+
+              <option value="">
+                Todos
+              </option>
+
+              <option value="Aprovada">
+                Aprovadas
+              </option>
+
+              <option value="Reprovada">
+                Reprovadas
+              </option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+        <div class="resumo-rms resumo-aprovacoes">
+
+          <div class="resumo-card">
+
+            <span>
+              Pendentes
+            </span>
+
+            <strong id="aprovacaoQtdPendentes">
+              0
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Aprovadas
+            </span>
+
+            <strong id="aprovacaoQtdAprovadas">
+              0
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Reprovadas
+            </span>
+
+            <strong id="aprovacaoQtdReprovadas">
+              0
+            </strong>
+
+          </div>
+
+          <div class="resumo-card">
+
+            <span>
+              Tempo Médio Aprovação
+            </span>
+
+            <strong id="aprovacaoTempoMedio">
+              -
+            </strong>
+
+          </div>
+
+        </div>
+
+        <div class="table-wrapper tabela-aprovacoes-wrapper">
+
+          <table class="tabela-consulta-rms tabela-aprovacoes">
+
+            <thead>
+
+              <tr>
+
+                <th>RM</th>
+                <th>Regional</th>
+                <th>Localidade</th>
+                <th>Descrição</th>
+                <th>Valor</th>
+                <th>Materiais</th>
+                <th>Status</th>
+                <th>Criado por</th>
+                <th>Criado em</th>
+                <th>Tempo em Aberto</th>
+                <th>Aprovado/Reprovado em</th>
+                <th>Tempo até Aprovação</th>
+                <th>Ações</th>
+
+              </tr>
+
+            </thead>
+
+            <tbody id="tbodyAprovacoes">
+
+              <tr>
+
+                <td colspan="13">
+                  Carregando aprovações...
+                </td>
+
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </section>
+
+    </section>
+
+  </main>
+
+  <!-- =====================================
+       MODAL DE CONFIRMAÇÃO DE CADASTRO
+  ====================================== -->
+
+  <div
+    class="modal-overlay"
+    id="modalConfirmarSalvar"
+    aria-hidden="true"
+  >
+
+    <div class="modal-card">
+
+      <div class="modal-header">
+
+        <div>
+
+          <h2>
+            Confirmar Envio para Aprovação
+          </h2>
+
+          <span>
+            Verifique os dados antes de enviar a requisição para aprovação.
+          </span>
+
+        </div>
+
+        <button
+          type="button"
+          class="btn-fechar-modal"
+          id="btnFecharModal"
+        >
+
+          <i class="fa-solid fa-xmark"></i>
+
+        </button>
+
+      </div>
+
+      <div class="modal-body">
+
+        <div class="confirm-grid">
+
+          <div>
+
+            <span>
+              RM
+            </span>
+
+            <strong id="confirmRM">
+              -
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>
+              OM
+            </span>
+
+            <strong id="confirmOM">
+              -
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>
+              Localidade
+            </span>
+
+            <strong id="confirmLocalidade">
+              -
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>
+              Contrato
+            </span>
+
+            <strong id="confirmContrato">
+              -
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>
+              Materiais
+            </span>
+
+            <strong id="confirmTotalItens">
+              0
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>
+              Quantidade Total
+            </span>
+
+            <strong id="confirmQuantidadeTotal">
+              0
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>
+              Valor Total
+            </span>
+
+            <strong id="confirmValorTotal">
+              R$ 0,00
+            </strong>
+
+          </div>
+
+        </div>
+
+        <p class="modal-alerta">
+          Ao confirmar, a requisição será gravada como
+          <strong>Pendente de Aprovação</strong>
+          na coleção
+          <strong>requisicoes_materiais</strong>.
+        </p>
+
+      </div>
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          class="btn-cinza"
+          id="btnCancelarSalvar"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="btn-salvar"
+          id="btnConfirmarSalvar"
+        >
+
+          <i class="fa-solid fa-paper-plane"></i>
+
+          Enviar para Aprovação
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- =====================================
+       MODAL DE REPROVAÇÃO
+  ====================================== -->
+
+  <div
+    class="modal-overlay"
+    id="modalReprovarRM"
+    aria-hidden="true"
+  >
+
+    <div class="modal-card">
+
+      <div class="modal-header">
+
+        <div>
+
+          <h2>
+            Reprovar Requisição
+          </h2>
+
+          <span>
+            Informe o motivo da reprovação para manter o histórico da RM.
+          </span>
+
+        </div>
+
+        <button
+          type="button"
+          class="btn-fechar-modal"
+          id="btnFecharModalReprovar"
+        >
+
+          <i class="fa-solid fa-xmark"></i>
+
+        </button>
+
+      </div>
+
+      <div class="modal-body">
+
+        <div class="confirm-grid confirm-grid-reprovar">
+
+          <div>
+
+            <span>
+              RM
+            </span>
+
+            <strong id="reprovarRMNumero">
+              -
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>
+              Regional
+            </span>
+
+            <strong id="reprovarRMRegional">
+              -
+            </strong>
+
+          </div>
+
+          <div>
+
+            <span>
+              Valor
+            </span>
+
+            <strong id="reprovarRMValor">
+              R$ 0,00
+            </strong>
+
+          </div>
+
+        </div>
+
+        <div class="campo campo-full campo-modal">
+
+          <label for="motivoReprovacao">
+            Motivo da Reprovação
+          </label>
+
+          <textarea
+            id="motivoReprovacao"
+            placeholder="Descreva o motivo da reprovação..."
+          ></textarea>
+
+        </div>
+
+        <p class="modal-alerta modal-alerta-vermelho">
+          Ao confirmar, a RM será marcada como
+          <strong>Reprovada</strong>
+          e não entrará nos custos e relatórios de materiais aplicados.
+        </p>
+
+      </div>
+
+      <div class="modal-actions">
+
+        <button
+          type="button"
+          class="btn-cinza"
+          id="btnCancelarReprovar"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="btn-reprovar"
+          id="btnConfirmarReprovar"
+        >
+
+          <i class="fa-solid fa-xmark"></i>
+
+          Confirmar Reprovação
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- JS -->
+  <script
+    type="module"
+    src="./requisicao-materiais.js?v=010"
+  ></script>
+
+</body>
+
+</html>

@@ -1,5 +1,7 @@
 /* =====================================================
    ATUALIZAR CURVA S - PROTEGIDO COM AUTH GUARD
+   Arquivo: atualizar-curva-s.js
+   Versão: v002
 ===================================================== */
 
 import {
@@ -20,6 +22,16 @@ import {
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+/* =========================================
+   CONFIGURAÇÕES
+========================================= */
+
+const EMAILS_ADMIN_GERAL = [
+  "cicero.garcia@vale.com",
+  "c0706341@vale.com",
+  "ciceromgarcia@gmail.com"
+];
 
 /* =========================================
    USUÁRIO LOGADO
@@ -145,6 +157,14 @@ function normalizarTexto(valor) {
 
 }
 
+function emailNormalizado(valor) {
+
+  return String(valor || "")
+    .toLowerCase()
+    .trim();
+
+}
+
 /* =========================================
    PERFIL DO USUÁRIO
 ========================================= */
@@ -156,11 +176,92 @@ function usuarioEhAdministrador(usuario) {
     usuario?.perfil
   );
 
+  const email =
+  emailNormalizado(
+    usuario?.email ||
+    usuario?.emailAuth
+  );
+
   return (
     perfil === "administrador" ||
     perfil === "admin" ||
-    perfil === "administrator"
+    perfil === "adm" ||
+    perfil === "administrator" ||
+    EMAILS_ADMIN_GERAL.includes(email)
   );
+
+}
+
+function usuarioPodeEditarObras(usuario) {
+
+  if (usuarioEhAdministrador(usuario)) {
+    return true;
+  }
+
+  const perfil =
+  normalizarTexto(
+    usuario?.perfil
+  );
+
+  return [
+    "gestor",
+    "planejador",
+    "engenharia",
+    "editor"
+  ].includes(perfil);
+
+}
+
+function aplicarPermissoesNaTela() {
+
+  const podeEditar =
+  usuarioPodeEditarObras(
+    usuarioLogadoGlobal
+  );
+
+  if (btnSalvar) {
+    btnSalvar.disabled =
+    !podeEditar;
+
+    if (!podeEditar) {
+      btnSalvar.textContent =
+      "Sem permissão para salvar";
+    }
+  }
+
+  if (btnSalvarStatusObra) {
+    btnSalvarStatusObra.disabled =
+    !podeEditar;
+  }
+
+  if (btnReativarObra) {
+    btnReativarObra.disabled =
+    !podeEditar;
+  }
+
+  [
+    statusObra,
+    motivoParalisacao,
+    inputFisicoReal,
+    inputFinanceiroReal,
+    inputCentroCustoApropriacao,
+    selectTemAnomalia,
+    selectTipoAnomalia,
+    selectCriticidadeAnomalia,
+    selectImpactoAnomalia,
+    selectStatusAnomalia,
+    inputPrazoTratativaAnomalia,
+    inputDescricaoAnomalia,
+    inputAcaoCorretivaAnomalia,
+    inputResponsavelAnomalia
+  ]
+    .filter(Boolean)
+    .forEach((campo) => {
+
+      campo.disabled =
+      !podeEditar;
+
+    });
 
 }
 
@@ -211,6 +312,8 @@ function aplicarStatusVisualObra() {
 
     }
 
+    aplicarPermissoesNaTela();
+
     return;
 
   }
@@ -247,6 +350,8 @@ function aplicarStatusVisualObra() {
     : "Obra em andamento";
 
   }
+
+  aplicarPermissoesNaTela();
 
 }
 
@@ -708,11 +813,16 @@ function limparDetalhesAnomalia() {
 
 function definirCamposAnomaliaHabilitados(habilitar) {
 
+  const podeEditar =
+  usuarioPodeEditarObras(
+    usuarioLogadoGlobal
+  );
+
   obterCamposAnomalia()
     .forEach((campo) => {
 
       campo.disabled =
-      !habilitar;
+      !habilitar || !podeEditar;
 
     });
 
@@ -1035,7 +1145,8 @@ function obterClasseCriticidadeAnomalia(realizado) {
 
   if (
     criticidade === "alta" ||
-    criticidade === "critica"
+    criticidade === "critica" ||
+    criticidade === "crítica"
   ) {
     return "texto-vermelho";
   }
@@ -1309,13 +1420,18 @@ function limparCamposAtualizacao() {
   realizadoEmEdicaoId = null;
 
   if (btnSalvar) {
-    btnSalvar.textContent = "Salvar Atualização";
+    btnSalvar.textContent =
+    usuarioPodeEditarObras(usuarioLogadoGlobal)
+    ? "Salvar Atualização"
+    : "Sem permissão para salvar";
   }
 
   if (semanaSelecionadaLabel) {
     semanaSelecionadaLabel.textContent =
     "Nenhuma semana selecionada";
   }
+
+  aplicarPermissoesNaTela();
 
 }
 
@@ -1337,6 +1453,8 @@ function limparStatusObra() {
     statusObraLabel.textContent =
     "Nenhuma obra selecionada";
   }
+
+  aplicarPermissoesNaTela();
 
 }
 
@@ -1396,7 +1514,10 @@ function configurarStatusObra() {
 
       if (statusObra.value === "Paralisada") {
 
-        motivoParalisacao.disabled = false;
+        motivoParalisacao.disabled =
+        !usuarioPodeEditarObras(usuarioLogadoGlobal)
+        ? true
+        : false;
 
         motivoParalisacao.focus();
 
@@ -1433,6 +1554,16 @@ async function salvarStatusObra() {
 
     alert(
       "Usuário não autenticado. Faça login novamente."
+    );
+
+    return;
+
+  }
+
+  if (!usuarioPodeEditarObras(usuarioLogadoGlobal)) {
+
+    alert(
+      "Você não tem permissão para alterar o status da obra."
     );
 
     return;
@@ -1563,6 +1694,16 @@ async function reativarObra() {
 
     alert(
       "Usuário não autenticado. Faça login novamente."
+    );
+
+    return;
+
+  }
+
+  if (!usuarioPodeEditarObras(usuarioLogadoGlobal)) {
+
+    alert(
+      "Você não tem permissão para reativar obras."
     );
 
     return;
@@ -2425,6 +2566,16 @@ async function carregarPlanejamento() {
 
 function selecionarSemanaPendente(tr, item) {
 
+  if (!usuarioPodeEditarObras(usuarioLogadoGlobal)) {
+
+    alert(
+      "Você não tem permissão para lançar atualização da Curva S."
+    );
+
+    return;
+
+  }
+
   document
     .querySelectorAll("#tabelaSemanas tr")
     .forEach((linha) => {
@@ -2479,6 +2630,8 @@ function selecionarSemanaPendente(tr, item) {
   limparDetalhesAnomalia();
 
   atualizarEstadoAnomalia();
+
+  aplicarPermissoesNaTela();
 
   inputFisicoReal?.focus();
 
@@ -2578,6 +2731,8 @@ function prepararCorrecaoRealizado(
     "Salvar Correção";
   }
 
+  aplicarPermissoesNaTela();
+
   inputFisicoReal?.focus();
 
 }
@@ -2635,6 +2790,16 @@ async function salvarAtualizacaoRealizado() {
 
       alert(
         "Usuário não autenticado. Faça login novamente."
+      );
+
+      return;
+
+    }
+
+    if (!usuarioPodeEditarObras(usuarioLogadoGlobal)) {
+
+      alert(
+        "Você não tem permissão para salvar atualização da Curva S."
       );
 
       return;
@@ -3040,6 +3205,8 @@ document.addEventListener(
       limparStatusObra();
 
       configurarEventos();
+
+      aplicarPermissoesNaTela();
 
       await carregarObras();
 

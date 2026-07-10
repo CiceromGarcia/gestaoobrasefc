@@ -11,14 +11,16 @@
   >
 
   <title>
-    Painel Executivo de Obras
+    Sistema de Gerenciamento de Obras
   </title>
 
+  <!-- CSS -->
   <link
     rel="stylesheet"
-    href="./gestaodeobras.css"
+    href="./gestaodeobras.css?v=301"
   >
 
+  <!-- FONT AWESOME -->
   <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
@@ -440,6 +442,14 @@
                 Status
               </th>
 
+              <th
+                id="thAcoesAdmin"
+                class="coluna-acoes-admin"
+                data-admin-only
+              >
+                Ações
+              </th>
+
             </tr>
 
           </thead>
@@ -448,7 +458,7 @@
 
             <tr>
 
-              <td colspan="10">
+              <td colspan="11">
                 Carregando projetos...
               </td>
 
@@ -464,9 +474,304 @@
 
   </main>
 
+  <!-- =====================================
+       MODAL - EDITAR DATAS DA OBRA
+       EXCLUSIVO ADMINISTRADOR
+  ====================================== -->
+
+  <div
+    class="modal-overlay"
+    id="modalEditarDatas"
+    aria-hidden="true"
+    data-admin-only
+  >
+
+    <div class="modal-card modal-editar-datas">
+
+      <div class="modal-header">
+
+        <div>
+
+          <h2>
+            Editar Datas da Obra
+          </h2>
+
+          <span>
+            Alteração permitida somente para administrador
+          </span>
+
+        </div>
+
+        <button
+          type="button"
+          class="btn-fechar-modal"
+          id="btnFecharModalEdicaoDatas"
+          title="Fechar"
+        >
+
+          <i class="fa-solid fa-xmark"></i>
+
+        </button>
+
+      </div>
+
+      <form id="formEditarDatas">
+
+        <input
+          type="hidden"
+          id="editObraDocId"
+        >
+
+        <input
+          type="hidden"
+          id="editPossuiPlanejamento"
+        >
+
+        <input
+          type="hidden"
+          id="editPossuiRealizado"
+        >
+
+        <input
+          type="hidden"
+          id="editDataInicioAnterior"
+        >
+
+        <input
+          type="hidden"
+          id="editDataFimAnterior"
+        >
+
+        <div class="modal-grid">
+
+          <div class="campo-modal campo-modal-full">
+
+            <label for="editObraNome">
+              Obra
+            </label>
+
+            <input
+              type="text"
+              id="editObraNome"
+              readonly
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="editCodigoObra">
+              Código
+            </label>
+
+            <input
+              type="text"
+              id="editCodigoObra"
+              readonly
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="editStatusObra">
+              Status atual
+            </label>
+
+            <input
+              type="text"
+              id="editStatusObra"
+              readonly
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="editRegionalObra">
+              Regional
+            </label>
+
+            <input
+              type="text"
+              id="editRegionalObra"
+              readonly
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="editLocalidadeObra">
+              Localidade
+            </label>
+
+            <input
+              type="text"
+              id="editLocalidadeObra"
+              readonly
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="editDataInicioAtual">
+              Início atual
+            </label>
+
+            <input
+              type="text"
+              id="editDataInicioAtual"
+              readonly
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="editDataFimAtual">
+              Término atual
+            </label>
+
+            <input
+              type="text"
+              id="editDataFimAtual"
+              readonly
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="editDataInicio">
+              Nova data de início
+            </label>
+
+            <input
+              type="date"
+              id="editDataInicio"
+              required
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="editDataFim">
+              Nova data de término
+            </label>
+
+            <input
+              type="date"
+              id="editDataFim"
+              required
+            >
+
+          </div>
+
+          <div
+            class="campo-modal campo-modal-full"
+            id="boxAvisoImpactoCurva"
+          >
+
+            <div class="aviso-replanejamento">
+
+              <i class="fa-solid fa-triangle-exclamation"></i>
+
+              <div>
+
+                <strong>
+                  Impacto na Curva S
+                </strong>
+
+                <p id="avisoImpactoCurva">
+                  Se esta obra já possuir planejamento salvo, a alteração das datas poderá exigir revisão da Curva S.
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <div
+            class="campo-modal campo-modal-full"
+            id="boxAvisoRealizado"
+          >
+
+            <div class="aviso-realizado">
+
+              <i class="fa-solid fa-lock"></i>
+
+              <div>
+
+                <strong>
+                  Obra com realizado lançado
+                </strong>
+
+                <p id="avisoRealizado">
+                  Quando já existir avanço físico ou financeiro realizado, a alteração será registrada no histórico da obra.
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="campo-modal campo-modal-full">
+
+            <label for="editJustificativa">
+              Justificativa da alteração
+            </label>
+
+            <textarea
+              id="editJustificativa"
+              rows="4"
+              placeholder="Informe o motivo da alteração das datas da obra..."
+            ></textarea>
+
+          </div>
+
+        </div>
+
+        <div class="modal-actions">
+
+          <button
+            type="button"
+            class="btn-cancelar"
+            id="btnCancelarEdicaoDatas"
+          >
+
+            Cancelar
+
+          </button>
+
+          <button
+            type="submit"
+            class="btn-salvar"
+            id="btnSalvarEdicaoDatas"
+          >
+
+            <i class="fa-solid fa-floppy-disk"></i>
+
+            Salvar Alterações
+
+          </button>
+
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+  <!-- JS PRINCIPAL -->
   <script
     type="module"
-    src="./gestaodeobras.js"
+    src="./gestaodeobras.js?v=301"
   ></script>
 
 </body>

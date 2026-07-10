@@ -1,5 +1,7 @@
 /* =====================================================
    ADMIN PAINEL - USUÁRIOS DO SISTEMA
+   Arquivo: admin-painel.js
+   Versão: v002
 ===================================================== */
 
 import {
@@ -32,6 +34,12 @@ const COLECAO_USUARIOS =
 
 const TELA_DASHBOARD =
 "./dashboard.html";
+
+const EMAILS_ADMIN_GERAL = [
+  "cicero.garcia@vale.com",
+  "c0706341@vale.com",
+  "ciceromgarcia@gmail.com"
+];
 
 /* =====================================================
    VARIÁVEIS
@@ -96,6 +104,21 @@ buscarElemento([
   "usuarioStatus"
 ]);
 
+const selectRegional =
+buscarElemento([
+  "regionalUsuario",
+  "regional",
+  "selectRegional",
+  "usuarioRegional"
+]);
+
+const checkPodeAprovarRM =
+buscarElemento([
+  "podeAprovarRM",
+  "checkPodeAprovarRM",
+  "usuarioPodeAprovarRM"
+]);
+
 const checkAtivo =
 buscarElemento([
   "ativo",
@@ -133,6 +156,20 @@ buscarElemento([
   "filtroStatus",
   "selectFiltroStatus",
   "statusFiltro"
+]);
+
+const filtroRegional =
+buscarElemento([
+  "filtroRegional",
+  "selectFiltroRegional",
+  "regionalFiltro"
+]);
+
+const filtroAprovacaoRM =
+buscarElemento([
+  "filtroAprovacaoRM",
+  "selectFiltroAprovacaoRM",
+  "aprovacaoRMFiltro"
 ]);
 
 const btnAtualizar =
@@ -221,7 +258,7 @@ function formatarData(data) {
 }
 
 /* =====================================================
-   VERIFICAÇÕES
+   PERFIL / STATUS / PERMISSÕES
 ===================================================== */
 
 function usuarioEhAdministrador(usuario) {
@@ -231,10 +268,43 @@ function usuarioEhAdministrador(usuario) {
     usuario?.perfil
   );
 
+  const email =
+  emailNormalizado(
+    usuario?.email ||
+    usuario?.emailAuth
+  );
+
   return (
     perfil === "administrador" ||
     perfil === "administrator" ||
-    perfil === "admin"
+    perfil === "admin" ||
+    perfil === "adm" ||
+    EMAILS_ADMIN_GERAL.includes(email)
+  );
+
+}
+
+function usuarioEhAdministradorRegional(usuario) {
+
+  const perfil =
+  normalizarTexto(
+    usuario?.perfil
+  );
+
+  return (
+    perfil === "administradorregional" ||
+    perfil === "adminregional" ||
+    perfil === "aprovadorrm"
+  );
+
+}
+
+function usuarioPodeAprovarRM(usuario) {
+
+  return Boolean(
+    usuarioEhAdministrador(usuario) ||
+    usuarioEhAdministradorRegional(usuario) ||
+    usuario?.podeAprovarRM === true
   );
 
 }
@@ -301,6 +371,30 @@ function mesmoUsuarioLogado(usuario) {
 
 }
 
+function obterRotuloPerfil(perfil) {
+
+  const perfilNormalizado =
+  normalizarTexto(perfil);
+
+  const mapa = {
+    administrador: "Administrador Geral",
+    admin: "Administrador Geral",
+    adm: "Administrador Geral",
+    administradorregional: "Administrador Regional",
+    adminregional: "Administrador Regional",
+    aprovadorrm: "Aprovador RM",
+    gestor: "Gestor",
+    planejador: "Planejador",
+    engenharia: "Engenharia",
+    editor: "Editor",
+    usuario: "Usuário",
+    visualizador: "Visualizador"
+  };
+
+  return mapa[perfilNormalizado] || perfil || "-";
+
+}
+
 function obterRotuloStatus(usuario) {
 
   if (usuarioEstaAtivo(usuario)) {
@@ -327,6 +421,49 @@ function obterClasseStatus(usuario) {
 
   if (usuarioEstaPendente(usuario)) {
     return "status-pendente";
+  }
+
+  return "status-inativo";
+
+}
+
+function obterRegionalUsuario(usuario) {
+
+  return usuario?.regional || "";
+
+}
+
+function obterRotuloRegional(usuario) {
+
+  const regional =
+  obterRegionalUsuario(usuario);
+
+  return regional || "Sem Regional";
+
+}
+
+function obterRotuloAprovacaoRM(usuario) {
+
+  if (usuarioEhAdministrador(usuario)) {
+    return "Geral";
+  }
+
+  if (usuarioPodeAprovarRM(usuario)) {
+    return "Sim";
+  }
+
+  return "Não";
+
+}
+
+function obterClasseAprovacaoRM(usuario) {
+
+  if (usuarioEhAdministrador(usuario)) {
+    return "status-ativo";
+  }
+
+  if (usuarioPodeAprovarRM(usuario)) {
+    return "status-ativo";
   }
 
   return "status-inativo";
@@ -362,6 +499,26 @@ function criarCelulaStatus(usuario) {
 
   span.textContent =
   obterRotuloStatus(usuario);
+
+  td.appendChild(span);
+
+  return td;
+
+}
+
+function criarCelulaAprovacaoRM(usuario) {
+
+  const td =
+  document.createElement("td");
+
+  const span =
+  document.createElement("span");
+
+  span.className =
+  obterClasseAprovacaoRM(usuario);
+
+  span.textContent =
+  obterRotuloAprovacaoRM(usuario);
 
   td.appendChild(span);
 
@@ -458,7 +615,7 @@ function mostrarMensagemTabela(mensagem) {
   document.createElement("td");
 
   td.colSpan =
-  6;
+  8;
 
   td.textContent =
   mensagem;
@@ -479,8 +636,8 @@ function definirTextoBotaoSalvar(texto) {
     return;
   }
 
-  btnSalvar.textContent =
-  texto;
+  btnSalvar.innerHTML =
+  `<i class="fa-solid fa-floppy-disk"></i> ${texto}`;
 
 }
 
@@ -508,6 +665,14 @@ function limparFormulario() {
 
   if (selectStatus) {
     selectStatus.value = "ativo";
+  }
+
+  if (selectRegional) {
+    selectRegional.value = "";
+  }
+
+  if (checkPodeAprovarRM) {
+    checkPodeAprovarRM.checked = false;
   }
 
   if (checkAtivo) {
@@ -565,6 +730,12 @@ function validarFormulario() {
   const status =
   obterStatusFormulario();
 
+  const regional =
+  selectRegional?.value || "";
+
+  const podeAprovarRM =
+  Boolean(checkPodeAprovarRM?.checked);
+
   if (!nome) {
 
     alert(
@@ -601,11 +772,50 @@ function validarFormulario() {
 
   }
 
+  if (
+    (
+      perfil === "administradorRegional" ||
+      podeAprovarRM === true
+    ) &&
+    !regional
+  ) {
+
+    alert(
+      "Para aprovar RM por Regional, selecione a Regional do usuário."
+    );
+
+    selectRegional?.focus();
+
+    return null;
+
+  }
+
+  if (
+    perfil !== "administrador" &&
+    (
+      perfil === "administradorRegional" ||
+      podeAprovarRM === true
+    ) &&
+    regional === "Todas"
+  ) {
+
+    alert(
+      "Administrador Regional não pode usar a opção Todas. Selecione uma Regional específica."
+    );
+
+    selectRegional?.focus();
+
+    return null;
+
+  }
+
   return {
     nome,
     email,
     perfil,
-    status
+    status,
+    regional,
+    podeAprovarRM
   };
 
 }
@@ -912,6 +1122,12 @@ function obterUsuariosFiltrados() {
     filtroStatus?.value
   );
 
+  const regionalFiltro =
+  filtroRegional?.value || "todos";
+
+  const aprovacaoRMFiltro =
+  filtroAprovacaoRM?.value || "todos";
+
   if (
     perfilFiltro &&
     perfilFiltro !== "todos" &&
@@ -951,6 +1167,44 @@ function obterUsuariosFiltrados() {
 
       return normalizarTexto(usuario.status) ===
       statusFiltro;
+
+    });
+
+  }
+
+  if (
+    regionalFiltro &&
+    regionalFiltro !== "todos" &&
+    regionalFiltro !== "todas"
+  ) {
+
+    lista =
+    lista.filter((usuario) => {
+
+      return obterRegionalUsuario(usuario) ===
+      regionalFiltro;
+
+    });
+
+  }
+
+  if (aprovacaoRMFiltro === "sim") {
+
+    lista =
+    lista.filter((usuario) => {
+
+      return usuarioPodeAprovarRM(usuario);
+
+    });
+
+  }
+
+  if (aprovacaoRMFiltro === "nao") {
+
+    lista =
+    lista.filter((usuario) => {
+
+      return !usuarioPodeAprovarRM(usuario);
 
     });
 
@@ -1007,7 +1261,19 @@ function renderizarUsuarios() {
     );
 
     tr.appendChild(
-      criarCelulaTexto(usuario.perfil)
+      criarCelulaTexto(
+        obterRotuloPerfil(usuario.perfil)
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        obterRotuloRegional(usuario)
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaAprovacaoRM(usuario)
     );
 
     tr.appendChild(
@@ -1080,6 +1346,16 @@ function editarUsuario(id) {
 
   }
 
+  if (selectRegional) {
+    selectRegional.value =
+    usuario.regional || "";
+  }
+
+  if (checkPodeAprovarRM) {
+    checkPodeAprovarRM.checked =
+    Boolean(usuario.podeAprovarRM);
+  }
+
   if (checkAtivo) {
 
     checkAtivo.checked =
@@ -1145,6 +1421,15 @@ async function aprovarUsuario(id) {
       {
         status:
         "ativo",
+
+        perfil:
+        usuario.perfil || "usuario",
+
+        regional:
+        usuario.regional || "",
+
+        podeAprovarRM:
+        Boolean(usuario.podeAprovarRM),
 
         aprovadoEm:
         serverTimestamp(),
@@ -1360,6 +1645,63 @@ async function excluirUsuario(id) {
 }
 
 /* =====================================================
+   AJUSTES AUTOMÁTICOS DO FORMULÁRIO
+===================================================== */
+
+function configurarAjustesFormulario() {
+
+  if (selectPerfil) {
+
+    selectPerfil.addEventListener(
+      "change",
+      () => {
+
+        const perfil =
+        selectPerfil.value;
+
+        if (perfil === "administradorRegional") {
+
+          if (checkPodeAprovarRM) {
+            checkPodeAprovarRM.checked = true;
+          }
+
+          if (selectRegional && !selectRegional.value) {
+            selectRegional.focus();
+          }
+
+        }
+
+        if (perfil === "administrador") {
+
+          if (checkPodeAprovarRM) {
+            checkPodeAprovarRM.checked = true;
+          }
+
+          if (selectRegional && !selectRegional.value) {
+            selectRegional.value = "Todas";
+          }
+
+        }
+
+        if (
+          perfil === "usuario" ||
+          perfil === "visualizador"
+        ) {
+
+          if (checkPodeAprovarRM) {
+            checkPodeAprovarRM.checked = false;
+          }
+
+        }
+
+      }
+    );
+
+  }
+
+}
+
+/* =====================================================
    VOLTAR DASHBOARD
 ===================================================== */
 
@@ -1442,6 +1784,18 @@ function configurarEventos() {
     renderizarUsuarios
   );
 
+  filtroRegional?.addEventListener(
+    "change",
+    renderizarUsuarios
+  );
+
+  filtroAprovacaoRM?.addEventListener(
+    "change",
+    renderizarUsuarios
+  );
+
+  configurarAjustesFormulario();
+
   configurarBotaoVoltar();
 
   configurarBotaoSair();
@@ -1464,6 +1818,8 @@ document.addEventListener(
       });
 
       configurarEventos();
+
+      limparFormulario();
 
       await carregarUsuarios();
 

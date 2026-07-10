@@ -1,5 +1,7 @@
 /* =====================================================
    AUTH GUARD - PROTEÇÃO DE ROTAS E PERMISSÕES
+   Arquivo: authGuard.js
+   Versão: v002
 ===================================================== */
 
 import {
@@ -30,6 +32,12 @@ const PAGINA_LOGIN =
 const PAGINA_DASHBOARD =
 "./dashboard.html";
 
+const EMAILS_ADMIN_GERAL = [
+  "cicero.garcia@vale.com",
+  "c0706341@vale.com",
+  "ciceromgarcia@gmail.com"
+];
+
 /* =====================================================
    UTILITÁRIOS
 ===================================================== */
@@ -41,6 +49,14 @@ function normalizarTexto(valor) {
     .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
+
+}
+
+function emailNormalizado(valor) {
+
+  return String(valor || "")
+    .toLowerCase()
+    .trim();
 
 }
 
@@ -61,8 +77,55 @@ function limparSessaoLocal() {
   localStorage.removeItem("cargo");
   localStorage.removeItem("nivel");
   localStorage.removeItem("permissao");
+  localStorage.removeItem("regional");
+  localStorage.removeItem("podeAprovarRM");
 
   sessionStorage.removeItem("logoutManual");
+
+}
+
+function salvarSessaoLocal(usuario) {
+
+  try {
+
+    localStorage.setItem(
+      "uid",
+      usuario.uid || ""
+    );
+
+    localStorage.setItem(
+      "email",
+      usuario.email || usuario.emailAuth || ""
+    );
+
+    localStorage.setItem(
+      "nome",
+      usuario.nome || ""
+    );
+
+    localStorage.setItem(
+      "perfil",
+      usuario.perfil || ""
+    );
+
+    localStorage.setItem(
+      "regional",
+      usuario.regional || ""
+    );
+
+    localStorage.setItem(
+      "podeAprovarRM",
+      usuarioPodeAprovarRM(usuario) ? "sim" : "nao"
+    );
+
+  } catch (error) {
+
+    console.warn(
+      "Não foi possível salvar sessão local:",
+      error
+    );
+
+  }
 
 }
 
@@ -125,7 +188,30 @@ function usuarioEstaPendente(usuario) {
 
 }
 
-function usuarioEhAdministrador(usuario) {
+export function usuarioEhAdministrador(usuario) {
+
+  const perfil =
+  normalizarTexto(
+    usuario?.perfil
+  );
+
+  const email =
+  emailNormalizado(
+    usuario?.email ||
+    usuario?.emailAuth
+  );
+
+  return (
+    perfil === "administrador" ||
+    perfil === "admin" ||
+    perfil === "adm" ||
+    perfil === "administrator" ||
+    EMAILS_ADMIN_GERAL.includes(email)
+  );
+
+}
+
+export function usuarioEhAdministradorRegional(usuario) {
 
   const perfil =
   normalizarTexto(
@@ -133,10 +219,40 @@ function usuarioEhAdministrador(usuario) {
   );
 
   return (
-    perfil === "administrador" ||
-    perfil === "admin" ||
-    perfil === "administrator"
+    perfil === "administradorregional" ||
+    perfil === "adminregional" ||
+    perfil === "aprovadorrm"
   );
+
+}
+
+export function usuarioPodeAprovarRM(usuario) {
+
+  return Boolean(
+    usuarioEhAdministrador(usuario) ||
+    usuarioEhAdministradorRegional(usuario) ||
+    usuario?.podeAprovarRM === true
+  );
+
+}
+
+export function usuarioPodeEditarObras(usuario) {
+
+  if (usuarioEhAdministrador(usuario)) {
+    return true;
+  }
+
+  const perfil =
+  normalizarTexto(
+    usuario?.perfil
+  );
+
+  return [
+    "gestor",
+    "planejador",
+    "engenharia",
+    "editor"
+  ].includes(perfil);
 
 }
 
@@ -192,7 +308,9 @@ async function bloquearAcesso(mensagem) {
 export function protegerPagina(opcoes = {}) {
 
   const {
-    adminOnly = false
+    adminOnly = false,
+    editorOnly = false,
+    aprovacaoOnly = false
   } = opcoes;
 
   return new Promise((resolve) => {
@@ -245,6 +363,7 @@ export function protegerPagina(opcoes = {}) {
         const usuarioSistema = {
           uid: user.uid,
           emailAuth: user.email,
+          email: usuarioSnap.data().email || user.email || "",
           ...usuarioSnap.data()
         };
 
@@ -275,8 +394,42 @@ export function protegerPagina(opcoes = {}) {
 
         }
 
+        if (
+          editorOnly &&
+          !usuarioPodeEditarObras(usuarioSistema)
+        ) {
+
+          alert(
+            "Acesso permitido apenas para usuários com permissão de edição de obras."
+          );
+
+          redirecionarDashboard();
+
+          return;
+
+        }
+
+        if (
+          aprovacaoOnly &&
+          !usuarioPodeAprovarRM(usuarioSistema)
+        ) {
+
+          alert(
+            "Acesso permitido apenas para aprovadores de RM."
+          );
+
+          redirecionarDashboard();
+
+          return;
+
+        }
+
         window.usuarioSistema =
         usuarioSistema;
+
+        salvarSessaoLocal(
+          usuarioSistema
+        );
 
         aplicarPermissoesVisuais(
           usuarioSistema
@@ -318,19 +471,58 @@ function aplicarPermissoesVisuais(usuario) {
 
   elementosAdmin.forEach((elemento) => {
 
-    if (!usuarioEhAdministrador(usuario)) {
-
-      elemento.style.display =
-      "none";
-
-    } else {
-
-      elemento.style.display =
-      "";
-
-    }
+    elemento.style.display =
+    usuarioEhAdministrador(usuario)
+    ? ""
+    : "none";
 
   });
+
+  const elementosAprovacao =
+  document.querySelectorAll(
+    "[data-aprovacao-only]"
+  );
+
+  elementosAprovacao.forEach((elemento) => {
+
+    elemento.style.display =
+    usuarioPodeAprovarRM(usuario)
+    ? ""
+    : "none";
+
+  });
+
+  const elementosEditor =
+  document.querySelectorAll(
+    "[data-editor-only]"
+  );
+
+  elementosEditor.forEach((elemento) => {
+
+    elemento.style.display =
+    usuarioPodeEditarObras(usuario)
+    ? ""
+    : "none";
+
+  });
+
+  if (usuarioEhAdministrador(usuario)) {
+    document.body.classList.add("usuario-admin");
+  } else {
+    document.body.classList.remove("usuario-admin");
+  }
+
+  if (usuarioPodeAprovarRM(usuario)) {
+    document.body.classList.add("usuario-aprovador-rm");
+  } else {
+    document.body.classList.remove("usuario-aprovador-rm");
+  }
+
+  if (usuarioPodeEditarObras(usuario)) {
+    document.body.classList.add("usuario-editor-obras");
+  } else {
+    document.body.classList.remove("usuario-editor-obras");
+  }
 
 }
 

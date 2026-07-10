@@ -203,6 +203,9 @@ const mapaRegional = {
   "auzilandia": "Regional 1",
   "auzilândia": "Regional 1",
 
+    "Mineirinho": "Regional 1",
+  "mineirinho": "Regional 1",
+
   "vila pindare": "Regional 1",
   "vila pindaré": "Regional 1",
 

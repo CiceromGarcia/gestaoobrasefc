@@ -1,4 +1,223 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "planejamentoCurvaS",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "obraId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "semana",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "planejamentoCurvaS",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "obra",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "semana",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "planejamentoCurvaS",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "nomeObra",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "semana",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "planejamentoCurvaS",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "obraNome",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "semana",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "realizadoCurvaS",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "obraId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "semana",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "realizadoCurvaS",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "obra",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "semana",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "realizadoCurvaS",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "nomeObra",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "semana",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "realizadoCurvaS",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "obraNome",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "semana",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "requisicoes_materiais",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "statusAprovacao",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "requisicoes_materiais",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "regional",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "statusAprovacao",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "requisicoes_materiais",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "criadoPorUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "requisicoes_materiais",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "criadoPorUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "statusAprovacao",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "requisicoes_materiais",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "regional",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "usuariosSistema",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "usuariosSistema",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "perfil",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

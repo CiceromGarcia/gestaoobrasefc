@@ -1,5 +1,7 @@
 /* =====================================================
    DASHBOARD - PAINEL EXECUTIVO DE OBRAS
+   Arquivo: dashboard.js
+   Versão: v010
 ===================================================== */
 
 import {
@@ -8,7 +10,8 @@ import {
 
 import {
   protegerPagina,
-  sairDoSistema
+  sairDoSistema,
+  usuarioEhAdministrador as usuarioEhAdministradorSistema
 } from "./authGuard.js";
 
 import {
@@ -31,6 +34,18 @@ if (
   ChartJS.register(
     window.ChartDataLabels
   );
+
+  ChartJS.defaults.font.family =
+  "'Segoe UI', sans-serif";
+
+  ChartJS.defaults.font.size =
+  11;
+
+  ChartJS.defaults.font.weight =
+  "600";
+
+  ChartJS.defaults.color =
+  "#333";
 
 }
 
@@ -78,6 +93,18 @@ document.getElementById("detalhamentoPlanejamento");
 const btnExportarPDF =
 document.getElementById("btnExportarPDF");
 
+const cardEmAndamento =
+document.getElementById("cardEmAndamento");
+
+const cardConcluidas =
+document.getElementById("cardConcluidas");
+
+const cardPlanejadas =
+document.getElementById("cardPlanejadas");
+
+const cardParalisadas =
+document.getElementById("cardParalisadas");
+
 /* =====================================================
    REGIONAIS
 ===================================================== */
@@ -85,21 +112,33 @@ document.getElementById("btnExportarPDF");
 const regionaisMap = {
 
   "Arari": "Regional 1",
+
   "Vitória do Mearim": "Regional 1",
+
   "Santa Inês": "Regional 1",
+
   "Alto Alegre": "Regional 1",
+
   "Alto Alegre do Pindaré": "Regional 1",
+
   "Altamira": "Regional 1",
+
   "Auzilândia": "Regional 1",
+
   "Vila Pindaré": "Regional 1",
+
   "Mineirinho": "Regional 1",
 
   "Açailândia": "Regional 2",
+
   "Nova Vida": "Regional 2",
 
   "Marabá": "Regional 3",
+
   "São Pedro d’Água Branca": "Regional 3",
+
   "São Pedro d'Água Branca": "Regional 3",
+
   "Itainópolis": "Regional 3",
 
   "São Luís": "São Luís"
@@ -161,22 +200,8 @@ function normalizarStatus(valor) {
 
 function usuarioEhAdministrador(usuario) {
 
-  const perfil =
-  normalizarTexto(
-    usuario?.perfil ||
-    usuario?.tipoUsuario ||
-    usuario?.nivelAcesso ||
-    usuario?.role ||
-    usuario?.acesso ||
-    ""
-  );
-
-  return (
-    perfil === "administrador" ||
-    perfil === "admin" ||
-    perfil === "administrator" ||
-    usuario?.admin === true ||
-    usuario?.isAdmin === true
+  return usuarioEhAdministradorSistema(
+    usuario
   );
 
 }
@@ -274,7 +299,11 @@ function converterValor(valor) {
   }
 
   if (typeof valor === "number") {
-    return valor;
+
+    return Number.isFinite(valor)
+    ? valor
+    : 0;
+
   }
 
   let texto =
@@ -316,7 +345,11 @@ function converterPercentual(valor) {
   }
 
   if (typeof valor === "number") {
-    return valor;
+
+    return Number.isFinite(valor)
+    ? valor
+    : 0;
+
   }
 
   let texto =
@@ -341,40 +374,22 @@ function converterPercentual(valor) {
 
 }
 
-function formatarData(data) {
+function financeiroParaPercentual(
+  valorFinanceiro,
+  valorBase
+) {
 
-  if (!data) {
-    return "-";
+  const base =
+  Number(valorBase || 0);
+
+  if (base <= 0) {
+    return 0;
   }
 
-  let dt;
-
-  if (data?.toDate) {
-
-    dt =
-    data.toDate();
-
-  } else if (data?.seconds) {
-
-    dt =
-    new Date(
-      data.seconds * 1000
-    );
-
-  } else {
-
-    dt =
-    new Date(data);
-
-  }
-
-  if (isNaN(dt.getTime())) {
-    return "-";
-  }
-
-  return dt.toLocaleDateString(
-    "pt-BR"
-  );
+  return (
+    Number(valorFinanceiro || 0) /
+    base
+  ) * 100;
 
 }
 
@@ -421,49 +436,47 @@ function converterDataBRParaDate(valor) {
 
 }
 
-function extrairDatasPeriodo(periodo) {
+function converterDataISOParaDate(valor) {
 
-  if (!periodo) {
-
-    return {
-      inicio: null,
-      fim: null
-    };
-
+  if (!valor) {
+    return null;
   }
 
   const texto =
-  String(periodo)
-    .replace(/\s+/g, " ")
-    .trim();
+  String(valor)
+    .trim()
+    .split("T")[0];
 
   const match =
   texto.match(
-    /(\d{2}\/\d{2}\/\d{4})\s*a\s*(\d{2}\/\d{2}\/\d{4})/i
+    /^(\d{4})-(\d{2})-(\d{2})$/
   );
 
   if (!match) {
-
-    return {
-      inicio: null,
-      fim: null
-    };
-
+    return null;
   }
 
-  return {
+  const ano =
+  Number(match[1]);
 
-    inicio:
-    converterDataBRParaDate(
-      match[1]
-    ),
+  const mes =
+  Number(match[2]) - 1;
 
-    fim:
-    converterDataBRParaDate(
-      match[2]
-    )
+  const dia =
+  Number(match[3]);
 
-  };
+  const data =
+  new Date(
+    ano,
+    mes,
+    dia
+  );
+
+  if (isNaN(data.getTime())) {
+    return null;
+  }
+
+  return data;
 
 }
 
@@ -493,11 +506,25 @@ function obterDataGenerica(valor) {
 
   }
 
-  if (
-    typeof valor === "string" &&
-    valor.includes("/")
-  ) {
-    return converterDataBRParaDate(valor);
+  if (typeof valor === "string") {
+
+    const texto =
+    valor.trim();
+
+    if (!texto) {
+      return null;
+    }
+
+    if (texto.includes("/")) {
+      return converterDataBRParaDate(texto);
+    }
+
+    if (
+      /^\d{4}-\d{2}-\d{2}/.test(texto)
+    ) {
+      return converterDataISOParaDate(texto);
+    }
+
   }
 
   const data =
@@ -508,6 +535,123 @@ function obterDataGenerica(valor) {
   }
 
   return data;
+
+}
+
+function formatarData(data) {
+
+  const dt =
+  obterDataGenerica(data);
+
+  if (!dt) {
+    return "-";
+  }
+
+  return dt.toLocaleDateString(
+    "pt-BR"
+  );
+
+}
+
+function obterDataInicioObra(dados) {
+
+  return obterDataGenerica(
+    dados.dataInicio ||
+    dados.dataInicioPrevisto ||
+    dados.inicioPrevisto ||
+    dados.inicio ||
+    dados.dataInicioObra ||
+    dados.dataInicial ||
+    dados.inicioObra ||
+    ""
+  );
+
+}
+
+function obterDataFimObra(dados) {
+
+  return obterDataGenerica(
+    dados.dataFim ||
+    dados.dataTerminoPrevisto ||
+    dados.dataFimPrevisto ||
+    dados.dataTermino ||
+    dados.terminoPrevisto ||
+    dados.termino ||
+    dados.fim ||
+    dados.dataFimObra ||
+    dados.dataFinal ||
+    dados.terminoObra ||
+    ""
+  );
+
+}
+
+function extrairDatasPeriodo(periodo) {
+
+  if (!periodo) {
+
+    return {
+      inicio: null,
+      fim: null
+    };
+
+  }
+
+  const texto =
+  String(periodo)
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const matchBR =
+  texto.match(
+    /(\d{2}\/\d{2}\/\d{4})\s*a\s*(\d{2}\/\d{2}\/\d{4})/i
+  );
+
+  if (matchBR) {
+
+    return {
+
+      inicio:
+      converterDataBRParaDate(
+        matchBR[1]
+      ),
+
+      fim:
+      converterDataBRParaDate(
+        matchBR[2]
+      )
+
+    };
+
+  }
+
+  const matchISO =
+  texto.match(
+    /(\d{4}-\d{2}-\d{2})\s*a\s*(\d{4}-\d{2}-\d{2})/i
+  );
+
+  if (matchISO) {
+
+    return {
+
+      inicio:
+      converterDataISOParaDate(
+        matchISO[1]
+      ),
+
+      fim:
+      converterDataISOParaDate(
+        matchISO[2]
+      )
+
+    };
+
+  }
+
+  return {
+    inicio: null,
+    fim: null
+  };
 
 }
 
@@ -844,6 +988,19 @@ function configurarMenuAtivo() {
       const href =
       link.getAttribute("href") || "";
 
+      if (
+        !href ||
+        href === "#"
+      ) {
+
+        link.classList.remove(
+          "active"
+        );
+
+        return;
+
+      }
+
       const paginaLink =
       href
         .replace("./", "")
@@ -869,7 +1026,8 @@ function criarCelulaTexto(texto, classe = "") {
   document.createElement("td");
 
   if (classe) {
-    td.className = classe;
+    td.className =
+    classe;
   }
 
   td.textContent =
@@ -885,7 +1043,8 @@ function criarCelulaHTMLSeguro(texto, classe = "") {
   document.createElement("td");
 
   if (classe) {
-    td.className = classe;
+    td.className =
+    classe;
   }
 
   td.textContent =
@@ -901,7 +1060,8 @@ function mostrarMensagemTabela(tbody, mensagem, colunas) {
     return;
   }
 
-  tbody.innerHTML = "";
+  tbody.innerHTML =
+  "";
 
   const tr =
   document.createElement("tr");
@@ -931,12 +1091,15 @@ function limparSelect(select, textoPadrao) {
     return;
   }
 
-  select.innerHTML = "";
+  select.innerHTML =
+  "";
 
   const option =
   document.createElement("option");
 
-  option.value = "";
+  option.value =
+  "";
+
   option.textContent =
   textoPadrao;
 
@@ -960,6 +1123,73 @@ function adicionarOption(select, valor, texto = valor) {
   texto;
 
   select.appendChild(option);
+
+}
+
+/* =====================================================
+   LIMPAR DETALHAMENTO
+===================================================== */
+
+function limparDetalhamento() {
+
+  if (detalhamentoPlanejamento) {
+    detalhamentoPlanejamento.style.display =
+    "none";
+  }
+
+  if (tbodyPlanejado) {
+
+    mostrarMensagemTabela(
+      tbodyPlanejado,
+      "Selecione uma obra para visualizar o acompanhamento.",
+      6
+    );
+
+  }
+
+  if (graficoFisico) {
+
+    graficoFisico.destroy();
+
+    graficoFisico =
+    null;
+
+  }
+
+  if (graficoFinanceiro) {
+
+    graficoFinanceiro.destroy();
+
+    graficoFinanceiro =
+    null;
+
+  }
+
+}
+
+/* =====================================================
+   REDIMENSIONAR GRÁFICOS
+===================================================== */
+
+function redimensionarGraficos() {
+
+  window.requestAnimationFrame(() => {
+
+    setTimeout(() => {
+
+      if (graficoFisico) {
+        graficoFisico.resize();
+        graficoFisico.update();
+      }
+
+      if (graficoFinanceiro) {
+        graficoFinanceiro.resize();
+        graficoFinanceiro.update();
+      }
+
+    }, 150);
+
+  });
 
 }
 
@@ -995,6 +1225,8 @@ function configurarMenuLateral() {
         main.classList.toggle(
           "expanded"
         );
+
+        redimensionarGraficos();
 
       }
     );
@@ -1059,12 +1291,8 @@ async function carregarColecao(nomeColecao) {
   );
 
   return snapshot.docs.map((documento) => ({
-    firebaseId:
-    documento.id,
-
-    docId:
-    documento.id,
-
+    firebaseId: documento.id,
+    docId: documento.id,
     ...documento.data()
   }));
 
@@ -1079,6 +1307,8 @@ async function carregarObrasFirebase() {
   try {
 
     obras = [];
+
+    limparDetalhamento();
 
     if (tbodyObras) {
 
@@ -1099,7 +1329,8 @@ async function carregarObrasFirebase() {
     realizadosBanco =
     await carregarColecao("realizadoCurvaS");
 
-    let contadorId = 1;
+    let contadorId =
+    1;
 
     for (const dados of obrasBanco) {
 
@@ -1116,6 +1347,16 @@ async function carregarObrasFirebase() {
       dados.obraNome ||
       dados.obra ||
       "-";
+
+      const dataInicioObraPrincipal =
+      obterDataInicioObra(
+        dados
+      );
+
+      const dataFimObraPrincipal =
+      obterDataFimObra(
+        dados
+      );
 
       const obraBase = {
 
@@ -1173,10 +1414,6 @@ async function carregarObrasFirebase() {
 
       };
 
-      /* =====================================
-         PLANEJAMENTO DA OBRA
-      ===================================== */
-
       let planejamentoListaResumo =
       planejamentosBanco.filter((item) =>
         registroPertenceAObra(
@@ -1190,14 +1427,23 @@ async function carregarObrasFirebase() {
         planejamentoListaResumo
       );
 
-      let dataInicioPlanejamento = null;
-      let dataFimPlanejamento = null;
+      let dataInicioPlanejamento =
+      null;
 
-      let acumuladoFisicoPlanejadoResumo = 0;
-      let acumuladoFinanceiroPlanejadoResumo = 0;
+      let dataFimPlanejamento =
+      null;
 
-      let planejadoFisicoFinal = 0;
-      let planejadoFinanceiro = 0;
+      let acumuladoFisicoPlanejadoResumo =
+      0;
+
+      let acumuladoFinanceiroPlanejadoResumo =
+      0;
+
+      let planejadoFisicoFinal =
+      0;
+
+      let planejadoFinanceiro =
+      0;
 
       const planejadoFisicoPorSemana =
       new Map();
@@ -1286,9 +1532,13 @@ async function carregarObrasFirebase() {
 
       });
 
-      /* =====================================
-         REALIZADO DA OBRA
-      ===================================== */
+      const dataInicioExibicao =
+      dataInicioObraPrincipal ||
+      dataInicioPlanejamento;
+
+      const dataFimExibicao =
+      dataFimObraPrincipal ||
+      dataFimPlanejamento;
 
       let realizadoListaResumo =
       realizadosBanco.filter((item) =>
@@ -1377,8 +1627,29 @@ async function carregarObrasFirebase() {
         fase:
         statusCalculado,
 
+        dataInicioObra:
+        dataInicioExibicao,
+
+        dataFimObra:
+        dataFimExibicao,
+
+        dataInicioPlanejamento:
+        dataInicioExibicao,
+
+        dataFimPlanejamento:
+        dataFimExibicao,
+
+        dataInicioCurvaS:
         dataInicioPlanejamento,
-        dataFimPlanejamento
+
+        dataFimCurvaS:
+        dataFimPlanejamento,
+
+        replanejamentoNecessario:
+        Boolean(
+          dados.replanejamentoNecessario ||
+          dados.reprogramacaoNecessaria
+        )
 
       });
 
@@ -1387,6 +1658,7 @@ async function carregarObrasFirebase() {
     carregarRegionais();
     carregarLocalidades();
     carregarFiltroObras();
+    atualizarCardsStatus();
     renderTabela();
 
   } catch (error) {
@@ -1451,7 +1723,10 @@ function carregarRegionais() {
   });
 
   if (regionais.includes(valorAtual)) {
-    filtroRegional.value = valorAtual;
+
+    filtroRegional.value =
+    valorAtual;
+
   }
 
 }
@@ -1514,7 +1789,10 @@ function carregarLocalidades() {
   });
 
   if (localidades.includes(valorAtual)) {
-    filtroLocalidade.value = valorAtual;
+
+    filtroLocalidade.value =
+    valorAtual;
+
   }
 
 }
@@ -1580,10 +1858,15 @@ function carregarFiltroObras() {
     });
 
   const obrasPermitidas =
-  lista.map((obra) => obra.nomeProjeto);
+  lista.map((obra) =>
+    obra.nomeProjeto
+  );
 
   if (obrasPermitidas.includes(valorAtual)) {
-    filtroObra.value = valorAtual;
+
+    filtroObra.value =
+    valorAtual;
+
   }
 
 }
@@ -1592,7 +1875,7 @@ function carregarFiltroObras() {
    FILTRAR OBRAS
 ===================================================== */
 
-function obterObrasFiltradas() {
+function obterObrasFiltradas(aplicarStatus = true) {
 
   let lista =
   [...obras];
@@ -1627,7 +1910,10 @@ function obterObrasFiltradas() {
 
   }
 
-  if (filtroStatus?.value) {
+  if (
+    aplicarStatus &&
+    filtroStatus?.value
+  ) {
 
     const statusFiltro =
     normalizarStatus(
@@ -1650,19 +1936,85 @@ function obterObrasFiltradas() {
 }
 
 /* =====================================================
+   CARDS DE STATUS
+===================================================== */
+
+function atualizarCardsStatus() {
+
+  const lista =
+  obterObrasFiltradas(false);
+
+  const total = {
+    andamento: 0,
+    concluidas: 0,
+    planejadas: 0,
+    paralisadas: 0
+  };
+
+  lista.forEach((obra) => {
+
+    const status =
+    normalizarStatus(
+      obra.fase
+    );
+
+    if (status === "em andamento") {
+      total.andamento++;
+    }
+
+    if (status === "concluida") {
+      total.concluidas++;
+    }
+
+    if (status === "planejada") {
+      total.planejadas++;
+    }
+
+    if (status === "paralisada") {
+      total.paralisadas++;
+    }
+
+  });
+
+  if (cardEmAndamento) {
+    cardEmAndamento.textContent =
+    total.andamento;
+  }
+
+  if (cardConcluidas) {
+    cardConcluidas.textContent =
+    total.concluidas;
+  }
+
+  if (cardPlanejadas) {
+    cardPlanejadas.textContent =
+    total.planejadas;
+  }
+
+  if (cardParalisadas) {
+    cardParalisadas.textContent =
+    total.paralisadas;
+  }
+
+}
+
+/* =====================================================
    RENDER TABELA DE OBRAS
 ===================================================== */
 
 function renderTabela() {
 
+  atualizarCardsStatus();
+
   if (!tbodyObras) {
     return;
   }
 
-  tbodyObras.innerHTML = "";
+  tbodyObras.innerHTML =
+  "";
 
   const lista =
-  obterObrasFiltradas();
+  obterObrasFiltradas(true);
 
   if (lista.length === 0) {
 
@@ -1671,6 +2023,8 @@ function renderTabela() {
       "Nenhuma obra encontrada.",
       11
     );
+
+    limparDetalhamento();
 
     return;
 
@@ -1722,7 +2076,7 @@ function renderTabela() {
     tr.appendChild(
       criarCelulaTexto(
         formatarData(
-          item.dataInicioPlanejamento
+          item.dataInicioObra
         )
       )
     );
@@ -1730,7 +2084,7 @@ function renderTabela() {
     tr.appendChild(
       criarCelulaTexto(
         formatarData(
-          item.dataFimPlanejamento
+          item.dataFimObra
         )
       )
     );
@@ -1775,7 +2129,9 @@ function renderTabela() {
       )
     );
 
-    tbodyObras.appendChild(tr);
+    tbodyObras.appendChild(
+      tr
+    );
 
   });
 
@@ -1870,10 +2226,14 @@ async function abrirPlanejamento(idProjeto) {
   const semanasPlanejadas =
   new Set();
 
-  let acumuladoFisicoPlanejado = 0;
-  let acumuladoFinanceiroPlanejado = 0;
+  let acumuladoFisicoPlanejado =
+  0;
 
-  const planejadoTratado = [];
+  let acumuladoFinanceiroPlanejado =
+  0;
+
+  const planejadoTratado =
+  [];
 
   planejadoLista.forEach((item) => {
 
@@ -1932,7 +2292,8 @@ async function abrirPlanejamento(idProjeto) {
 
   });
 
-  const realizadoTratado = [];
+  const realizadoTratado =
+  [];
 
   realizadoLista.forEach((item) => {
 
@@ -1981,13 +2342,17 @@ async function abrirPlanejamento(idProjeto) {
 
   renderizarPlanejamentoDetalhado(
     planejadoTratado,
-    realizadoTratado
+    realizadoTratado,
+    obraSelecionada
   );
 
   criarGraficos(
     planejadoTratado,
-    realizadoTratado
+    realizadoTratado,
+    obraSelecionada
   );
+
+  redimensionarGraficos();
 
 }
 
@@ -2000,14 +2365,16 @@ abrirPlanejamento;
 
 function renderizarPlanejamentoDetalhado(
   planejadoTratado,
-  realizadoTratado
+  realizadoTratado,
+  obraSelecionada
 ) {
 
   if (!tbodyPlanejado) {
     return;
   }
 
-  tbodyPlanejado.innerHTML = "";
+  tbodyPlanejado.innerHTML =
+  "";
 
   if (!planejadoTratado.length) {
 
@@ -2020,6 +2387,15 @@ function renderizarPlanejamentoDetalhado(
     return;
 
   }
+
+  const valorBase =
+  Number(
+    obraSelecionada?.investimento ||
+    planejadoTratado[
+      planejadoTratado.length - 1
+    ]?.financeiroAcumuladoCalculado ||
+    0
+  );
 
   const realizadoPorSemana =
   new Map();
@@ -2068,6 +2444,20 @@ function renderizarPlanejamentoDetalhado(
     )
     : null;
 
+    const financeiroPlanejadoPercentual =
+    financeiroParaPercentual(
+      financeiroPlanejado,
+      valorBase
+    );
+
+    const financeiroExecutadoPercentual =
+    financeiroExecutado !== null
+    ? financeiroParaPercentual(
+      financeiroExecutado,
+      valorBase
+    )
+    : null;
+
     const classeFisico =
     fisicoRealizado !== null &&
     fisicoRealizado < fisicoPlanejado
@@ -2075,8 +2465,8 @@ function renderizarPlanejamentoDetalhado(
     : "";
 
     const classeFinanceiro =
-    financeiroExecutado !== null &&
-    financeiroExecutado > financeiroPlanejado
+    financeiroExecutadoPercentual !== null &&
+    financeiroExecutadoPercentual > financeiroPlanejadoPercentual
     ? "valor-alerta"
     : "";
 
@@ -2112,22 +2502,213 @@ function renderizarPlanejamentoDetalhado(
 
     tr.appendChild(
       criarCelulaTexto(
-        `R$ ${moeda(financeiroPlanejado)}`
+        percentual(financeiroPlanejadoPercentual)
       )
     );
 
     tr.appendChild(
       criarCelulaHTMLSeguro(
-        financeiroExecutado !== null
-        ? `R$ ${moeda(financeiroExecutado)}`
+        financeiroExecutadoPercentual !== null
+        ? percentual(financeiroExecutadoPercentual)
         : "-",
         classeFinanceiro
       )
     );
 
-    tbodyPlanejado.appendChild(tr);
+    tbodyPlanejado.appendChild(
+      tr
+    );
 
   });
+
+}
+
+/* =====================================================
+   OPÇÕES BASE DOS GRÁFICOS
+===================================================== */
+
+function opcoesBaseGrafico(
+  maximoY = 100
+) {
+
+  return {
+
+    responsive: true,
+    maintainAspectRatio: false,
+
+    layout: {
+      padding: {
+        top: 32,
+        right: 24,
+        bottom: 12,
+        left: 12
+      }
+    },
+
+    interaction: {
+      mode: "index",
+      intersect: false
+    },
+
+    plugins: {
+
+      legend: {
+        position: "top",
+
+        labels: {
+          color: "#333",
+          font: {
+            family: "'Segoe UI', sans-serif",
+            size: 12,
+            weight: "700"
+          },
+          boxWidth: 38,
+          boxHeight: 12,
+          padding: 18
+        }
+
+      },
+
+      datalabels: {
+
+        display: true,
+        clip: false,
+        clamp: true,
+
+        color: "#333",
+
+        backgroundColor: "rgba(255,255,255,.85)",
+
+        borderRadius: 4,
+
+        padding: {
+          top: 2,
+          right: 4,
+          bottom: 2,
+          left: 4
+        },
+
+        font: {
+          family: "'Segoe UI', sans-serif",
+          size: 10,
+          weight: "700"
+        },
+
+        formatter: (value) => {
+
+          if (
+            value === null ||
+            value === undefined
+          ) {
+            return "";
+          }
+
+          return percentual(value);
+
+        },
+
+        align: (context) => {
+
+          return context.datasetIndex === 0
+          ? "top"
+          : "bottom";
+
+        },
+
+        anchor: (context) => {
+
+          return context.datasetIndex === 0
+          ? "end"
+          : "start";
+
+        },
+
+        offset: () => {
+
+          return 8;
+
+        }
+
+      },
+
+      tooltip: {
+
+        titleFont: {
+          family: "'Segoe UI', sans-serif",
+          size: 12,
+          weight: "700"
+        },
+
+        bodyFont: {
+          family: "'Segoe UI', sans-serif",
+          size: 12,
+          weight: "600"
+        },
+
+        callbacks: {
+
+          label: (context) => {
+
+            return `${context.dataset.label}: ${percentual(context.raw || 0)}`;
+
+          }
+
+        }
+
+      }
+
+    },
+
+    scales: {
+
+      x: {
+
+        grid: {
+          color: "rgba(0,0,0,.08)"
+        },
+
+        ticks: {
+          color: "#333",
+          maxRotation: 65,
+          minRotation: 55,
+          autoSkip: false,
+          font: {
+            family: "'Segoe UI', sans-serif",
+            size: 10,
+            weight: "600"
+          }
+        }
+
+      },
+
+      y: {
+
+        beginAtZero: true,
+        max: maximoY,
+
+        grid: {
+          color: "rgba(0,0,0,.10)"
+        },
+
+        ticks: {
+
+          color: "#333",
+
+          font: {
+            family: "'Segoe UI', sans-serif",
+            size: 11,
+            weight: "700"
+          },
+
+          callback: (value) => `${value}%`
+
+        }
+
+      }
+
+    }
+
+  };
 
 }
 
@@ -2137,7 +2718,8 @@ function renderizarPlanejamentoDetalhado(
 
 function criarGraficos(
   planejadoLista,
-  realizadoLista
+  realizadoLista,
+  obraSelecionada
 ) {
 
   const ctxFisico =
@@ -2166,6 +2748,19 @@ function criarGraficos(
     graficoFinanceiro.destroy();
   }
 
+  if (!planejadoLista.length) {
+    return;
+  }
+
+  const valorBaseFinanceiro =
+  Number(
+    obraSelecionada?.investimento ||
+    planejadoLista[
+      planejadoLista.length - 1
+    ]?.financeiroAcumuladoCalculado ||
+    0
+  );
+
   const labels =
   planejadoLista.map(
     item => item.semana
@@ -2180,14 +2775,15 @@ function criarGraficos(
     )
   );
 
-  const financeiroPlanejado =
-  planejadoLista.map(
-    item =>
-    Number(
-      item.financeiroAcumuladoCalculado ||
-      0
-    )
-  );
+  const financeiroPlanejadoPercentual =
+  planejadoLista.map((item) => {
+
+    return financeiroParaPercentual(
+      item.financeiroAcumuladoCalculado,
+      valorBaseFinanceiro
+    );
+
+  });
 
   const fisicoRealizado =
   planejadoLista.map((itemPlanejado) => {
@@ -2208,7 +2804,7 @@ function criarGraficos(
 
   });
 
-  const financeiroRealizado =
+  const financeiroRealizadoPercentual =
   planejadoLista.map((itemPlanejado) => {
 
     const realizado =
@@ -2218,14 +2814,30 @@ function criarGraficos(
       chaveSemana(itemPlanejado.semana)
     );
 
-    return realizado
-    ? Number(
-      realizado.financeiroAcumuladoCalculado ||
-      0
-    )
-    : null;
+    if (!realizado) {
+      return null;
+    }
+
+    return financeiroParaPercentual(
+      realizado.financeiroAcumuladoCalculado,
+      valorBaseFinanceiro
+    );
 
   });
+
+  const maxFisico =
+  Math.max(
+    100,
+    ...fisicoPlanejado,
+    ...fisicoRealizado.filter(valor => valor !== null)
+  );
+
+  const maxFinanceiro =
+  Math.max(
+    100,
+    ...financeiroPlanejadoPercentual,
+    ...financeiroRealizadoPercentual.filter(valor => valor !== null)
+  );
 
   graficoFisico =
   new ChartJS(ctxFisico, {
@@ -2243,8 +2855,17 @@ function criarGraficos(
           data: fisicoPlanejado,
           borderColor: "#8BC34A",
           backgroundColor: "#8BC34A",
-          tension: 0.4,
-          pointRadius: 5
+          tension: 0.35,
+          borderWidth: 3,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBorderWidth: 1.5,
+
+          datalabels: {
+            align: "top",
+            anchor: "end",
+            offset: 8
+          }
         },
 
         {
@@ -2252,77 +2873,26 @@ function criarGraficos(
           data: fisicoRealizado,
           borderColor: "#007E7A",
           backgroundColor: "#007E7A",
-          tension: 0.4,
-          pointRadius: 5
+          tension: 0.35,
+          borderWidth: 3,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBorderWidth: 1.5,
+
+          datalabels: {
+            align: "bottom",
+            anchor: "start",
+            offset: 8
+          }
         }
 
       ]
 
     },
 
-    options: {
-
-      responsive: true,
-      maintainAspectRatio: false,
-
-      plugins: {
-
-        datalabels: {
-
-          align: "top",
-          anchor: "end",
-
-          formatter: (value) => {
-
-            if (value === null) {
-              return "";
-            }
-
-            return percentual(value);
-
-          },
-
-          font: {
-            size: 10,
-            weight: "bold"
-          }
-
-        },
-
-        tooltip: {
-
-          callbacks: {
-
-            label: (context) => {
-
-              return `${context.dataset.label}: ${percentual(context.raw || 0)}`;
-
-            }
-
-          }
-
-        }
-
-      },
-
-      scales: {
-
-        y: {
-
-          beginAtZero: true,
-          max: 100,
-
-          ticks: {
-
-            callback: (value) => `${value}%`
-
-          }
-
-        }
-
-      }
-
-    }
+    options: opcoesBaseGrafico(
+      Math.ceil(maxFisico / 10) * 10
+    )
 
   });
 
@@ -2338,89 +2908,48 @@ function criarGraficos(
       datasets: [
 
         {
-          label: "Planejado Acumulado (R$)",
-          data: financeiroPlanejado,
+          label: "Planejado Acumulado (%)",
+          data: financeiroPlanejadoPercentual,
           borderColor: "#8BC34A",
           backgroundColor: "#8BC34A",
-          tension: 0.4,
-          pointRadius: 5
+          tension: 0.35,
+          borderWidth: 3,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBorderWidth: 1.5,
+
+          datalabels: {
+            align: "top",
+            anchor: "end",
+            offset: 8
+          }
         },
 
         {
-          label: "Executado Acumulado (R$)",
-          data: financeiroRealizado,
+          label: "Executado Acumulado (%)",
+          data: financeiroRealizadoPercentual,
           borderColor: "#007E7A",
           backgroundColor: "#007E7A",
-          tension: 0.4,
-          pointRadius: 5
+          tension: 0.35,
+          borderWidth: 3,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBorderWidth: 1.5,
+
+          datalabels: {
+            align: "bottom",
+            anchor: "start",
+            offset: 8
+          }
         }
 
       ]
 
     },
 
-    options: {
-
-      responsive: true,
-      maintainAspectRatio: false,
-
-      plugins: {
-
-        datalabels: {
-
-          align: "top",
-          anchor: "end",
-
-          formatter: (value) => {
-
-            if (value === null) {
-              return "";
-            }
-
-            return `R$ ${moeda(value)}`;
-
-          },
-
-          font: {
-            size: 10,
-            weight: "bold"
-          }
-
-        },
-
-        tooltip: {
-
-          callbacks: {
-
-            label: (context) => {
-
-              return `${context.dataset.label}: R$ ${moeda(context.raw || 0)}`;
-
-            }
-
-          }
-
-        }
-
-      },
-
-      scales: {
-
-        y: {
-
-          beginAtZero: true,
-
-          ticks: {
-
-            callback: (value) => `R$ ${moeda(value)}`
-
-          }
-
-        }
-
-      }
-
-    }
+    options: opcoesBaseGrafico(
+      Math.ceil(maxFinanceiro / 10) * 10
+    )
 
   });
 
@@ -2429,6 +2958,19 @@ function criarGraficos(
 /* =====================================================
    EXPORTAR PDF
 ===================================================== */
+
+function aguardar(ms) {
+
+  return new Promise((resolve) => {
+
+    setTimeout(
+      resolve,
+      ms
+    );
+
+  });
+
+}
 
 function configurarExportarPDF() {
 
@@ -2439,6 +2981,12 @@ function configurarExportarPDF() {
   btnExportarPDF.addEventListener(
     "click",
     async () => {
+
+      const textoOriginal =
+      btnExportarPDF.innerHTML;
+
+      const scrollAtual =
+      window.scrollY;
 
       try {
 
@@ -2455,15 +3003,29 @@ function configurarExportarPDF() {
 
         }
 
+        btnExportarPDF.disabled =
+        true;
+
+        btnExportarPDF.innerHTML =
+        `<i class="fa-solid fa-spinner fa-spin"></i> Gerando PDF`;
+
+        document.body.classList.add(
+          "exportando-pdf"
+        );
+
+        window.scrollTo(
+          0,
+          0
+        );
+
+        redimensionarGraficos();
+
+        await aguardar(
+          600
+        );
+
         const { jsPDF } =
         window.jspdf;
-
-        const pdf =
-        new jsPDF(
-          "p",
-          "mm",
-          "a4"
-        );
 
         const elemento =
         document.querySelector(".main");
@@ -2478,64 +3040,114 @@ function configurarExportarPDF() {
 
         }
 
+        const larguraElemento =
+        Math.max(
+          elemento.scrollWidth,
+          elemento.offsetWidth,
+          elemento.clientWidth
+        );
+
+        const alturaElemento =
+        Math.max(
+          elemento.scrollHeight,
+          elemento.offsetHeight,
+          elemento.clientHeight
+        );
+
         const canvas =
         await html2canvas(
           elemento,
           {
             scale: 2,
             useCORS: true,
-            backgroundColor: "#ffffff"
+            allowTaint: true,
+            backgroundColor: "#ffffff",
+            width: larguraElemento,
+            height: alturaElemento,
+            windowWidth: larguraElemento,
+            windowHeight: alturaElemento,
+            scrollX: 0,
+            scrollY: 0
           }
         );
 
         const imgData =
         canvas.toDataURL(
-          "image/png"
+          "image/png",
+          1.0
         );
 
-        const imgWidth =
-        190;
+        const pdf =
+        new jsPDF(
+          "l",
+          "mm",
+          "a4"
+        );
 
-        const imgHeight =
+        const paginaLargura =
+        pdf.internal.pageSize.getWidth();
+
+        const paginaAltura =
+        pdf.internal.pageSize.getHeight();
+
+        const margem =
+        8;
+
+        const larguraUtil =
+        paginaLargura - margem * 2;
+
+        const alturaUtil =
+        paginaAltura - margem * 2;
+
+        const imgLargura =
+        larguraUtil;
+
+        const imgAltura =
         (
           canvas.height *
-          imgWidth
+          imgLargura
         ) /
         canvas.width;
 
-        let position = 10;
+        let alturaRestante =
+        imgAltura;
 
-        let heightLeft =
-        imgHeight;
+        let posicaoY =
+        margem;
 
         pdf.addImage(
           imgData,
           "PNG",
-          10,
-          position,
-          imgWidth,
-          imgHeight
+          margem,
+          posicaoY,
+          imgLargura,
+          imgAltura
         );
 
-        heightLeft -= 277;
+        alturaRestante -=
+        alturaUtil;
 
-        while (heightLeft > 0) {
-
-          position =
-          heightLeft - imgHeight + 10;
+        while (alturaRestante > 0.5) {
 
           pdf.addPage();
+
+          posicaoY =
+          margem - (
+            imgAltura -
+            alturaRestante
+          );
 
           pdf.addImage(
             imgData,
             "PNG",
-            10,
-            position,
-            imgWidth,
-            imgHeight
+            margem,
+            posicaoY,
+            imgLargura,
+            imgAltura
           );
 
-          heightLeft -= 277;
+          alturaRestante -=
+          alturaUtil;
 
         }
 
@@ -2554,6 +3166,25 @@ function configurarExportarPDF() {
           "Erro ao exportar PDF."
         );
 
+      } finally {
+
+        document.body.classList.remove(
+          "exportando-pdf"
+        );
+
+        btnExportarPDF.disabled =
+        false;
+
+        btnExportarPDF.innerHTML =
+        textoOriginal;
+
+        window.scrollTo(
+          0,
+          scrollAtual
+        );
+
+        redimensionarGraficos();
+
       }
 
     }
@@ -2571,6 +3202,7 @@ function configurarEventosFiltros() {
     "change",
     () => {
 
+      limparDetalhamento();
       carregarLocalidades();
       carregarFiltroObras();
       renderTabela();
@@ -2582,6 +3214,7 @@ function configurarEventosFiltros() {
     "change",
     () => {
 
+      limparDetalhamento();
       carregarFiltroObras();
       renderTabela();
 
@@ -2590,12 +3223,22 @@ function configurarEventosFiltros() {
 
   filtroObra?.addEventListener(
     "change",
-    renderTabela
+    () => {
+
+      limparDetalhamento();
+      renderTabela();
+
+    }
   );
 
   filtroStatus?.addEventListener(
     "change",
-    renderTabela
+    () => {
+
+      limparDetalhamento();
+      renderTabela();
+
+    }
   );
 
 }

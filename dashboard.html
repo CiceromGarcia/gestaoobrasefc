@@ -11,13 +11,13 @@
   />
 
   <title>
-    Quéops - Painel Executivo
+    Sistema de Gerenciamento de Obras - Painel Executivo
   </title>
 
   <!-- CSS -->
   <link
     rel="stylesheet"
-    href="dashboard.css"
+    href="./dashboard.css?v=010"
   />
 
   <!-- FONT AWESOME -->
@@ -54,6 +54,7 @@
         <button
           class="menu-btn"
           type="button"
+          title="Recolher menu"
         >
 
           <i class="fa-solid fa-bars"></i>
@@ -61,13 +62,13 @@
         </button>
 
         <img
-          src="Colorida.png"
+          src="./LogoB.png"
           class="logo"
-          alt="Logo"
+          alt="Logo do sistema"
         />
 
         <h2>
-          Sistema de Gerenciamento Quéops
+          Sistema de Gerenciamento de Obras
         </h2>
 
       </div>
@@ -159,6 +160,22 @@
 
         </a>
 
+        <!-- REQUISIÇÕES -->
+
+        <span class="menu-title">
+          REQUISIÇÕES
+        </span>
+
+        <a href="./requisicao-materiais.html">
+
+          <i class="fa-solid fa-boxes-stacked"></i>
+
+          <span>
+            Requisição de Materiais
+          </span>
+
+        </a>
+
         <!-- ADMINISTRAÇÃO - SOMENTE ADMIN -->
 
         <span
@@ -211,7 +228,9 @@
 
     <main class="main">
 
-      <!-- TOPBAR -->
+      <!-- =====================================
+           TOPBAR
+      ====================================== -->
 
       <div class="topbar">
 
@@ -255,7 +274,7 @@
 
           <div class="field">
 
-            <label>
+            <label for="filtroRegional">
               Regional
             </label>
 
@@ -271,7 +290,7 @@
 
           <div class="field">
 
-            <label>
+            <label for="filtroLocalidade">
               Localidade
             </label>
 
@@ -287,7 +306,7 @@
 
           <div class="field">
 
-            <label>
+            <label for="filtroObra">
               Obra
             </label>
 
@@ -303,7 +322,7 @@
 
           <div class="field">
 
-            <label>
+            <label for="filtroStatus">
               Status
             </label>
 
@@ -336,6 +355,66 @@
         </div>
 
       </div>
+
+      <!-- =====================================
+           CARDS DE STATUS DAS OBRAS
+      ====================================== -->
+
+      <section class="resumo-topo">
+
+        <div class="kpi-grid-top">
+
+          <div class="kpi em-andamento">
+
+            <span>
+              Obras em andamento
+            </span>
+
+            <h2 id="cardEmAndamento">
+              0
+            </h2>
+
+          </div>
+
+          <div class="kpi concluida">
+
+            <span>
+              Obras concluídas
+            </span>
+
+            <h2 id="cardConcluidas">
+              0
+            </h2>
+
+          </div>
+
+          <div class="kpi planejada">
+
+            <span>
+              Obras planejadas
+            </span>
+
+            <h2 id="cardPlanejadas">
+              0
+            </h2>
+
+          </div>
+
+          <div class="kpi paralisada">
+
+            <span>
+              Obras paralisadas
+            </span>
+
+            <h2 id="cardParalisadas">
+              0
+            </h2>
+
+          </div>
+
+        </div>
+
+      </section>
 
       <!-- =====================================
            RESUMO EXECUTIVO
@@ -434,9 +513,9 @@
 
                   <th>ACUMULADO FÍSICO REALIZADO (%)</th>
 
-                  <th>ACUMULADO FINANCEIRO PLANEJADO (R$)</th>
+                  <th>ACUMULADO FINANCEIRO PLANEJADO (%)</th>
 
-                  <th>ACUMULADO FINANCEIRO EXECUTADO (R$)</th>
+                  <th>ACUMULADO FINANCEIRO EXECUTADO (%)</th>
 
                 </tr>
 
@@ -456,9 +535,9 @@
              GRÁFICOS
         ====================================== -->
 
-        <section class="charts-bottom">
+        <section class="charts-stack">
 
-          <div class="card chart-card">
+          <div class="card chart-card chart-card-full">
 
             <div class="section-title">
 
@@ -472,7 +551,7 @@
 
           </div>
 
-          <div class="card chart-card">
+          <div class="card chart-card chart-card-full">
 
             <div class="section-title">
 
@@ -500,7 +579,7 @@
 
   <script
     type="module"
-    src="./dashboard.js"
+    src="./dashboard.js?v=010"
   ></script>
 
 </body>

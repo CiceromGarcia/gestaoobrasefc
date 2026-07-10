@@ -44,6 +44,32 @@ body{
   min-height:100vh;
 }
 
+body.modal-aberto{
+  overflow:hidden;
+}
+
+/* ========================================
+   CONTROLE ADMINISTRADOR
+======================================== */
+
+[data-admin-only]{
+  display:none !important;
+}
+
+body.usuario-admin th[data-admin-only],
+body.usuario-admin td[data-admin-only]{
+  display:table-cell !important;
+}
+
+body.usuario-admin .modal-overlay[data-admin-only]{
+  display:none !important;
+}
+
+body.usuario-admin .modal-overlay[data-admin-only].ativo,
+body.usuario-admin .modal-overlay[data-admin-only][aria-hidden="false"]{
+  display:flex !important;
+}
+
 /* ========================================
    PÁGINA
 ======================================== */
@@ -72,6 +98,7 @@ body{
   display:flex;
   align-items:center;
   justify-content:space-between;
+  gap:16px;
 
   box-shadow:0 3px 12px rgba(0,0,0,.12);
 
@@ -115,10 +142,19 @@ body{
   opacity:.92;
 }
 
+.header-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
 /* ========================================
-   BOTÃO PDF
+   BOTÕES DO HEADER
 ======================================== */
 
+.btn-voltar,
 .btn-pdf{
 
   height:40px;
@@ -129,9 +165,6 @@ body{
   outline:none;
 
   border-radius:12px;
-
-  background:#fff;
-  color:#111827;
 
   font-size:13px;
   font-weight:700;
@@ -144,6 +177,34 @@ body{
   gap:8px;
 
   transition:.2s ease;
+
+  text-decoration:none;
+
+}
+
+.btn-voltar{
+
+  background:rgba(255,255,255,.14);
+  color:#fff;
+
+  border:1px solid rgba(255,255,255,.22);
+
+}
+
+.btn-voltar i{
+  color:#fff;
+  font-size:14px;
+}
+
+.btn-voltar:hover{
+  background:rgba(255,255,255,.22);
+  transform:translateY(-1px);
+}
+
+.btn-pdf{
+
+  background:#fff;
+  color:#111827;
 
 }
 
@@ -220,6 +281,11 @@ body{
 
   transition:.2s ease;
 
+}
+
+.campo select option{
+  background:#fff;
+  color:#111827;
 }
 
 .campo select:hover{
@@ -470,7 +536,7 @@ body{
 table{
 
   width:100%;
-  min-width:1120px;
+  min-width:1250px;
 
   border-collapse:collapse;
 
@@ -528,7 +594,6 @@ tbody tr:last-child td{
 
 /* ========================================
    COLUNAS ESPECÍFICAS
-   Fonte uniforme, sem negrito
 ======================================== */
 
 .codigoProjeto{
@@ -564,9 +629,63 @@ tbody tr:last-child td{
 
 }
 
+.coluna-acoes,
+.coluna-acoes-admin{
+  min-width:110px;
+  white-space:nowrap;
+}
+
+/* ========================================
+   BOTÕES DA TABELA
+======================================== */
+
+.acoes-tabela{
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+
+}
+
+.btn-editar-datas{
+
+  width:34px;
+  height:34px;
+
+  border:none;
+  outline:none;
+
+  border-radius:10px;
+
+  background:#ecfdf5;
+  color:var(--verde);
+
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+
+  cursor:pointer;
+
+  font-size:14px;
+
+  transition:.2s ease;
+
+}
+
+.btn-editar-datas:hover{
+  background:var(--verde);
+  color:#fff;
+  transform:translateY(-1px);
+  box-shadow:0 6px 14px rgba(0,126,122,.22);
+}
+
+.btn-editar-datas:active{
+  transform:scale(.97);
+}
+
 /* ========================================
    BADGES DE STATUS
-   Mantidos destacados
 ======================================== */
 
 .badge{
@@ -628,7 +747,6 @@ tbody tr:last-child td{
 
 /* ========================================
    BADGES DE PRIORIDADE
-   Mantidos destacados
 ======================================== */
 
 .badge-prioridade{
@@ -688,6 +806,348 @@ tbody tr:last-child td{
 }
 
 /* ========================================
+   MODAL - EDITAR DATAS
+======================================== */
+
+.modal-overlay{
+
+  position:fixed;
+  inset:0;
+
+  background:rgba(15,23,42,.55);
+
+  display:none;
+  align-items:center;
+  justify-content:center;
+
+  padding:18px;
+
+  z-index:9999;
+
+  backdrop-filter:blur(3px);
+
+}
+
+.modal-overlay.ativo,
+.modal-overlay[aria-hidden="false"]{
+  display:flex;
+}
+
+.modal-card{
+
+  width:100%;
+  max-width:760px;
+
+  max-height:92vh;
+  overflow-y:auto;
+
+  background:#fff;
+
+  border-radius:18px;
+
+  box-shadow:0 24px 70px rgba(15,23,42,.28);
+
+  animation:modalEntrada .22s ease;
+
+}
+
+@keyframes modalEntrada{
+
+  from{
+    opacity:0;
+    transform:translateY(10px) scale(.98);
+  }
+
+  to{
+    opacity:1;
+    transform:translateY(0) scale(1);
+  }
+
+}
+
+.modal-header{
+
+  padding:18px 20px;
+
+  border-bottom:1px solid #e5e7eb;
+
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+
+  background:linear-gradient(
+    180deg,
+    #ffffff,
+    #f8fafc
+  );
+
+  border-radius:18px 18px 0 0;
+
+}
+
+.modal-header h2{
+  font-size:18px;
+  font-weight:900;
+  color:#0f172a;
+  line-height:1.2;
+}
+
+.modal-header span{
+  display:block;
+  margin-top:4px;
+  font-size:12px;
+  color:#64748b;
+  font-weight:500;
+}
+
+.btn-fechar-modal{
+
+  width:36px;
+  height:36px;
+
+  border:none;
+  outline:none;
+
+  border-radius:12px;
+
+  background:#f1f5f9;
+  color:#334155;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  cursor:pointer;
+
+  font-size:16px;
+
+  transition:.2s ease;
+
+  flex-shrink:0;
+
+}
+
+.btn-fechar-modal:hover{
+  background:#fee2e2;
+  color:#b91c1c;
+}
+
+#formEditarDatas{
+  padding:18px 20px 20px;
+}
+
+.modal-grid{
+
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:14px;
+
+}
+
+.campo-modal{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.campo-modal-full{
+  grid-column:1 / -1;
+}
+
+.campo-modal label{
+
+  font-size:12px;
+  font-weight:800;
+  color:#475569;
+
+}
+
+.campo-modal input,
+.campo-modal textarea{
+
+  width:100%;
+
+  border:1px solid #dbe3ec;
+  outline:none;
+
+  border-radius:12px;
+
+  background:#fff;
+  color:#0f172a;
+
+  font-size:13px;
+  font-weight:500;
+
+  transition:.2s ease;
+
+}
+
+.campo-modal input{
+  height:40px;
+  padding:0 12px;
+}
+
+.campo-modal textarea{
+  min-height:92px;
+  resize:vertical;
+  padding:12px;
+  line-height:1.4;
+}
+
+.campo-modal input:focus,
+.campo-modal textarea:focus{
+  border-color:var(--verde);
+  box-shadow:0 0 0 3px rgba(0,126,122,.12);
+}
+
+.campo-modal input[readonly]{
+  background:#f8fafc;
+  color:#64748b;
+  cursor:not-allowed;
+}
+
+.aviso-replanejamento,
+.aviso-realizado{
+
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+
+  padding:12px 14px;
+
+  border-radius:14px;
+
+  border:1px solid;
+
+}
+
+.aviso-replanejamento{
+  background:#fffbeb;
+  border-color:#fde68a;
+}
+
+.aviso-realizado{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+}
+
+.aviso-replanejamento i,
+.aviso-realizado i{
+  margin-top:2px;
+  font-size:17px;
+  flex-shrink:0;
+}
+
+.aviso-replanejamento i{
+  color:#d97706;
+}
+
+.aviso-realizado i{
+  color:#2563eb;
+}
+
+.aviso-replanejamento strong,
+.aviso-realizado strong{
+  display:block;
+  font-size:13px;
+  font-weight:900;
+  color:#0f172a;
+  margin-bottom:3px;
+}
+
+.aviso-replanejamento p,
+.aviso-realizado p{
+  font-size:12px;
+  font-weight:500;
+  color:#475569;
+  line-height:1.4;
+}
+
+#boxAvisoImpactoCurva,
+#boxAvisoRealizado{
+  display:none;
+}
+
+#boxAvisoImpactoCurva.ativo,
+#boxAvisoRealizado.ativo{
+  display:flex;
+}
+
+/* ========================================
+   AÇÕES DO MODAL
+======================================== */
+
+.modal-actions{
+
+  margin-top:18px;
+
+  padding-top:16px;
+
+  border-top:1px solid #e5e7eb;
+
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+
+}
+
+.btn-cancelar,
+.btn-salvar{
+
+  height:40px;
+
+  border:none;
+  outline:none;
+
+  border-radius:12px;
+
+  padding:0 16px;
+
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+
+  font-size:13px;
+  font-weight:800;
+
+  cursor:pointer;
+
+  transition:.2s ease;
+
+}
+
+.btn-cancelar{
+  background:#f1f5f9;
+  color:#334155;
+}
+
+.btn-cancelar:hover{
+  background:#e2e8f0;
+}
+
+.btn-salvar{
+  background:var(--verde);
+  color:#fff;
+}
+
+.btn-salvar:hover{
+  background:var(--verde-escuro);
+  transform:translateY(-1px);
+  box-shadow:0 8px 18px rgba(0,126,122,.22);
+}
+
+.btn-salvar:disabled,
+.btn-cancelar:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+  transform:none;
+  box-shadow:none;
+}
+
+/* ========================================
    LINHAS DE MENSAGEM
 ======================================== */
 
@@ -702,6 +1162,86 @@ tbody td[colspan]{
   font-size:13px;
   font-weight:400;
 
+}
+
+/* ========================================
+   EXPORTAÇÃO PDF VIA HTML2CANVAS
+======================================== */
+
+body.exportando-pdf{
+  background:#fff !important;
+}
+
+body.exportando-pdf .btn-pdf,
+body.exportando-pdf .btn-voltar,
+body.exportando-pdf .btn-editar-datas,
+body.exportando-pdf .modal-overlay,
+body.exportando-pdf [data-admin-only]{
+  display:none !important;
+}
+
+body.exportando-pdf .page{
+  width:100% !important;
+  min-height:auto !important;
+  background:#fff !important;
+}
+
+body.exportando-pdf .app-header,
+body.exportando-pdf .topbar,
+body.exportando-pdf .kpi-card,
+body.exportando-pdf .table-header,
+body.exportando-pdf .table-responsive{
+  box-shadow:none !important;
+}
+
+body.exportando-pdf .app-header,
+body.exportando-pdf thead,
+body.exportando-pdf .badge,
+body.exportando-pdf .badge-prioridade,
+body.exportando-pdf .kpi-icon{
+  -webkit-print-color-adjust:exact !important;
+  print-color-adjust:exact !important;
+}
+
+body.exportando-pdf .topbar{
+  border:1px solid #e5e7eb !important;
+}
+
+body.exportando-pdf .table-responsive{
+  overflow:visible !important;
+}
+
+body.exportando-pdf table{
+  width:100% !important;
+  min-width:100% !important;
+}
+
+body.exportando-pdf thead th{
+  font-size:9px !important;
+  padding:7px 5px !important;
+}
+
+body.exportando-pdf tbody td{
+  font-size:9px !important;
+  padding:7px 5px !important;
+}
+
+body.exportando-pdf .nomeProjeto{
+  min-width:auto !important;
+  max-width:none !important;
+}
+
+body.exportando-pdf .kpis{
+  grid-template-columns:repeat(3,1fr) !important;
+}
+
+body.exportando-pdf .kpi-card{
+  min-height:64px !important;
+  padding:10px !important;
+}
+
+body.exportando-pdf .kpi-card h2{
+  font-size:17px !important;
 }
 
 /* ========================================
@@ -726,6 +1266,24 @@ tbody td[colspan]{
   background:#94a3b8;
 }
 
+.modal-card::-webkit-scrollbar{
+  width:8px;
+}
+
+.modal-card::-webkit-scrollbar-track{
+  background:#f1f5f9;
+  border-radius:999px;
+}
+
+.modal-card::-webkit-scrollbar-thumb{
+  background:#cbd5e1;
+  border-radius:999px;
+}
+
+.modal-card::-webkit-scrollbar-thumb:hover{
+  background:#94a3b8;
+}
+
 /* ========================================
    RESPONSIVIDADE
 ======================================== */
@@ -746,6 +1304,13 @@ tbody td[colspan]{
     gap:14px;
   }
 
+  .header-actions{
+    width:100%;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+
+  .btn-voltar,
   .btn-pdf{
     width:100%;
   }
@@ -777,6 +1342,44 @@ tbody td[colspan]{
 
 }
 
+@media(max-width:640px){
+
+  .modal-overlay{
+    padding:10px;
+    align-items:flex-start;
+  }
+
+  .modal-card{
+    max-height:96vh;
+    border-radius:16px;
+  }
+
+  .modal-header{
+    padding:16px;
+    border-radius:16px 16px 0 0;
+  }
+
+  #formEditarDatas{
+    padding:16px;
+  }
+
+  .modal-grid{
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+
+  .modal-actions{
+    flex-direction:column-reverse;
+    align-items:stretch;
+  }
+
+  .btn-cancelar,
+  .btn-salvar{
+    width:100%;
+  }
+
+}
+
 @media(max-width:560px){
 
   .app-header{
@@ -789,6 +1392,10 @@ tbody td[colspan]{
 
   .header-left span{
     font-size:11px;
+  }
+
+  .header-actions{
+    grid-template-columns:1fr;
   }
 
   .filtros-container{
@@ -820,7 +1427,11 @@ tbody td[colspan]{
     print-color-adjust:exact;
   }
 
-  .btn-pdf{
+  .btn-pdf,
+  .btn-voltar,
+  .btn-editar-datas,
+  .modal-overlay,
+  [data-admin-only]{
     display:none !important;
   }
 
