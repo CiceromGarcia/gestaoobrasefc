@@ -101,6 +101,7 @@ service cloud.firestore {
       return ehAdministrador()
         || (
           ehAdministradorRegional()
+          && regionalRM is string
           && regionalUsuarioLogado() == regionalRM
         );
     }
@@ -108,11 +109,62 @@ service cloud.firestore {
     function donoDaRM(dados) {
       return estaLogado()
         && (
-          dados.criadoPorUid == request.auth.uid
-          || dados.criadoPor.uid == request.auth.uid
-          || dados.criadoPorEmail == emailLogado()
-          || dados.criadoPor.email == emailLogado()
+          (
+            dados.keys().hasAny(["criadoPorUid"])
+            && dados.criadoPorUid == request.auth.uid
+          )
+          ||
+          (
+            dados.keys().hasAny(["criadoPorEmail"])
+            && dados.criadoPorEmail == emailLogado()
+          )
+          ||
+          (
+            dados.keys().hasAny(["criadoPor"])
+            && dados.criadoPor is map
+            && (
+              (
+                dados.criadoPor.keys().hasAny(["uid"])
+                && dados.criadoPor.uid == request.auth.uid
+              )
+              ||
+              (
+                dados.criadoPor.keys().hasAny(["email"])
+                && dados.criadoPor.email == emailLogado()
+              )
+            )
+          )
         );
+    }
+
+    function contratoValidoRM() {
+      return request.resource.data.keys().hasAny(["contrato"])
+        && request.resource.data.contrato is string
+        && request.resource.data.contrato in [
+          "Manutenção Predial",
+          "Pequenas Obras"
+        ];
+    }
+
+    function criacaoValidaRM() {
+      return request.resource.data.keys().hasAll([
+          "numeroRM",
+          "numeroOM",
+          "titulo",
+          "contrato",
+          "regional",
+          "localidade",
+          "statusAprovacao",
+          "aplicada",
+          "materiais",
+          "criadoPorUid",
+          "criadoPorEmail"
+        ])
+        && request.resource.data.statusAprovacao == "Pendente de Aprovação"
+        && request.resource.data.aplicada == false
+        && request.resource.data.materiais is list
+        && contratoValidoRM()
+        && donoDaRM(request.resource.data);
     }
 
     function camposDeAprovacaoRM() {
@@ -168,22 +220,12 @@ service cloud.firestore {
 
     match /usuariosSistema/{uid} {
 
-      /*
-        LEITURA:
-        - Usuário logado pode ler o próprio cadastro.
-        - Administrador pode ler todos.
-      */
       allow read: if estaLogado()
         && (
           request.auth.uid == uid
           || ehAdministrador()
         );
 
-      /*
-        CRIAÇÃO:
-        - Administrador pode criar usuários pelo painel.
-        - Novo usuário pode criar apenas o próprio cadastro pendente.
-      */
       allow create: if estaLogado()
         && (
           ehAdministrador()
@@ -198,11 +240,6 @@ service cloud.firestore {
           )
         );
 
-      /*
-        ATUALIZAÇÃO:
-        - Administrador pode aprovar, inativar, alterar perfil, regional e permissão.
-        - Usuário comum só pode atualizar o próprio cadastro sem mudar dados críticos.
-      */
       allow update: if estaLogado()
         && (
           ehAdministrador()
@@ -218,10 +255,6 @@ service cloud.firestore {
           )
         );
 
-      /*
-        EXCLUSÃO:
-        - Somente administrador.
-      */
       allow delete: if ehAdministrador();
     }
 
@@ -231,35 +264,23 @@ service cloud.firestore {
 
     match /requisicoes_materiais/{rmId} {
 
-      /*
-        LEITURA:
-        - Administrador geral lê tudo.
-        - Administrador Regional lê RMs da própria Regional.
-        - Usuário comum lê somente as próprias RMs.
-      */
-      allow get, list: if ehUsuarioSistema()
+      allow get: if ehUsuarioSistema()
         && (
           ehAdministrador()
           || podeAprovarRegional(resource.data.regional)
           || donoDaRM(resource.data)
         );
 
-      /*
-        CRIAÇÃO:
-        - Usuário ativo pode criar somente RM própria.
-        - A RM deve nascer pendente.
-      */
-      allow create: if ehUsuarioSistema()
-        && donoDaRM(request.resource.data)
-        && request.resource.data.statusAprovacao == "Pendente de Aprovação"
-        && request.resource.data.aplicada == false;
+      allow list: if ehUsuarioSistema()
+        && (
+          ehAdministrador()
+          || podeAprovarRegional(resource.data.regional)
+          || donoDaRM(resource.data)
+        );
 
-      /*
-        ATUALIZAÇÃO:
-        - Administrador geral pode ajustar a RM.
-        - Administrador Regional só pode aprovar/reprovar RM da própria Regional.
-        - Usuário comum não altera aprovação.
-      */
+      allow create: if ehUsuarioSistema()
+        && criacaoValidaRM();
+
       allow update: if ehUsuarioSistema()
         && (
           ehAdministrador()
@@ -272,10 +293,6 @@ service cloud.firestore {
           )
         );
 
-      /*
-        EXCLUSÃO:
-        - Somente administrador geral.
-      */
       allow delete: if ehAdministrador();
     }
 
