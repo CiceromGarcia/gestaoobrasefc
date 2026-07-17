@@ -14,10 +14,10 @@
     Sistema de Gerenciamento de Obras
   </title>
 
-  <!-- CSS -->
+  <!-- CSS PRINCIPAL -->
   <link
     rel="stylesheet"
-    href="./gestaodeobras.css?v=301"
+    href="./gestaodeobras.css?v=309"
   >
 
   <!-- FONT AWESOME -->
@@ -49,15 +49,52 @@
 
         </div>
 
-        <div>
+        <div class="header-textos">
 
           <h1>
             Painel Executivo de Obras
           </h1>
 
-          <span>
+          <span class="header-subtitulo">
             Gestão estratégica, operacional e financeira das obras
           </span>
+
+          <!-- USUÁRIO LOGADO -->
+
+          <div
+            class="usuario-logado-info"
+            id="usuarioLogadoInfo"
+          >
+
+            <span class="usuario-logado-item">
+
+              <i class="fa-solid fa-envelope"></i>
+
+              <strong id="usuarioEmailTopo">
+                Carregando usuário...
+              </strong>
+
+            </span>
+
+            <span class="usuario-logado-separador">
+              |
+            </span>
+
+            <span class="usuario-logado-item">
+
+              <i class="fa-solid fa-user-shield"></i>
+
+              <span>
+                Perfil:
+              </span>
+
+              <strong id="usuarioPerfilTopo">
+                Carregando...
+              </strong>
+
+            </span>
+
+          </div>
 
         </div>
 
@@ -476,7 +513,7 @@
 
   <!-- =====================================
        MODAL - EDITAR DATAS DA OBRA
-       EXCLUSIVO ADMINISTRADOR
+       ADMINISTRADOR GERAL OU REGIONAL
   ====================================== -->
 
   <div
@@ -497,7 +534,7 @@
           </h2>
 
           <span>
-            Alteração permitida somente para administrador
+            Alteração permitida somente para Administrador Geral ou Administrador Regional
           </span>
 
         </div>
@@ -730,6 +767,7 @@
               id="editJustificativa"
               rows="4"
               placeholder="Informe o motivo da alteração das datas da obra..."
+              required
             ></textarea>
 
           </div>
@@ -768,10 +806,196 @@
 
   </div>
 
-  <!-- JS PRINCIPAL -->
+  <!-- =====================================
+       MODAL - EXCLUIR OBRA COMPLETA
+       ADMINISTRADOR GERAL OU REGIONAL
+  ====================================== -->
+
+  <div
+    class="modal-overlay"
+    id="modalExcluirObra"
+    aria-hidden="true"
+    data-admin-only
+  >
+
+    <div class="modal-card modal-excluir-obra">
+
+      <div class="modal-header modal-header-perigo">
+
+        <div>
+
+          <h2>
+            Excluir Obra Completa
+          </h2>
+
+          <span>
+            Exclusão permitida somente para Administrador Geral ou Administrador Regional
+          </span>
+
+        </div>
+
+        <button
+          type="button"
+          class="btn-fechar-modal"
+          id="btnFecharModalExcluirObra"
+          title="Fechar"
+        >
+
+          <i class="fa-solid fa-xmark"></i>
+
+        </button>
+
+      </div>
+
+      <form id="formExcluirObra">
+
+        <input
+          type="hidden"
+          id="excluirObraDocId"
+        >
+
+        <input
+          type="hidden"
+          id="excluirCodigoObra"
+        >
+
+        <input
+          type="hidden"
+          id="excluirNomeObra"
+        >
+
+        <div class="modal-grid">
+
+          <div class="campo-modal campo-modal-full">
+
+            <div class="aviso-exclusao">
+
+              <i class="fa-solid fa-triangle-exclamation"></i>
+
+              <div>
+
+                <strong>
+                  Atenção: esta ação não poderá ser desfeita
+                </strong>
+
+                <p>
+                  A exclusão removerá a obra e todos os dados localizados nas coleções vinculadas, incluindo planejamento, realizado, custos, anomalias, indicadores, rollups, pesquisas e cronogramas relacionados.
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="campo-modal campo-modal-full">
+
+            <label for="excluirObraNomeVisual">
+              Obra
+            </label>
+
+            <input
+              type="text"
+              id="excluirObraNomeVisual"
+              readonly
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="excluirCodigoObraVisual">
+              Código
+            </label>
+
+            <input
+              type="text"
+              id="excluirCodigoObraVisual"
+              readonly
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="excluirRegionalObra">
+              Regional
+            </label>
+
+            <input
+              type="text"
+              id="excluirRegionalObra"
+              readonly
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="excluirLocalidadeObra">
+              Localidade
+            </label>
+
+            <input
+              type="text"
+              id="excluirLocalidadeObra"
+              readonly
+            >
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="excluirStatusObra">
+              Status
+            </label>
+
+            <input
+              type="text"
+              id="excluirStatusObra"
+              readonly
+            >
+
+          </div>
+
+        </div>
+
+        <div class="modal-actions">
+
+          <button
+            type="button"
+            class="btn-cancelar"
+            id="btnCancelarExcluirObra"
+          >
+
+            Cancelar
+
+          </button>
+
+          <button
+            type="submit"
+            class="btn-excluir-definitivo"
+            id="btnConfirmarExcluirObra"
+          >
+
+            <i class="fa-solid fa-trash-can"></i>
+
+            Excluir definitivamente
+
+          </button>
+
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+  <!-- JAVASCRIPT PRINCIPAL -->
   <script
     type="module"
-    src="./gestaodeobras.js?v=301"
+    src="./gestaodeobras.js?v=309"
   ></script>
 
 </body>
