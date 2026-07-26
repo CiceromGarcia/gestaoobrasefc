@@ -9,6 +9,20 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
+/* =========================================
+   INDICADORES ESTRATÉGICOS - v408
+
+   Correções:
+   - Removida execução dos gráficos de Curva S.
+   - Mantidos KPIs executivos.
+   - Mantidos gráficos analíticos.
+   - Mantido ranking de criticidade.
+   - Mantida gestão de anomalias.
+   - Mantida lógica de valor orçado igual ao Dashboard.
+========================================= */
+
+console.info("Indicadores Estratégicos v408 carregado");
+
 let usuarioLogadoGlobal = null;
 
 let obras = [];
@@ -17,8 +31,6 @@ let realizados = [];
 let atualizacoes = [];
 let anomalias = [];
 
-let chartFisico = null;
-let chartFinanceiro = null;
 let chartRegional = null;
 let chartCentroCusto = null;
 let chartStatus = null;
@@ -342,7 +354,7 @@ function converterAtualizacoesParaRealizado(lista) {
       0
     ),
 
-    financeiroReal: numero(
+    financeiroReal: numeroMoedaCadastro(
       item.financeiroReal ||
       item.investimentoNovo ||
       item.custoSemana ||
@@ -350,7 +362,7 @@ function converterAtualizacoesParaRealizado(lista) {
       0
     ),
 
-    financeiroRealAcum: numero(
+    financeiroRealAcum: numeroMoedaCadastro(
       item.financeiroRealAcum ||
       item.financeiroAcum ||
       item.financeiroRealAcumulado ||
@@ -508,7 +520,7 @@ function normalizarAnomalia(item, origem = "") {
     descricao: descricao || "Sem descrição",
     acaoCorretiva,
 
-    impactoFinanceiro: numero(
+    impactoFinanceiro: numeroMoedaCadastro(
       item.impactoFinanceiro ||
       item.custoImpacto ||
       item.valorImpacto ||
@@ -774,7 +786,6 @@ function atualizarDashboard() {
   const resumo = aplicarFiltroStatusResumo(resumoSemStatus);
 
   atualizarKPIs(resumo);
-  atualizarGraficosConsolidados(resumo);
   atualizarGraficosDistribuicao(resumo);
   atualizarRanking(resumo);
   limparTabelaAnomaliasSelecionada();
@@ -926,7 +937,8 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
         "fisicoPlanejado",
         "percentualFisico"
       ],
-      100
+      100,
+      false
     );
 
     const fisicoReal = obterValorAcumulado(
@@ -942,7 +954,8 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
         "avancoFisicoNovo",
         "avancoFisico"
       ],
-      100
+      100,
+      false
     );
 
     const financeiroPlanejado = obterValorAcumulado(
@@ -958,7 +971,8 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
         "financeiroPlanejado",
         "valorPlanejado"
       ],
-      null
+      null,
+      true
     );
 
     const financeiroReal = obterValorAcumulado(
@@ -977,19 +991,31 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
         "custoSemana",
         "custo"
       ],
-      null
+      null,
+      true
     );
 
     const valorTotalObra = obterValorOrcadoObra(obra);
 
-    const valorOrcado = financeiroPlanejado || valorTotalObra;
+    const financeiroPlanejadoCorrigido =
+      normalizarValorPlanejadoOrcado(
+        financeiroPlanejado,
+        valorTotalObra
+      );
+
+    const valorOrcado =
+      valorTotalObra > 0
+        ? valorTotalObra
+        : financeiroPlanejadoCorrigido;
+
+    const saldo = valorOrcado - financeiroReal;
 
     const afo = fisicoPlanejado > 0
       ? limitarPercentual((fisicoReal / fisicoPlanejado) * 100)
       : 0;
 
     const ipf = valorOrcado > 0
-      ? limitarPercentual((financeiroReal / valorOrcado) * 100)
+      ? (financeiroReal / valorOrcado) * 100
       : 0;
 
     const anomCriticas = anom.filter((item) => ehCritica(item.criticidade)).length;
@@ -1025,9 +1051,9 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
       centroCusto: obterCentroCustoObra(obra) || "-",
       status: statusCalculado,
       valorOrcado,
-      financeiroPlanejado,
+      financeiroPlanejado: financeiroPlanejadoCorrigido,
       financeiroReal,
-      saldo: valorOrcado - financeiroReal,
+      saldo,
       fisicoPlanejado,
       fisicoReal,
       afo,
@@ -1048,21 +1074,27 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
   });
 }
 
-function obterValorAcumulado(lista, camposAcumulados, camposSemanais, limitePercentual) {
+function obterValorAcumulado(
+  lista,
+  camposAcumulados,
+  camposSemanais,
+  limitePercentual,
+  usarMoeda = false
+) {
   const ordenados = ordenarItensPorPeriodo(lista);
 
   let ultimoAcumulado = null;
   let somaSemanal = 0;
 
   ordenados.forEach((item) => {
-    const acumulado = primeiroNumeroValido(item, camposAcumulados);
+    const acumulado = primeiroNumeroValido(item, camposAcumulados, usarMoeda);
 
     if (acumulado !== null) {
       ultimoAcumulado = acumulado;
       return;
     }
 
-    const semanal = primeiroNumeroValido(item, camposSemanais);
+    const semanal = primeiroNumeroValido(item, camposSemanais, usarMoeda);
 
     if (semanal !== null) {
       somaSemanal += semanal;
@@ -1076,7 +1108,9 @@ function obterValorAcumulado(lista, camposAcumulados, camposSemanais, limitePerc
     return limitarPercentual(valor);
   }
 
-  return numero(valor);
+  return usarMoeda
+    ? numeroMoedaCadastro(valor)
+    : numero(valor);
 }
 
 /* =========================================
@@ -1166,273 +1200,53 @@ function obterStatusSaude(valor) {
 }
 
 /* =========================================
-   CURVAS S PONDERADAS
+   GRÁFICOS ANALÍTICOS
 ========================================= */
 
-function atualizarGraficosConsolidados(resumo) {
-  const series = montarSeriesCurvaSPonderada(resumo);
+function limitarTopItens(mapa, limite = 8) {
+  const entradas = Object
+    .entries(mapa || {})
+    .filter(([, valor]) => numero(valor) > 0)
+    .sort((a, b) => numero(b[1]) - numero(a[1]));
 
-  chartFisico = renderizarGraficoLinha(
-    chartFisico,
-    "chartFisico",
-    series.labels,
-    [
-      {
-        label: "Planejado físico ponderado",
-        data: series.fisicoPlanejado
-      },
-      {
-        label: "Realizado físico ponderado",
-        data: series.fisicoReal
-      }
-    ],
-    "%"
-  );
-
-  chartFinanceiro = renderizarGraficoLinha(
-    chartFinanceiro,
-    "chartFinanceiro",
-    series.labels,
-    [
-      {
-        label: "Planejado financeiro ponderado",
-        data: series.financeiroPlanejado
-      },
-      {
-        label: "Executado financeiro ponderado",
-        data: series.financeiroReal
-      }
-    ],
-    "%"
-  );
-}
-
-function montarSeriesCurvaSPonderada(resumo) {
-  const pontos = obterPontosCurvaS(resumo);
-
-  if (pontos.length === 0) {
-    return {
-      labels: ["Sem dados"],
-      fisicoPlanejado: [0],
-      fisicoReal: [0],
-      financeiroPlanejado: [0],
-      financeiroReal: [0]
-    };
+  if (entradas.length <= limite) {
+    return Object.fromEntries(entradas);
   }
 
-  const labels = pontos.map((ponto) => ponto.label);
-  const fisicoPlanejado = [];
-  const fisicoReal = [];
-  const financeiroPlanejado = [];
-  const financeiroReal = [];
+  const principais = entradas.slice(0, limite);
 
-  pontos.forEach((ponto) => {
-    let somaPesoFisPlan = 0;
-    let somaPesoFisReal = 0;
-    let somaPesoFinPlan = 0;
-    let somaPesoFinReal = 0;
+  const outros = entradas
+    .slice(limite)
+    .reduce((somaTotal, [, valor]) => somaTotal + numero(valor), 0);
 
-    let somaFisPlan = 0;
-    let somaFisReal = 0;
-    let somaFinPlan = 0;
-    let somaFinReal = 0;
-
-    resumo.forEach((obra) => {
-      const peso = obra.pesoPonderado || 1;
-      const valorBase = obra.valorOrcado || obterValorOrcadoObra(obra.obraOriginal) || 0;
-
-      const fisPlan = obterAcumuladoAtePonto(
-        obra.plan,
-        ponto,
-        [
-          "fisicoAcum",
-          "fisicoPlanejadoAcum",
-          "fisicoPlanejadoAcumulado",
-          "fisicoAcumulado"
-        ],
-        [
-          "fisico",
-          "fisicoPlanejado",
-          "percentualFisico"
-        ],
-        100
-      );
-
-      const fisReal = obterAcumuladoAtePonto(
-        obra.real,
-        ponto,
-        [
-          "fisicoRealAcum",
-          "fisicoAcum",
-          "fisicoRealizadoAcum",
-          "avancoFisicoAcumulado"
-        ],
-        [
-          "fisicoReal",
-          "avancoFisicoNovo",
-          "avancoFisico"
-        ],
-        100
-      );
-
-      const finPlanValor = obterAcumuladoAtePonto(
-        obra.plan,
-        ponto,
-        [
-          "financeiroAcum",
-          "financeiroPlanejadoAcum",
-          "financeiroPlanejadoAcumulado",
-          "financeiroAcumulado"
-        ],
-        [
-          "financeiro",
-          "financeiroPlanejado",
-          "valorPlanejado"
-        ],
-        null
-      );
-
-      const finRealValor = obterAcumuladoAtePonto(
-        obra.real,
-        ponto,
-        [
-          "financeiroRealAcum",
-          "financeiroAcum",
-          "financeiroRealAcumulado",
-          "financeiroAcumulado"
-        ],
-        [
-          "financeiroReal",
-          "valorExecutado",
-          "executado",
-          "investimentoNovo",
-          "custoSemana",
-          "custo"
-        ],
-        null
-      );
-
-      const finPlanPerc = valorBase > 0
-        ? limitarPercentual((finPlanValor / valorBase) * 100)
-        : 0;
-
-      const finRealPerc = valorBase > 0
-        ? limitarPercentual((finRealValor / valorBase) * 100)
-        : 0;
-
-      if (fisPlan > 0) {
-        somaFisPlan += fisPlan * peso;
-        somaPesoFisPlan += peso;
-      }
-
-      if (fisReal > 0) {
-        somaFisReal += fisReal * peso;
-        somaPesoFisReal += peso;
-      }
-
-      if (finPlanPerc > 0) {
-        somaFinPlan += finPlanPerc * peso;
-        somaPesoFinPlan += peso;
-      }
-
-      if (finRealPerc > 0) {
-        somaFinReal += finRealPerc * peso;
-        somaPesoFinReal += peso;
-      }
-    });
-
-    fisicoPlanejado.push(arredondar1(somaPesoFisPlan > 0 ? somaFisPlan / somaPesoFisPlan : 0));
-    fisicoReal.push(arredondar1(somaPesoFisReal > 0 ? somaFisReal / somaPesoFisReal : 0));
-    financeiroPlanejado.push(arredondar1(somaPesoFinPlan > 0 ? somaFinPlan / somaPesoFinPlan : 0));
-    financeiroReal.push(arredondar1(somaPesoFinReal > 0 ? somaFinReal / somaPesoFinReal : 0));
-  });
-
-  return {
-    labels,
-    fisicoPlanejado,
-    fisicoReal,
-    financeiroPlanejado,
-    financeiroReal
-  };
+  return Object.fromEntries([
+    ...principais,
+    ["Outros", outros]
+  ]);
 }
-
-function obterPontosCurvaS(resumo) {
-  const mapa = new Map();
-
-  resumo.forEach((obra) => {
-    [...obra.plan, ...obra.real].forEach((item) => {
-      if (!item || item.ativo === false) {
-        return;
-      }
-
-      const ordem = obterOrdemPeriodoItem(item);
-
-      if (ordem === null || ordem === undefined || Number.isNaN(ordem)) {
-        return;
-      }
-
-      const chave = String(ordem);
-
-      if (!mapa.has(chave)) {
-        mapa.set(chave, {
-          ordem,
-          labelOriginal: obterLabelPeriodoOriginal(item)
-        });
-      }
-    });
-  });
-
-  return [...mapa.values()]
-    .sort((a, b) => a.ordem - b.ordem)
-    .map((ponto, index) => ({
-      ...ponto,
-      label: `SEM ${index + 1}`
-    }));
-}
-
-function obterAcumuladoAtePonto(
-  lista,
-  ponto,
-  camposAcumulados,
-  camposSemanais,
-  limitePercentual
-) {
-  const itensAtePonto = lista.filter((item) => {
-    if (!item || item.ativo === false) {
-      return false;
-    }
-
-    const ordemItem = obterOrdemPeriodoItem(item);
-
-    if (ordemItem === null || ordemItem === undefined || Number.isNaN(ordemItem)) {
-      return false;
-    }
-
-    return ordemItem <= ponto.ordem;
-  });
-
-  return obterValorAcumulado(
-    itensAtePonto,
-    camposAcumulados,
-    camposSemanais,
-    limitePercentual
-  );
-}
-
-/* =========================================
-   GRÁFICOS DE DISTRIBUIÇÃO
-========================================= */
 
 function atualizarGraficosDistribuicao(resumo) {
-  const porRegional = agruparSoma(resumo, "regional", "valorOrcado");
-  const porCentro = agruparSoma(resumo, "centroCusto", "valorOrcado");
-  const porStatus = agruparContagem(resumo, "status");
+  const porRegional = limitarTopItens(
+    agruparSoma(resumo, "regional", "valorOrcado"),
+    6
+  );
+
+  const porCentro = limitarTopItens(
+    agruparSoma(resumo, "centroCusto", "valorOrcado"),
+    8
+  );
+
+  const porStatus = agruparContagem(
+    resumo,
+    "status"
+  );
 
   chartRegional = renderizarGraficoBarra(
     chartRegional,
     "chartRegional",
     Object.keys(porRegional),
     Object.values(porRegional),
+    true,
     true
   );
 
@@ -1441,6 +1255,7 @@ function atualizarGraficosDistribuicao(resumo) {
     "chartCentroCusto",
     Object.keys(porCentro),
     Object.values(porCentro),
+    true,
     true
   );
 
@@ -1460,7 +1275,14 @@ function atualizarGraficosDistribuicao(resumo) {
   setTexto("semCriticas", criticas);
 }
 
-function renderizarGraficoLinha(instancia, canvasId, labels, datasets, sufixo = "") {
+function renderizarGraficoBarra(
+  instancia,
+  canvasId,
+  labels,
+  valores,
+  formatoMoeda = false,
+  horizontal = false
+) {
   const ctx = document.getElementById(canvasId);
 
   if (!ctx || !ChartJS) {
@@ -1471,130 +1293,50 @@ function renderizarGraficoLinha(instancia, canvasId, labels, datasets, sufixo = 
     instancia.destroy();
   }
 
-  return new ChartJS(ctx, {
-    type: "line",
-    data: {
-      labels,
-      datasets: datasets.map((dataset) => ({
-        ...dataset,
-        borderWidth: 3,
-        tension: 0.35,
-        fill: false,
-        pointRadius: 2,
-        pointHoverRadius: 5
-      }))
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-
-      interaction: {
-        mode: "index",
-        intersect: false
-      },
-
-      plugins: {
-        legend: {
-          position: "top",
-          labels: {
-            boxWidth: 10,
-            font: {
-              size: 10,
-              weight: "bold"
-            }
-          }
-        },
-
-        tooltip: {
-          callbacks: {
-            label: (context) =>
-              `${context.dataset.label}: ${percentual(context.raw)}`
-          }
-        },
-
-        datalabels: {
-          display: (context) => {
-            const total = context.dataset.data.length;
-            const index = context.dataIndex;
-
-            return (
-              index === 0 ||
-              index === total - 1 ||
-              index % 4 === 0
-            );
-          },
-
-          align: "top",
-          anchor: "end",
-          formatter: (valor) =>
-            `${Number(valor || 0).toFixed(1).replace(".", ",")}${sufixo}`,
-
-          font: {
-            size: 8,
-            weight: "bold"
-          },
-
-          clamp: true,
-          clip: true
-        }
-      },
-
-      scales: {
-        y: {
-          beginAtZero: true,
-          suggestedMax: 100,
-          max: 110,
-          ticks: {
-            font: {
-              size: 10
-            },
-            callback: (valor) => `${valor}${sufixo}`
-          }
-        },
-
-        x: {
-          ticks: {
-            autoSkip: true,
-            maxTicksLimit: 12,
-            maxRotation: 45,
-            minRotation: 45,
-            font: {
-              size: 10
-            }
-          }
-        }
-      }
-    }
-  });
-}
-
-function renderizarGraficoBarra(instancia, canvasId, labels, valores, formatoMoeda = false) {
-  const ctx = document.getElementById(canvasId);
-
-  if (!ctx || !ChartJS) {
-    return instancia;
-  }
-
-  if (instancia) {
-    instancia.destroy();
-  }
+  const cores = [
+    "#007E7A",
+    "#0ABB98",
+    "#2563EB",
+    "#16A34A",
+    "#F59E0B",
+    "#7C3AED",
+    "#EF4444",
+    "#0F766E",
+    "#64748B"
+  ];
 
   return new ChartJS(ctx, {
     type: "bar",
+
     data: {
       labels,
+
       datasets: [
         {
-          label: formatoMoeda ? "Investimento" : "Quantidade",
+          label: formatoMoeda ? "Investimento Orçado" : "Quantidade",
           data: valores,
+          backgroundColor: labels.map((_, index) => cores[index % cores.length]),
+          borderColor: labels.map((_, index) => cores[index % cores.length]),
           borderWidth: 1,
-          borderRadius: 8
+          borderRadius: 8,
+          maxBarThickness: 34
         }
       ]
     },
+
     options: {
+      indexAxis: horizontal ? "y" : "x",
       responsive: true,
       maintainAspectRatio: false,
+
+      layout: {
+        padding: {
+          top: 8,
+          right: horizontal ? 52 : 12,
+          bottom: 8,
+          left: 6
+        }
+      },
 
       plugins: {
         legend: {
@@ -1605,35 +1347,49 @@ function renderizarGraficoBarra(instancia, canvasId, labels, valores, formatoMoe
           callbacks: {
             label: (context) =>
               formatoMoeda
-                ? moeda.format(context.raw || 0)
-                : String(context.raw || 0)
+                ? moeda.format(numero(context.raw))
+                : String(numero(context.raw))
           }
         },
 
         datalabels: {
           display: true,
           anchor: "end",
-          align: "top",
+          align: horizontal ? "right" : "top",
+          offset: 4,
+
           formatter: (valor) =>
             formatoMoeda
               ? moedaCompacta(valor)
               : valor,
+
+          color: "#0f172a",
+
           font: {
             size: 9,
             weight: "bold"
           },
+
           clamp: true,
-          clip: true
+          clip: false
         }
       },
 
       scales: {
-        y: {
+        x: {
           beginAtZero: true,
+
+          grid: {
+            color: "rgba(148, 163, 184, 0.18)"
+          },
+
           ticks: {
+            color: "#475569",
             font: {
-              size: 10
+              size: 10,
+              weight: "600"
             },
+
             callback: (valor) =>
               formatoMoeda
                 ? moedaCompacta(valor)
@@ -1641,12 +1397,20 @@ function renderizarGraficoBarra(instancia, canvasId, labels, valores, formatoMoe
           }
         },
 
-        x: {
+        y: {
+          beginAtZero: true,
+
+          grid: {
+            display: !horizontal,
+            color: "rgba(148, 163, 184, 0.18)"
+          },
+
           ticks: {
-            maxRotation: 35,
-            minRotation: 0,
+            autoSkip: false,
+            color: "#334155",
             font: {
-              size: 10
+              size: 10,
+              weight: "700"
             }
           }
         }
@@ -1666,27 +1430,45 @@ function renderizarGraficoPizza(instancia, canvasId, labels, valores) {
     instancia.destroy();
   }
 
+  const cores = [
+    "#007E7A",
+    "#2563EB",
+    "#16A34A",
+    "#F59E0B",
+    "#EF4444",
+    "#7C3AED",
+    "#64748B"
+  ];
+
   return new ChartJS(ctx, {
     type: "doughnut",
+
     data: {
       labels,
+
       datasets: [
         {
           data: valores,
-          borderWidth: 2
+          backgroundColor: labels.map((_, index) => cores[index % cores.length]),
+          borderColor: "#ffffff",
+          borderWidth: 3,
+          hoverOffset: 8
         }
       ]
     },
+
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: "58%",
+      cutout: "62%",
 
       plugins: {
         legend: {
           position: "bottom",
           labels: {
             boxWidth: 10,
+            padding: 12,
+            color: "#0f172a",
             font: {
               size: 10,
               weight: "bold"
@@ -1694,9 +1476,45 @@ function renderizarGraficoPizza(instancia, canvasId, labels, valores) {
           }
         },
 
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const total = context
+                .chart
+                .data
+                .datasets[0]
+                .data
+                .reduce((somaTotal, valor) => somaTotal + numero(valor), 0);
+
+              const valor = numero(context.raw);
+              const perc = total > 0 ? (valor / total) * 100 : 0;
+
+              return `${context.label}: ${valor} obra(s) | ${percentual(perc)}`;
+            }
+          }
+        },
+
         datalabels: {
-          display: true,
-          formatter: (valor) => valor,
+          display: (context) => numero(context.raw) > 0,
+
+          formatter: (valor, context) => {
+            const total = context
+              .chart
+              .data
+              .datasets[0]
+              .data
+              .reduce((somaTotal, item) => somaTotal + numero(item), 0);
+
+            const perc = total > 0 ? (numero(valor) / total) * 100 : 0;
+
+            return [
+              String(valor),
+              percentual(perc)
+            ];
+          },
+
+          color: "#ffffff",
+
           font: {
             size: 10,
             weight: "bold"
@@ -2147,18 +1965,80 @@ function obterCentroCustoObra(obra) {
 }
 
 function obterValorOrcadoObra(obra) {
-  return numero(
-    obra.valorObra ||
-    obra.valorTotal ||
-    obra.valorOrcado ||
-    obra.valorOrçado ||
-    obra.valororcado ||
-    obra.investimento ||
-    obra.custoTotal ||
-    obra.orcamento ||
-    obra.orçamento ||
-    0
-  );
+  const camposTextoDashboard = [
+    obra.valorObra,
+    obra.valorOrcado,
+    obra.valorOrçado,
+    obra.investimento,
+    obra.valorInvestimento,
+    obra.orcamento,
+    obra.orçamento,
+    obra.orcado,
+    obra.orçado,
+    obra.valorTotal,
+    obra.custoTotal,
+    obra.custoOrcado,
+    obra.orcadoTotal,
+    obra.orcamentoTotal,
+    obra.orçamentoTotal,
+    obra.investimentoTotal
+  ];
+
+  for (const valor of camposTextoDashboard) {
+    if (typeof valor !== "string") {
+      continue;
+    }
+
+    const convertido = numeroMoedaCadastro(valor);
+
+    if (convertido > 0) {
+      return convertido;
+    }
+  }
+
+  const camposNumericos = [
+    obra.valorObraNumero,
+    obra.valorObraNumerico,
+    obra.valorOrcadoNumero,
+    obra.valorOrçadoNumero,
+    obra.investimentoNumero,
+    obra.investimentoTotalNumero,
+    obra.valorInvestimentoNumero,
+    obra.orcamentoNumero,
+    obra.orçamentoNumero,
+    obra.orcadoNumero,
+    obra.orçadoNumero,
+    obra.valorTotalNumero,
+    obra.valorTotalNumerico,
+    obra.custoTotalNumero,
+    obra.custoOrcadoNumero,
+    obra.valorObra,
+    obra.valorOrcado,
+    obra.valorOrçado,
+    obra.investimento,
+    obra.valorInvestimento,
+    obra.orcamento,
+    obra.orçamento,
+    obra.orcado,
+    obra.orçado,
+    obra.valorTotal,
+    obra.custoTotal,
+    obra.custoOrcado,
+    obra.orcadoTotal,
+    obra.orcamentoTotal,
+    obra.orçamentoTotal,
+    obra.investimentoTotal
+  ];
+
+  for (const valor of camposNumericos) {
+    const convertido = numeroMoedaCadastro(valor);
+
+    if (convertido > 0) {
+      return convertido;
+    }
+  }
+
+  return 0;
 }
 
 function obterIntervaloObra(obra) {
@@ -2322,7 +2202,7 @@ function intervaloSobrepoeFiltro(inicioItem, fimItem, filtroInicio, filtroFim) {
 }
 
 /* =========================================
-   PERÍODO E ORDENAÇÃO DAS SEMANAS
+   PERÍODO E ORDENAÇÃO
 ========================================= */
 
 function atualizarResumoPeriodo() {
@@ -2523,7 +2403,7 @@ const formatarDataCurta = (data) =>
   data ? data.toLocaleDateString("pt-BR") : "";
 
 /* =========================================
-   AGRUPAMENTOS E MATEMÁTICA
+   MATEMÁTICA
 ========================================= */
 
 function agruparContagem(lista, campo) {
@@ -2566,29 +2446,193 @@ function numero(valor) {
   }
 
   if (typeof valor === "number") {
-    return isNaN(valor) ? 0 : valor;
+    return Number.isFinite(valor) ? valor : 0;
   }
 
-  const texto = String(valor)
+  let texto = String(valor)
+    .trim()
     .replace(/R\$/gi, "")
     .replace(/%/g, "")
     .replace(/\s/g, "")
-    .replace(/\./g, "")
-    .replace(/,/g, ".");
+    .replace(/[^\d,.-]/g, "");
 
-  const convertido = Number(texto);
+  if (!texto) {
+    return 0;
+  }
 
-  return isNaN(convertido) ? 0 : convertido;
+  const negativo = texto.startsWith("-");
+
+  texto = texto.replace(/^-/, "");
+
+  const temVirgula = texto.includes(",");
+  const temPonto = texto.includes(".");
+
+  if (temVirgula && temPonto) {
+    const ultimaVirgula = texto.lastIndexOf(",");
+    const ultimoPonto = texto.lastIndexOf(".");
+
+    if (ultimaVirgula > ultimoPonto) {
+      texto = texto.replace(/\./g, "").replace(",", ".");
+    } else {
+      texto = texto.replace(/,/g, "");
+    }
+  } else if (temVirgula) {
+    const partes = texto.split(",");
+
+    if (partes.length === 2 && partes[1].length <= 2) {
+      texto = partes[0].replace(/\./g, "") + "." + partes[1];
+    } else {
+      texto = texto.replace(/,/g, "");
+    }
+  } else if (temPonto) {
+    const partes = texto.split(".");
+
+    if (partes.length > 2) {
+      const ultimaParte = partes.pop();
+
+      if (ultimaParte.length <= 2) {
+        texto = partes.join("") + "." + ultimaParte;
+      } else {
+        texto = partes.join("") + ultimaParte;
+      }
+    } else if (partes.length === 2) {
+      if (partes[1].length <= 2) {
+        texto = partes[0] + "." + partes[1];
+      } else {
+        texto = partes.join("");
+      }
+    }
+  }
+
+  const convertido = Number(
+    negativo ? `-${texto}` : texto
+  );
+
+  return Number.isFinite(convertido) ? convertido : 0;
 }
 
-function primeiroNumeroValido(objeto, campos) {
+function numeroMoedaCadastro(valor) {
+  if (valor === null || valor === undefined || valor === "") {
+    return 0;
+  }
+
+  if (typeof valor === "number") {
+    if (!Number.isFinite(valor)) {
+      return 0;
+    }
+
+    if (
+      Number.isInteger(valor) &&
+      Math.abs(valor) >= 10000000
+    ) {
+      return valor / 100;
+    }
+
+    return valor;
+  }
+
+  const textoOriginal = String(valor).trim();
+
+  if (!textoOriginal) {
+    return 0;
+  }
+
+  const textoLimpo = textoOriginal
+    .replace(/R\$/gi, "")
+    .replace(/%/g, "")
+    .replace(/\s/g, "")
+    .replace(/[^\d,.-]/g, "");
+
+  if (!textoLimpo) {
+    return 0;
+  }
+
+  const possuiVirgula = textoLimpo.includes(",");
+  const possuiPonto = textoLimpo.includes(".");
+  const somenteNumeros = textoLimpo.replace(/\D/g, "");
+
+  let convertido = 0;
+
+  if (possuiVirgula) {
+    convertido = Number(
+      textoLimpo
+        .replace(/\./g, "")
+        .replace(",", ".")
+    );
+  } else {
+    convertido = Number(
+      textoLimpo.replace(/,/g, "")
+    );
+  }
+
+  if (!Number.isFinite(convertido) || convertido <= 0) {
+    return 0;
+  }
+
+  if (
+    !possuiVirgula &&
+    !possuiPonto &&
+    somenteNumeros.length >= 8 &&
+    convertido >= 10000000
+  ) {
+    return convertido / 100;
+  }
+
+  if (
+    !possuiVirgula &&
+    possuiPonto
+  ) {
+    const partes = textoLimpo.split(".");
+    const parteInteira = partes[0] || "";
+    const parteDecimal = partes[1] || "";
+
+    if (
+      parteInteira.length >= 8 &&
+      parteDecimal === "00" &&
+      convertido >= 10000000
+    ) {
+      return convertido / 100;
+    }
+  }
+
+  if (
+    possuiVirgula &&
+    possuiPonto &&
+    convertido >= 100000000
+  ) {
+    return convertido / 100;
+  }
+
+  return convertido;
+}
+
+function normalizarValorPlanejadoOrcado(valorPlanejado, valorObraReferencia = 0) {
+  let valor = numeroMoedaCadastro(valorPlanejado);
+
+  if (valor <= 0) {
+    return 0;
+  }
+
+  if (
+    valorObraReferencia > 0 &&
+    valor > valorObraReferencia * 50
+  ) {
+    valor = valor / 100;
+  }
+
+  return valor;
+}
+
+function primeiroNumeroValido(objeto, campos, usarMoeda = false) {
   for (const campo of campos) {
     if (
       objeto[campo] !== undefined &&
       objeto[campo] !== null &&
       objeto[campo] !== ""
     ) {
-      return numero(objeto[campo]);
+      return usarMoeda
+        ? numeroMoedaCadastro(objeto[campo])
+        : numero(objeto[campo]);
     }
   }
 
@@ -2609,6 +2653,10 @@ function arredondar1(valor) {
 
 function moedaCompacta(valor) {
   const numeroValor = numero(valor);
+
+  if (Math.abs(numeroValor) >= 1000000000) {
+    return `R$ ${(numeroValor / 1000000000).toFixed(1).replace(".", ",")} bi`;
+  }
 
   if (Math.abs(numeroValor) >= 1000000) {
     return `R$ ${(numeroValor / 1000000).toFixed(1).replace(".", ",")} mi`;
