@@ -1,7 +1,7 @@
 /* =====================================================
    DASHBOARD - PAINEL EXECUTIVO DE OBRAS
    Arquivo: dashboard.css
-   Versão: v010
+   Versão: v011
 ===================================================== */
 
 *{
@@ -225,11 +225,20 @@ body.usuario-admin .menu a[data-admin-only]{
 ========================================= */
 
 .topbar{
+  width:100%;
   display:flex;
   justify-content:space-between;
-  align-items:center;
+  align-items:flex-start;
   margin-bottom:20px;
   gap:20px;
+}
+
+.topbar-textos{
+  min-width:0;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
 }
 
 .topbar h1{
@@ -245,10 +254,106 @@ body.usuario-admin .menu a[data-admin-only]{
 }
 
 .top-buttons{
+  margin-left:auto;
   display:flex;
+  justify-content:flex-end;
+  align-items:flex-start;
   gap:10px;
   flex-wrap:wrap;
+  flex-shrink:0;
 }
+
+/* =========================================
+   USUÁRIO LOGADO NO TOPO - SEM RETÂNGULO
+========================================= */
+
+.topbar .usuario-logado-info,
+.topbar .sg-usuario-logado-info{
+  width:auto !important;
+  max-width:100% !important;
+  margin-top:6px !important;
+  padding:0 !important;
+
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  flex-wrap:wrap !important;
+  gap:6px !important;
+
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+
+  color:#64748b !important;
+  font-size:12px !important;
+  font-weight:600 !important;
+  line-height:1.25 !important;
+}
+
+.topbar .usuario-logado-info span,
+.topbar .sg-usuario-logado-info span{
+  margin-top:0 !important;
+  padding:0 !important;
+
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:4px !important;
+
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+
+  color:#64748b !important;
+  opacity:1 !important;
+
+  font-size:12px !important;
+  font-weight:600 !important;
+  line-height:1.25 !important;
+}
+
+.topbar .usuario-logado-info strong,
+.topbar .sg-usuario-logado-info strong{
+  color:#007E7A !important;
+  font-size:12px !important;
+  font-weight:800 !important;
+  line-height:1.25 !important;
+
+  max-width:380px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.topbar .usuario-label{
+  color:#64748b !important;
+  font-weight:700 !important;
+}
+
+.topbar .usuario-logado-separador,
+.topbar .sg-usuario-logado-separador{
+  color:#94a3b8 !important;
+  font-weight:700 !important;
+}
+
+.topbar .usuario-logado-info i,
+.topbar .sg-usuario-logado-info i{
+  display:none !important;
+}
+
+.topbar .usuario-logado-info.perfil-administrador,
+.topbar .usuario-logado-info.perfil-sem-permissao,
+.topbar .sg-usuario-logado-info.perfil-administrador,
+.topbar .sg-usuario-logado-info.perfil-sem-permissao{
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+/* =========================================
+   BOTÕES
+========================================= */
 
 .btn{
   height:38px;
@@ -259,9 +364,11 @@ body.usuario-admin .menu a[data-admin-only]{
   font-weight:600;
   display:flex;
   align-items:center;
+  justify-content:center;
   gap:8px;
   transition:.2s;
   font-size:11px;
+  white-space:nowrap;
 }
 
 .btn.white{
@@ -738,18 +845,39 @@ body.exportando-pdf .chart-card-full canvas{
   .topbar{
     flex-direction:column;
     align-items:flex-start;
+    gap:12px;
   }
 
   .topbar h1{
     font-size:22px;
   }
 
+  .topbar .usuario-logado-info,
+  .topbar .sg-usuario-logado-info{
+    width:100% !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    gap:2px !important;
+  }
+
+  .topbar .usuario-logado-separador,
+  .topbar .sg-usuario-logado-separador{
+    display:none !important;
+  }
+
+  .topbar .usuario-logado-info strong,
+  .topbar .sg-usuario-logado-info strong{
+    max-width:calc(100vw - 120px);
+  }
+
   .top-buttons{
     width:100%;
+    justify-content:flex-start;
+    margin-left:0;
   }
 
   .btn{
-    flex:1;
+    width:100%;
     justify-content:center;
   }
 
