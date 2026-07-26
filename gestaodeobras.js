@@ -1,6 +1,8 @@
 /* =====================================================
-   GESTÃO DE OBRAS - v309
-   Painel de obras + edição de datas + exclusão por perfil administrativo
+   GESTÃO DE OBRAS - v313
+   Painel de obras + edição de datas + exclusão somente por Administrador Geral
+   Cabeçalho padronizado via HTML/CSS + permissões por perfil
+   Coluna Cliente removida da tabela
    Versão SEM Cloud Functions / SEM Blaze
 ===================================================== */
 
@@ -257,7 +259,9 @@ function numeroBRL(valor) {
   }
 
   if (texto.includes(",")) {
-    texto = texto.replace(/\./g, "").replace(",", ".");
+    texto = texto
+      .replace(/\./g, "")
+      .replace(",", ".");
   } else {
     const partes = texto.split(".");
 
@@ -270,14 +274,18 @@ function numeroBRL(valor) {
   }
 
   const numero = Number(texto);
+
   return Number.isFinite(numero) ? numero : 0;
 }
 
 function moeda(valor) {
-  return numeroBRL(valor).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL"
-  });
+  return numeroBRL(valor).toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL"
+    }
+  );
 }
 
 function converterParaDate(valor) {
@@ -318,7 +326,9 @@ function converterParaDate(valor) {
   }
 
   if (texto.includes("-")) {
-    const partes = texto.split("T")[0].split("-");
+    const partes = texto
+      .split("T")[0]
+      .split("-");
 
     if (partes.length === 3) {
       const data = new Date(
@@ -332,17 +342,22 @@ function converterParaDate(valor) {
   }
 
   const data = new Date(texto);
+
   return Number.isNaN(data.getTime()) ? null : data;
 }
 
 function dataParaTempo(valor) {
   const data = converterParaDate(valor);
+
   return data ? data.getTime() : null;
 }
 
 function formatarData(valor) {
   const data = converterParaDate(valor);
-  return data ? data.toLocaleDateString("pt-BR") : "-";
+
+  return data
+    ? data.toLocaleDateString("pt-BR")
+    : "-";
 }
 
 function dataParaInput(valor) {
@@ -361,11 +376,13 @@ function dataParaInput(valor) {
 
 function obterAno(valor) {
   const data = converterParaDate(valor);
+
   return data ? String(data.getFullYear()) : "";
 }
 
 function extrairDatasPeriodo(periodo) {
   const texto = String(periodo || "");
+
   const datasBR = texto.match(/\d{2}\/\d{2}\/\d{4}/g);
 
   if (datasBR && datasBR.length >= 2) {
@@ -401,43 +418,45 @@ const EMAILS_ADMIN_GERAL = new Set([
 ]);
 
 function normalizarEmail(valor) {
-  return String(valor || "").trim().toLowerCase();
+  return String(valor || "")
+    .trim()
+    .toLowerCase();
 }
 
 function obterEmailUsuario(usuario) {
   return normalizarEmail(
     usuario?.email ||
-      usuario?.emailAuth ||
-      usuario?.usuarioEmail ||
-      usuario?.login ||
-      usuario?.user?.email ||
-      auth.currentUser?.email ||
-      ""
+    usuario?.emailAuth ||
+    usuario?.usuarioEmail ||
+    usuario?.login ||
+    usuario?.user?.email ||
+    auth.currentUser?.email ||
+    ""
   );
 }
 
 function obterUidUsuario(usuario) {
   return String(
     usuario?.uid ||
-      usuario?.user?.uid ||
-      usuario?.auth?.uid ||
-      auth.currentUser?.uid ||
-      ""
+    usuario?.user?.uid ||
+    usuario?.auth?.uid ||
+    auth.currentUser?.uid ||
+    ""
   ).trim();
 }
 
 function obterPerfilUsuario(usuario) {
   return String(
     usuario?.perfil ||
-      usuario?.role ||
-      usuario?.tipo ||
-      usuario?.nivel ||
-      usuario?.nivelAcesso ||
-      usuario?.cargo ||
-      usuario?.funcao ||
-      usuario?.acesso ||
-      usuario?.permissao ||
-      ""
+    usuario?.role ||
+    usuario?.tipo ||
+    usuario?.nivel ||
+    usuario?.nivelAcesso ||
+    usuario?.cargo ||
+    usuario?.funcao ||
+    usuario?.acesso ||
+    usuario?.permissao ||
+    ""
   ).trim();
 }
 
@@ -487,9 +506,12 @@ function aguardarUsuarioAuthentication(timeoutMs = 6000) {
       () => finalizar(null)
     );
 
-    temporizador = setTimeout(() => {
-      finalizar(auth.currentUser);
-    }, timeoutMs);
+    temporizador = setTimeout(
+      () => {
+        finalizar(auth.currentUser);
+      },
+      timeoutMs
+    );
   });
 }
 
@@ -499,7 +521,13 @@ async function buscarPerfilUsuarioFirestore(usuarioBase) {
 
   if (uid) {
     try {
-      const snapshotUsuario = await getDoc(doc(db, "usuariosSistema", uid));
+      const snapshotUsuario = await getDoc(
+        doc(
+          db,
+          "usuariosSistema",
+          uid
+        )
+      );
 
       if (snapshotUsuario.exists()) {
         return {
@@ -508,17 +536,35 @@ async function buscarPerfilUsuarioFirestore(usuarioBase) {
         };
       }
     } catch (error) {
-      console.warn("Não foi possível buscar o perfil do usuário pelo UID:", error);
+      console.warn(
+        "Não foi possível buscar o perfil do usuário pelo UID:",
+        error
+      );
     }
   }
 
   if (email) {
-    const camposEmail = ["email", "emailAuth", "usuarioEmail"];
+    const camposEmail = [
+      "email",
+      "emailAuth",
+      "usuarioEmail",
+      "login"
+    ];
 
     for (const campo of camposEmail) {
       try {
         const resultado = await getDocs(
-          query(collection(db, "usuariosSistema"), where(campo, "==", email))
+          query(
+            collection(
+              db,
+              "usuariosSistema"
+            ),
+            where(
+              campo,
+              "==",
+              email
+            )
+          )
         );
 
         if (!resultado.empty) {
@@ -530,7 +576,10 @@ async function buscarPerfilUsuarioFirestore(usuarioBase) {
           };
         }
       } catch (error) {
-        console.warn(`Não foi possível buscar o perfil pelo campo ${campo}:`, error);
+        console.warn(
+          `Não foi possível buscar o perfil pelo campo ${campo}:`,
+          error
+        );
       }
     }
   }
@@ -550,13 +599,14 @@ async function carregarUsuarioCompleto(usuarioProtegido) {
       usuarioProtegido?.user?.uid ||
       "",
 
-    email: normalizarEmail(
-      usuarioAuthentication?.email ||
+    email:
+      normalizarEmail(
+        usuarioAuthentication?.email ||
         usuarioProtegido?.email ||
         usuarioProtegido?.emailAuth ||
         usuarioProtegido?.user?.email ||
         ""
-    ),
+      ),
 
     displayName:
       usuarioProtegido?.displayName ||
@@ -576,12 +626,13 @@ async function carregarUsuarioCompleto(usuarioProtegido) {
       perfilFirestore?.id ||
       "",
 
-    email: normalizarEmail(
-      perfilFirestore?.email ||
+    email:
+      normalizarEmail(
+        perfilFirestore?.email ||
         perfilFirestore?.emailAuth ||
         usuarioBase.email ||
         ""
-    )
+      )
   };
 }
 
@@ -596,9 +647,9 @@ function usuarioEstaAtivoParaPermissao(usuario) {
 
   const status = normalizarTexto(
     usuario.status ||
-      usuario.statusUsuario ||
-      usuario.situacao ||
-      ""
+    usuario.statusUsuario ||
+    usuario.situacao ||
+    ""
   );
 
   if (!status) {
@@ -615,21 +666,35 @@ function usuarioEstaAtivoParaPermissao(usuario) {
   ].includes(status);
 }
 
+function obterPerfilEfetivoGestao(usuario) {
+  const perfilBanco = obterPerfilPermissao(usuario);
+
+  if (perfilBanco) {
+    return perfilBanco;
+  }
+
+  const email = obterEmailUsuario(usuario);
+
+  if (
+    EMAILS_ADMIN_GERAL.has(email) &&
+    usuario?.adminRebaixado !== true
+  ) {
+    return "administrador";
+  }
+
+  return "usuario";
+}
+
 function usuarioEhAdministradorGeral(usuario) {
   if (!usuario) {
     return false;
   }
 
-  const email = obterEmailUsuario(usuario);
-  const perfil = obterPerfilPermissao(usuario);
-
-  if (EMAILS_ADMIN_GERAL.has(email)) {
-    return true;
-  }
-
   if (!usuarioEstaAtivoParaPermissao(usuario)) {
     return false;
   }
+
+  const perfilEfetivo = obterPerfilEfetivoGestao(usuario);
 
   return (
     usuario.admin === true ||
@@ -644,52 +709,34 @@ function usuarioEhAdministradorGeral(usuario) {
       "administradorgeral",
       "admin geral",
       "adm geral"
-    ].includes(perfil)
+    ].includes(perfilEfetivo)
   );
 }
 
-function usuarioEhAdministradorRegional(usuario) {
-  if (!usuarioEstaAtivoParaPermissao(usuario)) {
-    return false;
-  }
-
-  const perfil = obterPerfilPermissao(usuario);
-
-  return (
-    usuario.adminRegional === true ||
-    usuario.administradorRegional === true ||
-    [
-      "administrador regional",
-      "administradorregional",
-      "administrador de regional",
-      "admin regional",
-      "adminregional",
-      "admin de regional"
-    ].includes(perfil)
-  );
+function usuarioEhAdministradorRegional() {
+  return false;
 }
 
 function usuarioEhAdministrador(usuario) {
-  return (
-    usuarioEhAdministradorGeral(usuario) ||
-    usuarioEhAdministradorRegional(usuario)
-  );
+  return usuarioEhAdministradorGeral(usuario);
 }
 
 function usuarioPodeExcluirObra(usuario) {
-  return usuarioEhAdministrador(usuario);
+  return usuarioEhAdministradorGeral(usuario);
 }
 
 function obterNomePerfilExibicao(usuario) {
+  const perfilEfetivo = obterPerfilEfetivoGestao(usuario);
+
   if (usuarioEhAdministradorGeral(usuario)) {
     return "Administrador Geral";
   }
 
-  if (usuarioEhAdministradorRegional(usuario)) {
-    return "Administrador Regional";
+  if (perfilEfetivo === "planejador") {
+    return "Planejador";
   }
 
-  return obterPerfilUsuario(usuario) || "Usuário";
+  return "Usuário";
 }
 
 function exibirUsuarioLogadoNoTopo() {
@@ -705,54 +752,82 @@ function exibirUsuarioLogadoNoTopo() {
   }
 
   if (usuarioLogadoInfo) {
-    const administrador = usuarioEhAdministrador(usuarioLogadoGlobal);
+    const administrador = usuarioEhAdministradorGeral(usuarioLogadoGlobal);
 
-    usuarioLogadoInfo.classList.toggle("perfil-administrador", administrador);
-    usuarioLogadoInfo.classList.toggle("perfil-sem-permissao", !administrador);
+    usuarioLogadoInfo.classList.toggle(
+      "perfil-administrador",
+      administrador
+    );
+
+    usuarioLogadoInfo.classList.toggle(
+      "perfil-sem-permissao",
+      !administrador
+    );
   }
 }
 
 function aplicarVisibilidadeAdministrador() {
   const adminGeral = usuarioEhAdministradorGeral(usuarioLogadoGlobal);
-  const adminRegional = usuarioEhAdministradorRegional(usuarioLogadoGlobal);
-  const admin = adminGeral || adminRegional;
 
-  document.body.classList.toggle("usuario-admin", admin);
-  document.body.classList.toggle("usuario-admin-geral", adminGeral);
-  document.body.classList.toggle("usuario-admin-regional", adminRegional);
+  document.body.classList.toggle(
+    "usuario-admin",
+    adminGeral
+  );
 
-  document.querySelectorAll("[data-admin-only]").forEach((elemento) => {
-    if (admin) {
-      elemento.style.removeProperty("display");
-      elemento.removeAttribute("aria-disabled");
-    } else {
-      elemento.style.display = "none";
-      elemento.setAttribute("aria-disabled", "true");
+  document.body.classList.toggle(
+    "usuario-admin-geral",
+    adminGeral
+  );
+
+  document.body.classList.toggle(
+    "usuario-admin-regional",
+    false
+  );
+
+  document
+    .querySelectorAll("[data-admin-only]")
+    .forEach((elemento) => {
+      if (adminGeral) {
+        elemento.style.removeProperty("display");
+        elemento.removeAttribute("aria-disabled");
+      } else {
+        elemento.style.display = "none";
+        elemento.setAttribute("aria-disabled", "true");
+      }
+    });
+
+  console.info(
+    "Permissão da Gestão de Obras:",
+    {
+      uid: obterUidUsuario(usuarioLogadoGlobal),
+      email: obterEmailUsuario(usuarioLogadoGlobal),
+      perfilBanco: obterPerfilUsuario(usuarioLogadoGlobal),
+      perfilEfetivo: obterPerfilEfetivoGestao(usuarioLogadoGlobal),
+      perfilExibido: obterNomePerfilExibicao(usuarioLogadoGlobal),
+      administradorGeral: adminGeral,
+      administradorRegional: false,
+      podeEditarObra: adminGeral,
+      podeExcluirObra: adminGeral
     }
-  });
-
-  console.info("Permissão da Gestão de Obras:", {
-    uid: obterUidUsuario(usuarioLogadoGlobal),
-    email: obterEmailUsuario(usuarioLogadoGlobal),
-    perfilOriginal: obterPerfilUsuario(usuarioLogadoGlobal),
-    perfilExibido: obterNomePerfilExibicao(usuarioLogadoGlobal),
-    administradorGeral: adminGeral,
-    administradorRegional: adminRegional,
-    podeExcluirObra: admin
-  });
+  );
 }
 
 function atualizarBloqueioScrollModal() {
   const existeModalAberto = Boolean(
     modalEditarDatas?.classList.contains("ativo") ||
-      modalExcluirObra?.classList.contains("ativo")
+    modalExcluirObra?.classList.contains("ativo")
   );
 
-  document.body.classList.toggle("modal-aberto", existeModalAberto);
+  document.body.classList.toggle(
+    "modal-aberto",
+    existeModalAberto
+  );
 }
 
 function obterColspanTabela() {
-  return usuarioEhAdministrador(usuarioLogadoGlobal) ? 11 : 10;
+  return usuarioEhAdministradorGeral(usuarioLogadoGlobal)
+    ? 10
+    : 9;
 }
 
 /* =========================
@@ -783,6 +858,7 @@ function obterLocalidadeCorrigida(obra) {
 
 function obterRegionalPelaLocalidade(localidade) {
   const itemMapa = buscarLocalidadeNoMapa(localidade);
+
   return itemMapa ? itemMapa.regional : "";
 }
 
@@ -796,9 +872,9 @@ function obterRegionalCorrigida(obra) {
 
   return normalizarRegional(
     obra.regional ||
-      obra.regionalNome ||
-      obra.regionalObra ||
-      ""
+    obra.regionalNome ||
+    obra.regionalObra ||
+    ""
   );
 }
 
@@ -840,16 +916,6 @@ function obterNomeObra(obra) {
   );
 }
 
-function obterClienteObra(obra) {
-  return (
-    obra.cliente ||
-    obra.sponsor ||
-    obra.emailSponsor ||
-    obra.responsavel ||
-    "-"
-  );
-}
-
 function obterChavesObra(obra, docId) {
   return chavesUnicas([
     docId,
@@ -873,11 +939,11 @@ function ordemPrioridade(valor) {
   const prioridade = normalizarTexto(valor);
 
   const mapa = {
-    critica: 1,
+    "critica": 1,
     "muito alta": 2,
-    alta: 3,
-    moderada: 4,
-    baixa: 5
+    "alta": 3,
+    "moderada": 4,
+    "baixa": 5
   };
 
   return mapa[prioridade] || 99;
@@ -886,15 +952,15 @@ function ordemPrioridade(valor) {
 function calcularStatus(obra, custoExecucao, fisicoRealAcum) {
   const fisico = numeroBRL(
     fisicoRealAcum ??
-      obra.fisicoRealAcum ??
-      obra.fisicoRealizadoAcum ??
-      obra.fisicoAcumReal ??
-      obra.fisicoExecutadoAcum ??
-      obra.fisicoAcumuladoReal ??
-      obra.fisicoAcum ??
-      obra.avancoFisico ??
-      obra.avancoFisicoNovo ??
-      0
+    obra.fisicoRealAcum ??
+    obra.fisicoRealizadoAcum ??
+    obra.fisicoAcumReal ??
+    obra.fisicoExecutadoAcum ??
+    obra.fisicoAcumuladoReal ??
+    obra.fisicoAcum ??
+    obra.avancoFisico ??
+    obra.avancoFisicoNovo ??
+    0
   );
 
   if (fisico >= 100) {
@@ -951,14 +1017,20 @@ function adicionarDatasMapa(mapa, chave, inicio, fim) {
 
   if (
     tempoInicioNovo !== null &&
-    (tempoInicioAtual === null || tempoInicioNovo < tempoInicioAtual)
+    (
+      tempoInicioAtual === null ||
+      tempoInicioNovo < tempoInicioAtual
+    )
   ) {
     mapa[chaveFinal].inicio = inicio;
   }
 
   if (
     tempoFimNovo !== null &&
-    (tempoFimAtual === null || tempoFimNovo > tempoFimAtual)
+    (
+      tempoFimAtual === null ||
+      tempoFimNovo > tempoFimAtual
+    )
   ) {
     mapa[chaveFinal].fim = fim;
   }
@@ -1004,7 +1076,12 @@ function montarMapaDatas(snapshotCurva) {
     ]);
 
     chaves.forEach((chave) => {
-      adicionarDatasMapa(mapaDatas, chave, inicio, fim);
+      adicionarDatasMapa(
+        mapaDatas,
+        chave,
+        inicio,
+        fim
+      );
     });
   });
 
@@ -1029,7 +1106,11 @@ function obterOrdemRegistro(item) {
     }
   }
 
-  const semana = Number(String(item.semana || "").replace(/[^\d]/g, ""));
+  const semana = Number(
+    String(item.semana || "")
+      .replace(/[^\d]/g, "")
+  );
+
   return Number.isFinite(semana) ? semana : -1;
 }
 
@@ -1094,35 +1175,43 @@ function montarMapaRealizado(snapshotRealizado) {
 
       const ordem = obterOrdemRegistro(item);
 
-      const financeiroAcum = obterValorCampo(item, [
-        "financeiroRealAcum",
-        "financeiroRealizadoAcum",
-        "financeiroAcumReal",
-        "financeiroExecutadoAcum",
-        "financeiroAcumuladoReal",
-        "custoRealAcumulado",
-        "custoAcumulado",
-        "financeiroAcum"
-      ]);
+      const financeiroAcum = obterValorCampo(
+        item,
+        [
+          "financeiroRealAcum",
+          "financeiroRealizadoAcum",
+          "financeiroAcumReal",
+          "financeiroExecutadoAcum",
+          "financeiroAcumuladoReal",
+          "custoRealAcumulado",
+          "custoAcumulado",
+          "financeiroAcum"
+        ]
+      );
 
-      const fisicoAcum = obterValorCampo(item, [
-        "fisicoRealAcum",
-        "fisicoRealizadoAcum",
-        "fisicoAcumReal",
-        "fisicoExecutadoAcum",
-        "fisicoAcumuladoReal",
-        "avancoFisicoAcumulado",
-        "avancoFisicoNovo",
-        "fisicoAcum"
-      ]);
+      const fisicoAcum = obterValorCampo(
+        item,
+        [
+          "fisicoRealAcum",
+          "fisicoRealizadoAcum",
+          "fisicoAcumReal",
+          "fisicoExecutadoAcum",
+          "fisicoAcumuladoReal",
+          "avancoFisicoAcumulado",
+          "avancoFisicoNovo",
+          "fisicoAcum"
+        ]
+      );
 
       if (financeiroAcum.existe) {
         grupo.possuiFinanceiroAcum = true;
 
         if (
           ordem > grupo.ordemFinanceiro ||
-          (ordem === grupo.ordemFinanceiro &&
-            financeiroAcum.valor > grupo.financeiroRealAcum)
+          (
+            ordem === grupo.ordemFinanceiro &&
+            financeiroAcum.valor > grupo.financeiroRealAcum
+          )
         ) {
           grupo.ordemFinanceiro = ordem;
           grupo.financeiroRealAcum = financeiroAcum.valor;
@@ -1130,12 +1219,12 @@ function montarMapaRealizado(snapshotRealizado) {
       } else {
         grupo.somaFinanceiroSemanal += numeroBRL(
           item.financeiroReal ??
-            item.financeiroRealizado ??
-            item.custoSemana ??
-            item.custoReal ??
-            item.financeiroExecutado ??
-            item.investimentoNovo ??
-            0
+          item.financeiroRealizado ??
+          item.custoSemana ??
+          item.custoReal ??
+          item.financeiroExecutado ??
+          item.investimentoNovo ??
+          0
         );
       }
 
@@ -1144,8 +1233,10 @@ function montarMapaRealizado(snapshotRealizado) {
 
         if (
           ordem > grupo.ordemFisico ||
-          (ordem === grupo.ordemFisico &&
-            fisicoAcum.valor > grupo.fisicoRealAcum)
+          (
+            ordem === grupo.ordemFisico &&
+            fisicoAcum.valor > grupo.fisicoRealAcum
+          )
         ) {
           grupo.ordemFisico = ordem;
           grupo.fisicoRealAcum = fisicoAcum.valor;
@@ -1153,11 +1244,11 @@ function montarMapaRealizado(snapshotRealizado) {
       } else {
         grupo.somaFisicoSemanal += numeroBRL(
           item.fisicoReal ??
-            item.fisicoRealizado ??
-            item.avancoFisico ??
-            item.avancoFisicoNovo ??
-            item.fisico ??
-            0
+          item.fisicoRealizado ??
+          item.avancoFisico ??
+          item.avancoFisicoNovo ??
+          item.fisico ??
+          0
         );
       }
     });
@@ -1192,9 +1283,17 @@ function buscarNoMapa(mapa, chaves) {
 
 async function buscarColecao(nomeColecao) {
   try {
-    return await getDocs(collection(db, nomeColecao));
+    return await getDocs(
+      collection(
+        db,
+        nomeColecao
+      )
+    );
   } catch (error) {
-    console.warn(`Não foi possível carregar a coleção ${nomeColecao}:`, error);
+    console.warn(
+      `Não foi possível carregar a coleção ${nomeColecao}:`,
+      error
+    );
 
     return {
       empty: true,
@@ -1213,12 +1312,21 @@ function criarSnapshotVirtual(listaDocumentos) {
 }
 
 async function buscarColecoesDeObras() {
-  const nomesColecoes = ["obras", "projetos"];
+  const nomesColecoes = [
+    "obras",
+    "projetos"
+  ];
+
   const documentos = [];
 
   for (const nomeColecao of nomesColecoes) {
     try {
-      const snapshot = await getDocs(collection(db, nomeColecao));
+      const snapshot = await getDocs(
+        collection(
+          db,
+          nomeColecao
+        )
+      );
 
       snapshot.forEach((documentoFirebase) => {
         documentos.push({
@@ -1231,7 +1339,10 @@ async function buscarColecoesDeObras() {
         });
       });
     } catch (error) {
-      console.warn(`Não foi possível carregar a coleção ${nomeColecao}:`, error);
+      console.warn(
+        `Não foi possível carregar a coleção ${nomeColecao}:`,
+        error
+      );
     }
   }
 
@@ -1250,6 +1361,7 @@ function limparSelect(select, textoPadrao) {
   select.innerHTML = "";
 
   const option = document.createElement("option");
+
   option.value = "";
   option.textContent = textoPadrao;
 
@@ -1262,6 +1374,7 @@ function adicionarOption(select, valor, texto = valor) {
   }
 
   const option = document.createElement("option");
+
   option.value = valor;
   option.textContent = texto;
 
@@ -1282,6 +1395,7 @@ function criarCelulaTexto(texto, classe = "") {
 
 function criarCelulaComElemento(elemento) {
   const td = document.createElement("td");
+
   td.appendChild(elemento);
 
   return td;
@@ -1332,51 +1446,63 @@ function mostrarMensagemTabela(mensagem) {
 ========================= */
 
 function criarCelulaAcoes(obra) {
-  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
+  if (!usuarioEhAdministradorGeral(usuarioLogadoGlobal)) {
     return null;
   }
 
   const td = document.createElement("td");
+
   td.className = "coluna-acoes";
   td.setAttribute("data-admin-only", "");
 
   const div = document.createElement("div");
+
   div.className = "acoes-tabela";
 
   const btnEditar = document.createElement("button");
+
   btnEditar.type = "button";
   btnEditar.className = "btn-editar-datas";
   btnEditar.title = "Editar datas da obra";
   btnEditar.setAttribute("aria-label", "Editar datas da obra");
   btnEditar.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
 
-  btnEditar.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    abrirModalEdicaoDatas(obra);
-  });
+  btnEditar.addEventListener(
+    "click",
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      abrirModalEdicaoDatas(obra);
+    }
+  );
 
   const btnExcluir = document.createElement("button");
+
   btnExcluir.type = "button";
   btnExcluir.className = "btn-excluir-obra";
   btnExcluir.title = "Excluir obra completa";
   btnExcluir.setAttribute("aria-label", "Excluir obra completa");
   btnExcluir.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
 
-  btnExcluir.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
+  btnExcluir.addEventListener(
+    "click",
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
 
-    if (!usuarioPodeExcluirObra(usuarioLogadoGlobal)) {
-      alert("A exclusão é permitida somente para Administrador Geral ou Administrador Regional.");
-      return;
+      if (!usuarioPodeExcluirObra(usuarioLogadoGlobal)) {
+        alert("A exclusão é permitida somente para Administrador Geral.");
+        return;
+      }
+
+      abrirModalExcluirObra(obra);
     }
-
-    abrirModalExcluirObra(obra);
-  });
+  );
 
   div.appendChild(btnEditar);
   div.appendChild(btnExcluir);
+
   td.appendChild(div);
 
   return td;
@@ -1411,28 +1537,28 @@ async function carregarProjetos() {
 
       const custoExecucao = numeroBRL(
         realizado.financeiroRealAcum ??
-          obra.financeiroRealAcum ??
-          obra.financeiroRealizadoAcum ??
-          obra.financeiroAcumReal ??
-          obra.financeiroExecutadoAcum ??
-          obra.financeiroAcumuladoReal ??
-          obra.custoRealAcumulado ??
-          obra.valorExecutado ??
-          obra.executado ??
-          0
+        obra.financeiroRealAcum ??
+        obra.financeiroRealizadoAcum ??
+        obra.financeiroAcumReal ??
+        obra.financeiroExecutadoAcum ??
+        obra.financeiroAcumuladoReal ??
+        obra.custoRealAcumulado ??
+        obra.valorExecutado ??
+        obra.executado ??
+        0
       );
 
       const fisicoRealAcum = numeroBRL(
         realizado.fisicoRealAcum ??
-          obra.fisicoRealAcum ??
-          obra.fisicoRealizadoAcum ??
-          obra.fisicoAcumReal ??
-          obra.fisicoExecutadoAcum ??
-          obra.fisicoAcumuladoReal ??
-          obra.fisicoAcum ??
-          obra.avancoFisico ??
-          obra.avancoFisicoNovo ??
-          0
+        obra.fisicoRealAcum ??
+        obra.fisicoRealizadoAcum ??
+        obra.fisicoAcumReal ??
+        obra.fisicoExecutadoAcum ??
+        obra.fisicoAcumuladoReal ??
+        obra.fisicoAcum ??
+        obra.avancoFisico ??
+        obra.avancoFisicoNovo ??
+        0
       );
 
       const inicioObra =
@@ -1456,38 +1582,89 @@ async function carregarProjetos() {
         datasCurva.fim ||
         "";
 
-      const possuiPlanejamento = Number(datasCurva.quantidadeRegistros || 0) > 0;
+      const possuiPlanejamento =
+        Number(
+          datasCurva.quantidadeRegistros ||
+          0
+        ) > 0;
 
       const possuiRealizado =
-        Number(realizado.quantidadeRegistros || 0) > 0 ||
+        Number(
+          realizado.quantidadeRegistros ||
+          0
+        ) > 0 ||
         custoExecucao > 0 ||
         fisicoRealAcum > 0;
 
       listaProjetos.push({
         id: documentoFirebase.id,
+
         ...obra,
-        colecaoOrigem: obra.colecaoOrigem || "obras",
-        regional: regionalCorrigida,
-        localidade: localidadeCorrigida,
-        codigoObraTela: obterCodigoObra(obra, documentoFirebase.id),
-        nomeObraTela: obterNomeObra(obra),
-        inicioObraTela: inicioObra,
-        fimObraTela: fimObra,
-        custoExecucao,
-        fisicoRealAcum,
-        statusFinal: calcularStatus(obra, custoExecucao, fisicoRealAcum),
-        possuiPlanejamento,
-        possuiRealizado,
-        prioridadeFinal: obra.gutNivel || obra.prioridade || obra.nivel || "-",
-        clienteTela: obterClienteObra(obra)
+
+        colecaoOrigem:
+          obra.colecaoOrigem ||
+          "obras",
+
+        regional:
+          regionalCorrigida,
+
+        localidade:
+          localidadeCorrigida,
+
+        codigoObraTela:
+          obterCodigoObra(
+            obra,
+            documentoFirebase.id
+          ),
+
+        nomeObraTela:
+          obterNomeObra(obra),
+
+        inicioObraTela:
+          inicioObra,
+
+        fimObraTela:
+          fimObra,
+
+        custoExecucao:
+          custoExecucao,
+
+        fisicoRealAcum:
+          fisicoRealAcum,
+
+        statusFinal:
+          calcularStatus(
+            obra,
+            custoExecucao,
+            fisicoRealAcum
+          ),
+
+        possuiPlanejamento:
+          possuiPlanejamento,
+
+        possuiRealizado:
+          possuiRealizado,
+
+        prioridadeFinal:
+          obra.gutNivel ||
+          obra.prioridade ||
+          obra.nivel ||
+          "-"
       });
     });
 
     carregarFiltros();
+
     aplicarFiltros();
   } catch (error) {
-    console.error("Erro ao carregar projetos:", error);
-    mostrarMensagemTabela("Erro ao carregar projetos. Verifique suas permissões no Firestore.");
+    console.error(
+      "Erro ao carregar projetos:",
+      error
+    );
+
+    mostrarMensagemTabela(
+      "Erro ao carregar projetos. Verifique suas permissões no Firestore."
+    );
   }
 }
 
@@ -1496,39 +1673,65 @@ async function carregarProjetos() {
 ========================= */
 
 function carregarRegionaisOficiais() {
-  limparSelect(filtroRegional, "Todas");
+  limparSelect(
+    filtroRegional,
+    "Todas"
+  );
 
-  Object.keys(LOCALIDADES_POR_REGIONAL).forEach((regional) => {
-    adicionarOption(filtroRegional, regional);
-  });
+  Object
+    .keys(LOCALIDADES_POR_REGIONAL)
+    .forEach((regional) => {
+      adicionarOption(
+        filtroRegional,
+        regional
+      );
+    });
 }
 
 function carregarLocalidadesPorRegional(regionalSelecionada = "") {
-  limparSelect(filtroLocalidade, "Todas");
+  limparSelect(
+    filtroLocalidade,
+    "Todas"
+  );
 
   const localidades =
-    regionalSelecionada && LOCALIDADES_POR_REGIONAL[regionalSelecionada]
+    regionalSelecionada &&
+    LOCALIDADES_POR_REGIONAL[regionalSelecionada]
       ? LOCALIDADES_POR_REGIONAL[regionalSelecionada]
-      : Object.values(LOCALIDADES_POR_REGIONAL).flat();
+      : Object
+          .values(LOCALIDADES_POR_REGIONAL)
+          .flat();
 
   localidades.forEach((localidade) => {
-    adicionarOption(filtroLocalidade, localidade);
+    adicionarOption(
+      filtroLocalidade,
+      localidade
+    );
   });
 }
 
 function carregarAnosFiltro() {
-  limparSelect(filtroAno, "Todos");
+  limparSelect(
+    filtroAno,
+    "Todos"
+  );
 
   const anos = [
     ...new Set(
       listaProjetos
-        .map((item) => obterAno(item.inicioObraTela) || obterAno(item.fimObraTela))
+        .map((item) =>
+          obterAno(item.inicioObraTela) ||
+          obterAno(item.fimObraTela)
+        )
         .filter(Boolean)
     )
   ].sort();
 
   anos.forEach((ano) => {
-    adicionarOption(filtroAno, ano);
+    adicionarOption(
+      filtroAno,
+      ano
+    );
   });
 }
 
@@ -1539,15 +1742,22 @@ function carregarFiltros() {
 
   carregarRegionaisOficiais();
 
-  if (regionalAtual && LOCALIDADES_POR_REGIONAL[regionalAtual]) {
+  if (
+    regionalAtual &&
+    LOCALIDADES_POR_REGIONAL[regionalAtual]
+  ) {
     filtroRegional.value = regionalAtual;
   }
 
-  carregarLocalidadesPorRegional(filtroRegional?.value || "");
+  carregarLocalidadesPorRegional(
+    filtroRegional?.value || ""
+  );
 
   if (
     localidadeAtual &&
-    Array.from(filtroLocalidade.options).some((opcao) => opcao.value === localidadeAtual)
+    Array
+      .from(filtroLocalidade.options)
+      .some((opcao) => opcao.value === localidadeAtual)
   ) {
     filtroLocalidade.value = localidadeAtual;
   }
@@ -1556,7 +1766,9 @@ function carregarFiltros() {
 
   if (
     anoAtual &&
-    Array.from(filtroAno.options).some((opcao) => opcao.value === anoAtual)
+    Array
+      .from(filtroAno.options)
+      .some((opcao) => opcao.value === anoAtual)
   ) {
     filtroAno.value = anoAtual;
   }
@@ -1577,7 +1789,8 @@ function aplicarFiltros() {
 
   if (filtroLocalidade?.value) {
     lista = lista.filter((item) =>
-      normalizarLocalidade(item.localidade) === normalizarLocalidade(filtroLocalidade.value)
+      normalizarLocalidade(item.localidade) ===
+      normalizarLocalidade(filtroLocalidade.value)
     );
   }
 
@@ -1590,14 +1803,19 @@ function aplicarFiltros() {
 
   if (filtroGutNivel?.value) {
     lista = lista.filter((item) =>
-      normalizarTexto(item.prioridadeFinal) === normalizarTexto(filtroGutNivel.value)
+      normalizarTexto(item.prioridadeFinal) ===
+      normalizarTexto(filtroGutNivel.value)
     );
   }
 
   if (filtroStatus?.value) {
     lista = lista.filter((item) =>
-      normalizarTexto(normalizarStatus(item.statusFinal)) ===
-      normalizarTexto(normalizarStatus(filtroStatus.value))
+      normalizarTexto(
+        normalizarStatus(item.statusFinal)
+      ) ===
+      normalizarTexto(
+        normalizarStatus(filtroStatus.value)
+      )
     );
   }
 
@@ -1616,10 +1834,15 @@ function aplicarFiltros() {
       return scoreB - scoreA;
     }
 
-    return String(a.nomeObraTela).localeCompare(String(b.nomeObraTela), "pt-BR");
+    return String(a.nomeObraTela)
+      .localeCompare(
+        String(b.nomeObraTela),
+        "pt-BR"
+      );
   });
 
   renderTabela(lista);
+
   atualizarKPIs(lista);
 }
 
@@ -1642,16 +1865,66 @@ function renderTabela(lista) {
   lista.forEach((obra) => {
     const tr = document.createElement("tr");
 
-    tr.appendChild(criarCelulaTexto(obra.codigoObraTela, "codigoProjeto"));
-    tr.appendChild(criarCelulaTexto(obra.nomeObraTela, "nomeProjeto"));
-    tr.appendChild(criarCelulaTexto(obra.regional || "-"));
-    tr.appendChild(criarCelulaTexto(obra.localidade || "-"));
-    tr.appendChild(criarCelulaTexto(moeda(obra.custoExecucao), "valorExecucao"));
-    tr.appendChild(criarCelulaTexto(formatarData(obra.inicioObraTela)));
-    tr.appendChild(criarCelulaTexto(formatarData(obra.fimObraTela)));
-    tr.appendChild(criarCelulaComElemento(criarBadgePrioridade(obra.prioridadeFinal)));
-    tr.appendChild(criarCelulaTexto(obra.clienteTela || "-"));
-    tr.appendChild(criarCelulaComElemento(criarBadgeStatus(obra.statusFinal)));
+    tr.appendChild(
+      criarCelulaTexto(
+        obra.codigoObraTela,
+        "codigoProjeto"
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        obra.nomeObraTela,
+        "nomeProjeto"
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        obra.regional || "-"
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        obra.localidade || "-"
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        moeda(obra.custoExecucao),
+        "valorExecucao"
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        formatarData(obra.inicioObraTela)
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        formatarData(obra.fimObraTela)
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaComElemento(
+        criarBadgePrioridade(
+          obra.prioridadeFinal
+        )
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaComElemento(
+        criarBadgeStatus(
+          obra.statusFinal
+        )
+      )
+    );
 
     const celulaAcoes = criarCelulaAcoes(obra);
 
@@ -1669,7 +1942,9 @@ function renderTabela(lista) {
 
 function atualizarKPIs(lista) {
   const totalCusto = lista.reduce(
-    (soma, item) => soma + numeroBRL(item.custoExecucao),
+    (soma, item) =>
+      soma +
+      numeroBRL(item.custoExecucao),
     0
   );
 
@@ -1682,46 +1957,59 @@ function atualizarKPIs(lista) {
   }
 
   if (kpiValidadas) {
-    kpiValidadas.textContent = lista.filter((item) => {
-      const aprovacao = normalizarTexto(
-        item.aprovacaoCliente ||
+    kpiValidadas.textContent =
+      lista.filter((item) => {
+        const aprovacao = normalizarTexto(
+          item.aprovacaoCliente ||
           item.aprovacao ||
           item.validacao ||
           ""
-      );
+        );
 
-      return [
-        "aprovado",
-        "aprovada",
-        "validado",
-        "validada",
-        "sim"
-      ].includes(aprovacao);
-    }).length;
+        return [
+          "aprovado",
+          "aprovada",
+          "validado",
+          "validada",
+          "sim"
+        ].includes(aprovacao);
+      }).length;
   }
 
   if (kpiPlanejadas) {
-    kpiPlanejadas.textContent = lista.filter((item) =>
-      normalizarTexto(normalizarStatus(item.statusFinal)) === "planejado"
-    ).length;
+    kpiPlanejadas.textContent =
+      lista.filter((item) =>
+        normalizarTexto(
+          normalizarStatus(item.statusFinal)
+        ) === "planejado"
+      ).length;
   }
 
   if (kpiAndamento) {
-    kpiAndamento.textContent = lista.filter((item) =>
-      normalizarTexto(normalizarStatus(item.statusFinal)) === "em andamento"
-    ).length;
+    kpiAndamento.textContent =
+      lista.filter((item) =>
+        normalizarTexto(
+          normalizarStatus(item.statusFinal)
+        ) === "em andamento"
+      ).length;
   }
 
   if (kpiParalisadas) {
-    kpiParalisadas.textContent = lista.filter((item) =>
-      normalizarTexto(normalizarStatus(item.statusFinal)) === "paralisada"
-    ).length;
+    kpiParalisadas.textContent =
+      lista.filter((item) =>
+        normalizarTexto(
+          normalizarStatus(item.statusFinal)
+        ) === "paralisada"
+      ).length;
   }
 
   if (kpiConcluidas) {
-    kpiConcluidas.textContent = lista.filter((item) =>
-      normalizarTexto(normalizarStatus(item.statusFinal)) === "concluido"
-    ).length;
+    kpiConcluidas.textContent =
+      lista.filter((item) =>
+        normalizarTexto(
+          normalizarStatus(item.statusFinal)
+        ) === "concluido"
+      ).length;
   }
 }
 
@@ -1730,8 +2018,8 @@ function atualizarKPIs(lista) {
 ========================= */
 
 function abrirModalEdicaoDatas(obra) {
-  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
-    alert("A alteração de datas é permitida somente para Administrador Geral ou Administrador Regional.");
+  if (!usuarioEhAdministradorGeral(usuarioLogadoGlobal)) {
+    alert("A alteração de datas é permitida somente para Administrador Geral.");
     return;
   }
 
@@ -1744,41 +2032,92 @@ function abrirModalEdicaoDatas(obra) {
   const dataInicioAtual = dataParaInput(obra.inicioObraTela);
   const dataFimAtual = dataParaInput(obra.fimObraTela);
 
-  if (editObraDocId) editObraDocId.value = obra.id || "";
-  if (editPossuiPlanejamento) editPossuiPlanejamento.value = obra.possuiPlanejamento ? "sim" : "nao";
-  if (editPossuiRealizado) editPossuiRealizado.value = obra.possuiRealizado ? "sim" : "nao";
-  if (editDataInicioAnterior) editDataInicioAnterior.value = dataInicioAtual;
-  if (editDataFimAnterior) editDataFimAnterior.value = dataFimAtual;
+  if (editObraDocId) {
+    editObraDocId.value = obra.id || "";
+  }
 
-  if (editObraNome) editObraNome.value = obra.nomeObraTela || "-";
-  if (editCodigoObra) editCodigoObra.value = obra.codigoObraTela || "-";
-  if (editStatusObra) editStatusObra.value = obra.statusFinal || "-";
-  if (editRegionalObra) editRegionalObra.value = obra.regional || "-";
-  if (editLocalidadeObra) editLocalidadeObra.value = obra.localidade || "-";
-  if (editDataInicioAtual) editDataInicioAtual.value = formatarData(obra.inicioObraTela);
-  if (editDataFimAtual) editDataFimAtual.value = formatarData(obra.fimObraTela);
-  if (editDataInicio) editDataInicio.value = dataInicioAtual;
-  if (editDataFim) editDataFim.value = dataFimAtual;
-  if (editJustificativa) editJustificativa.value = "";
+  if (editPossuiPlanejamento) {
+    editPossuiPlanejamento.value = obra.possuiPlanejamento ? "sim" : "nao";
+  }
+
+  if (editPossuiRealizado) {
+    editPossuiRealizado.value = obra.possuiRealizado ? "sim" : "nao";
+  }
+
+  if (editDataInicioAnterior) {
+    editDataInicioAnterior.value = dataInicioAtual;
+  }
+
+  if (editDataFimAnterior) {
+    editDataFimAnterior.value = dataFimAtual;
+  }
+
+  if (editObraNome) {
+    editObraNome.value = obra.nomeObraTela || "-";
+  }
+
+  if (editCodigoObra) {
+    editCodigoObra.value = obra.codigoObraTela || "-";
+  }
+
+  if (editStatusObra) {
+    editStatusObra.value = obra.statusFinal || "-";
+  }
+
+  if (editRegionalObra) {
+    editRegionalObra.value = obra.regional || "-";
+  }
+
+  if (editLocalidadeObra) {
+    editLocalidadeObra.value = obra.localidade || "-";
+  }
+
+  if (editDataInicioAtual) {
+    editDataInicioAtual.value = formatarData(obra.inicioObraTela);
+  }
+
+  if (editDataFimAtual) {
+    editDataFimAtual.value = formatarData(obra.fimObraTela);
+  }
+
+  if (editDataInicio) {
+    editDataInicio.value = dataInicioAtual;
+  }
+
+  if (editDataFim) {
+    editDataFim.value = dataFimAtual;
+  }
+
+  if (editJustificativa) {
+    editJustificativa.value = "";
+  }
 
   if (boxAvisoImpactoCurva) {
-    boxAvisoImpactoCurva.classList.toggle("ativo", Boolean(obra.possuiPlanejamento));
+    boxAvisoImpactoCurva.classList.toggle(
+      "ativo",
+      Boolean(obra.possuiPlanejamento)
+    );
   }
 
   if (boxAvisoRealizado) {
-    boxAvisoRealizado.classList.toggle("ativo", Boolean(obra.possuiRealizado));
+    boxAvisoRealizado.classList.toggle(
+      "ativo",
+      Boolean(obra.possuiRealizado)
+    );
   }
 
   if (avisoImpactoCurva) {
-    avisoImpactoCurva.textContent = obra.possuiPlanejamento
-      ? "Esta obra já possui Curva S planejada. Ao alterar as datas, a obra será marcada como replanejamento necessário."
-      : "Esta obra ainda não possui Curva S planejada.";
+    avisoImpactoCurva.textContent =
+      obra.possuiPlanejamento
+        ? "Esta obra já possui Curva S planejada. Ao alterar as datas, a obra será marcada como replanejamento necessário."
+        : "Esta obra ainda não possui Curva S planejada.";
   }
 
   if (avisoRealizado) {
-    avisoRealizado.textContent = obra.possuiRealizado
-      ? "Esta obra já possui realizado lançado. O realizado não será apagado, mas a alteração ficará registrada no histórico."
-      : "Esta obra ainda não possui realizado lançado.";
+    avisoRealizado.textContent =
+      obra.possuiRealizado
+        ? "Esta obra já possui realizado lançado. O realizado não será apagado, mas a alteração ficará registrada no histórico."
+        : "Esta obra ainda não possui realizado lançado.";
   }
 
   modalEditarDatas.classList.add("ativo");
@@ -1815,8 +2154,8 @@ function fecharModalEdicaoDatas() {
 async function salvarEdicaoDatas(event) {
   event.preventDefault();
 
-  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
-    alert("A alteração de datas é permitida somente para Administrador Geral ou Administrador Regional.");
+  if (!usuarioEhAdministradorGeral(usuarioLogadoGlobal)) {
+    alert("A alteração de datas é permitida somente para Administrador Geral.");
     fecharModalEdicaoDatas();
     return;
   }
@@ -1853,7 +2192,10 @@ async function salvarEdicaoDatas(event) {
     return;
   }
 
-  if (novaDataInicio === dataInicioAnterior && novaDataFim === dataFimAnterior) {
+  if (
+    novaDataInicio === dataInicioAnterior &&
+    novaDataFim === dataFimAnterior
+  ) {
     alert("Nenhuma alteração foi identificada nas datas.");
     return;
   }
@@ -1956,27 +2298,44 @@ async function salvarEdicaoDatas(event) {
   try {
     if (btnSalvarEdicaoDatas) {
       btnSalvarEdicaoDatas.disabled = true;
-      btnSalvarEdicaoDatas.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+      btnSalvarEdicaoDatas.innerHTML =
+        '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
     }
 
-    await updateDoc(doc(db, colecaoAtualizacao, obraId), payloadAtualizacao);
+    await updateDoc(
+      doc(
+        db,
+        colecaoAtualizacao,
+        obraId
+      ),
+      payloadAtualizacao
+    );
 
     alert("Datas da obra atualizadas com sucesso.");
 
     fecharModalEdicaoDatas();
+
     await carregarProjetos();
   } catch (error) {
-    console.error("Erro ao atualizar as datas da obra:", error);
+    console.error(
+      "Erro ao atualizar as datas da obra:",
+      error
+    );
 
     if (error?.code === "permission-denied") {
-      alert("O Firestore recusou a alteração. Verifique se o perfil exibido no cabeçalho possui permissão de administrador.");
+      alert(
+        "O Firestore recusou a alteração. Verifique se o perfil exibido no cabeçalho possui permissão de Administrador Geral."
+      );
     } else {
-      alert("Erro ao atualizar as datas da obra. Verifique sua conexão e tente novamente.");
+      alert(
+        "Erro ao atualizar as datas da obra. Verifique sua conexão e tente novamente."
+      );
     }
   } finally {
     if (btnSalvarEdicaoDatas) {
       btnSalvarEdicaoDatas.disabled = false;
-      btnSalvarEdicaoDatas.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Salvar Alterações';
+      btnSalvarEdicaoDatas.innerHTML =
+        '<i class="fa-solid fa-floppy-disk"></i> Salvar Alterações';
     }
   }
 }
@@ -2037,7 +2396,10 @@ function adicionarRefAoMapa(refsMap, referencia) {
     return;
   }
 
-  refsMap.set(referencia.path, referencia);
+  refsMap.set(
+    referencia.path,
+    referencia
+  );
 }
 
 async function adicionarRefsPorId(refsMap, nomeColecao, valores) {
@@ -2055,14 +2417,25 @@ async function adicionarRefsPorId(refsMap, nomeColecao, valores) {
         continue;
       }
 
-      const referencia = doc(db, nomeColecao, valor);
+      const referencia = doc(
+        db,
+        nomeColecao,
+        valor
+      );
+
       const documento = await getDoc(referencia);
 
       if (documento.exists()) {
-        adicionarRefAoMapa(refsMap, documento.ref);
+        adicionarRefAoMapa(
+          refsMap,
+          documento.ref
+        );
       }
     } catch (error) {
-      console.warn(`Busca por ID ignorada: ${nomeColecao}/${valor}`, error);
+      console.warn(
+        `Busca por ID ignorada: ${nomeColecao}/${valor}`,
+        error
+      );
     }
   }
 }
@@ -2079,24 +2452,44 @@ async function adicionarRefsPorCampo(refsMap, nomeColecao, campo, valores) {
   for (const valor of valoresValidos) {
     try {
       const consulta = query(
-        collection(db, nomeColecao),
-        where(campo, "==", valor)
+        collection(
+          db,
+          nomeColecao
+        ),
+        where(
+          campo,
+          "==",
+          valor
+        )
       );
 
       const resultado = await getDocs(consulta);
 
       resultado.forEach((documento) => {
-        adicionarRefAoMapa(refsMap, documento.ref);
+        adicionarRefAoMapa(
+          refsMap,
+          documento.ref
+        );
       });
     } catch (error) {
-      console.warn(`Consulta ignorada: ${nomeColecao}.${campo}=${valor}`, error);
+      console.warn(
+        `Consulta ignorada: ${nomeColecao}.${campo}=${valor}`,
+        error
+      );
     }
   }
 }
 
 async function adicionarSubcolecoesConhecidas(refsMap, chaves) {
-  const colecoesRaiz = ["projetos", "obras"];
-  const subcolecoes = ["cronogramaSemanal", "rollups"];
+  const colecoesRaiz = [
+    "projetos",
+    "obras"
+  ];
+
+  const subcolecoes = [
+    "cronogramaSemanal",
+    "rollups"
+  ];
 
   for (const colecaoRaiz of colecoesRaiz) {
     for (const chave of chaves) {
@@ -2107,14 +2500,25 @@ async function adicionarSubcolecoesConhecidas(refsMap, chaves) {
       for (const subcolecao of subcolecoes) {
         try {
           const resultado = await getDocs(
-            collection(db, colecaoRaiz, chave, subcolecao)
+            collection(
+              db,
+              colecaoRaiz,
+              chave,
+              subcolecao
+            )
           );
 
           resultado.forEach((documento) => {
-            adicionarRefAoMapa(refsMap, documento.ref);
+            adicionarRefAoMapa(
+              refsMap,
+              documento.ref
+            );
           });
         } catch (error) {
-          console.warn(`Subcoleção ignorada: ${colecaoRaiz}/${chave}/${subcolecao}`, error);
+          console.warn(
+            `Subcoleção ignorada: ${colecaoRaiz}/${chave}/${subcolecao}`,
+            error
+          );
         }
       }
     }
@@ -2127,22 +2531,37 @@ async function adicionarRefSelecionadaSeExistir(refsMap, colecao, id) {
   }
 
   try {
-    const referencia = doc(db, colecao, id);
+    const referencia = doc(
+      db,
+      colecao,
+      id
+    );
+
     const documento = await getDoc(referencia);
 
     if (documento.exists()) {
-      adicionarRefAoMapa(refsMap, documento.ref);
+      adicionarRefAoMapa(
+        refsMap,
+        documento.ref
+      );
     }
   } catch (error) {
-    console.warn(`Documento principal ignorado: ${colecao}/${id}`, error);
+    console.warn(
+      `Documento principal ignorado: ${colecao}/${id}`,
+      error
+    );
   }
 }
 
 async function coletarReferenciasDaObra(obra) {
   const refsMap = new Map();
+
   const chaves = gerarChavesObraParaExclusao(obra);
 
-  const colecoesPrincipais = ["obras", "projetos"];
+  const colecoesPrincipais = [
+    "obras",
+    "projetos"
+  ];
 
   const colecoesRelacionadas = [
     "planejamentoCurvaS",
@@ -2183,26 +2602,51 @@ async function coletarReferenciasDaObra(obra) {
   );
 
   if ((obra.colecaoOrigem || "obras") !== "obras") {
-    await adicionarRefSelecionadaSeExistir(refsMap, "obras", obra.id);
+    await adicionarRefSelecionadaSeExistir(
+      refsMap,
+      "obras",
+      obra.id
+    );
   }
 
   for (const nomeColecao of colecoesPrincipais) {
-    await adicionarRefsPorId(refsMap, nomeColecao, chaves);
+    await adicionarRefsPorId(
+      refsMap,
+      nomeColecao,
+      chaves
+    );
 
     for (const campo of camposRelacionamento) {
-      await adicionarRefsPorCampo(refsMap, nomeColecao, campo, chaves);
+      await adicionarRefsPorCampo(
+        refsMap,
+        nomeColecao,
+        campo,
+        chaves
+      );
     }
   }
 
   for (const nomeColecao of colecoesRelacionadas) {
-    await adicionarRefsPorId(refsMap, nomeColecao, chaves);
+    await adicionarRefsPorId(
+      refsMap,
+      nomeColecao,
+      chaves
+    );
 
     for (const campo of camposRelacionamento) {
-      await adicionarRefsPorCampo(refsMap, nomeColecao, campo, chaves);
+      await adicionarRefsPorCampo(
+        refsMap,
+        nomeColecao,
+        campo,
+        chaves
+      );
     }
   }
 
-  await adicionarSubcolecoesConhecidas(refsMap, chaves);
+  await adicionarSubcolecoesConhecidas(
+    refsMap,
+    chaves
+  );
 
   return {
     refsMap,
@@ -2215,11 +2659,14 @@ function contarPorColecao(refsMap) {
 
   refsMap.forEach((referencia) => {
     const partes = referencia.path.split("/");
-    const nomeColecao = partes.length >= 2
-      ? partes[partes.length - 2]
-      : partes[0];
 
-    resumo[nomeColecao] = (resumo[nomeColecao] || 0) + 1;
+    const nomeColecao =
+      partes.length >= 2
+        ? partes[partes.length - 2]
+        : partes[0];
+
+    resumo[nomeColecao] =
+      (resumo[nomeColecao] || 0) + 1;
   });
 
   return resumo;
@@ -2231,8 +2678,16 @@ async function apagarEmLotes(refsMap) {
 
   let totalExcluido = 0;
 
-  for (let indice = 0; indice < referencias.length; indice += tamanhoLote) {
-    const parte = referencias.slice(indice, indice + tamanhoLote);
+  for (
+    let indice = 0;
+    indice < referencias.length;
+    indice += tamanhoLote
+  ) {
+    const parte = referencias.slice(
+      indice,
+      indice + tamanhoLote
+    );
+
     const lote = writeBatch(db);
 
     parte.forEach((referencia) => {
@@ -2253,7 +2708,7 @@ async function apagarEmLotes(refsMap) {
 
 function abrirModalExcluirObra(obra) {
   if (!usuarioPodeExcluirObra(usuarioLogadoGlobal)) {
-    alert("A exclusão é permitida somente para Administrador Geral ou Administrador Regional.");
+    alert("A exclusão é permitida somente para Administrador Geral.");
     return;
   }
 
@@ -2309,7 +2764,10 @@ function abrirModalExcluirObra(obra) {
   }
 
   if (excluirStatusObra) {
-    excluirStatusObra.value = obra.statusFinal || obra.status || "-";
+    excluirStatusObra.value =
+      obra.statusFinal ||
+      obra.status ||
+      "-";
   }
 
   modalExcluirObra.classList.add("ativo");
@@ -2343,8 +2801,15 @@ function formatarResumoColecoes(resumo) {
   }
 
   return itens
-    .sort(([colecaoA], [colecaoB]) => colecaoA.localeCompare(colecaoB, "pt-BR"))
-    .map(([colecao, quantidade]) => `• ${colecao}: ${quantidade}`)
+    .sort(([colecaoA], [colecaoB]) =>
+      colecaoA.localeCompare(
+        colecaoB,
+        "pt-BR"
+      )
+    )
+    .map(([colecao, quantidade]) =>
+      `• ${colecao}: ${quantidade}`
+    )
     .join("\n");
 }
 
@@ -2360,37 +2825,67 @@ async function registrarAuditoriaExclusao(obra, dadosExclusao) {
 
   const payloadAuditoria = {
     tipo: "EXCLUSAO_COMPLETA_OBRA",
+
     obraDocId: obra.id || "",
     colecaoOrigem: obra.colecaoOrigem || "obras",
-    codigoObra: obra.codigoObraTela || obra.codigoObra || obra.codigo || "",
-    nomeObra: obra.nomeObraTela || obra.nomeProjeto || obra.nomeObra || "",
+
+    codigoObra:
+      obra.codigoObraTela ||
+      obra.codigoObra ||
+      obra.codigo ||
+      "",
+
+    nomeObra:
+      obra.nomeObraTela ||
+      obra.nomeProjeto ||
+      obra.nomeObra ||
+      "",
+
     regional: obra.regional || "",
     localidade: obra.localidade || "",
     status: obra.statusFinal || obra.status || "",
-    dataInicio: dataParaInput(
-      obra.inicioObraTela ||
+
+    dataInicio:
+      dataParaInput(
+        obra.inicioObraTela ||
         obra.dataInicio ||
         obra.dataInicioPrevisto
-    ),
-    dataFim: dataParaInput(
-      obra.fimObraTela ||
+      ),
+
+    dataFim:
+      dataParaInput(
+        obra.fimObraTela ||
         obra.dataFim ||
         obra.dataTerminoPrevisto
-    ),
-    prioridade: obra.prioridadeFinal || obra.gutNivel || obra.prioridade || "",
+      ),
+
+    prioridade:
+      obra.prioridadeFinal ||
+      obra.gutNivel ||
+      obra.prioridade ||
+      "",
+
     custoExecucao: numeroBRL(obra.custoExecucao),
     totalDocumentosExcluidos: dadosExclusao.totalExcluido || 0,
     documentosPorColecao: dadosExclusao.resumoColecoes || {},
     chavesUtilizadas: dadosExclusao.chaves || [],
+
     excluidoPorUid: usuarioUid,
     excluidoPorNome: usuarioNome,
     excluidoPorEmail: usuarioEmail,
     excluidoPorPerfil: usuarioPerfil,
+
     excluidoEm: serverTimestamp(),
     excluidoEmISO: new Date().toISOString()
   };
 
-  return addDoc(collection(db, "historicoExclusoesObras"), payloadAuditoria);
+  return addDoc(
+    collection(
+      db,
+      "historicoExclusoesObras"
+    ),
+    payloadAuditoria
+  );
 }
 
 /* =========================
@@ -2401,7 +2896,7 @@ async function excluirObraCompleta(event) {
   event.preventDefault();
 
   if (!usuarioPodeExcluirObra(usuarioLogadoGlobal)) {
-    alert("A exclusão é permitida somente para Administrador Geral ou Administrador Regional.");
+    alert("A exclusão é permitida somente para Administrador Geral.");
     fecharModalExcluirObra();
     return;
   }
@@ -2413,7 +2908,11 @@ async function excluirObraCompleta(event) {
     return;
   }
 
-  const obraId = excluirObraDocId?.value || obra.id || "";
+  const obraId =
+    excluirObraDocId?.value ||
+    obra.id ||
+    "";
+
   const codigoObra =
     excluirCodigoObra?.value ||
     obra.codigoObraTela ||
@@ -2460,10 +2959,14 @@ async function excluirObraCompleta(event) {
   try {
     if (btnConfirmarExcluirObra) {
       btnConfirmarExcluirObra.disabled = true;
-      btnConfirmarExcluirObra.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Localizando dados...';
+      btnConfirmarExcluirObra.innerHTML =
+        '<i class="fa-solid fa-spinner fa-spin"></i> Localizando dados...';
     }
 
-    const { refsMap, chaves } = await coletarReferenciasDaObra(obra);
+    const {
+      refsMap,
+      chaves
+    } = await coletarReferenciasDaObra(obra);
 
     const totalLocalizado = refsMap.size;
     const resumoColecoes = contarPorColecao(refsMap);
@@ -2497,7 +3000,8 @@ async function excluirObraCompleta(event) {
     }
 
     if (btnConfirmarExcluirObra) {
-      btnConfirmarExcluirObra.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Excluindo registros...';
+      btnConfirmarExcluirObra.innerHTML =
+        '<i class="fa-solid fa-spinner fa-spin"></i> Excluindo registros...';
     }
 
     const totalExcluido = await apagarEmLotes(refsMap);
@@ -2505,11 +3009,14 @@ async function excluirObraCompleta(event) {
     let auditoriaRegistrada = true;
 
     try {
-      await registrarAuditoriaExclusao(obra, {
-        totalExcluido,
-        resumoColecoes,
-        chaves
-      });
+      await registrarAuditoriaExclusao(
+        obra,
+        {
+          totalExcluido,
+          resumoColecoes,
+          chaves
+        }
+      );
     } catch (erroAuditoria) {
       auditoriaRegistrada = false;
 
@@ -2548,9 +3055,14 @@ async function excluirObraCompleta(event) {
       );
     }
 
-    alert(mensagemSucesso.join("\n"));
+    alert(
+      mensagemSucesso.join("\n")
+    );
   } catch (error) {
-    console.error("Erro ao excluir a obra completa:", error);
+    console.error(
+      "Erro ao excluir a obra completa:",
+      error
+    );
 
     if (error?.code === "permission-denied") {
       alert(
@@ -2558,14 +3070,15 @@ async function excluirObraCompleta(event) {
           "O Firestore recusou a exclusão.",
           "",
           "Confirme se o perfil mostrado no cabeçalho é:",
-          "• Administrador Geral; ou",
-          "• Administrador Regional.",
+          "• Administrador Geral.",
           "",
           "Também verifique se as regras atualizadas do Firestore foram publicadas."
         ].join("\n")
       );
     } else if (error?.code === "unavailable") {
-      alert("O Firebase está temporariamente indisponível. Verifique a conexão e tente novamente.");
+      alert(
+        "O Firebase está temporariamente indisponível. Verifique a conexão e tente novamente."
+      );
     } else {
       alert(
         [
@@ -2590,20 +3103,27 @@ async function excluirObraCompleta(event) {
 function exportarPDF() {
   const tituloAnterior = document.title;
 
-  document.title = `Painel Executivo de Obras - ${new Date()
-    .toLocaleDateString("pt-BR")
-    .replace(/\//g, "-")}`;
+  document.title =
+    `Painel Executivo de Obras - ${new Date()
+      .toLocaleDateString("pt-BR")
+      .replace(/\//g, "-")}`;
 
   document.body.classList.add("modo-exportacao-pdf");
 
-  window.setTimeout(() => {
-    window.print();
-  }, 250);
+  window.setTimeout(
+    () => {
+      window.print();
+    },
+    250
+  );
 
-  window.setTimeout(() => {
-    document.body.classList.remove("modo-exportacao-pdf");
-    document.title = tituloAnterior;
-  }, 1500);
+  window.setTimeout(
+    () => {
+      document.body.classList.remove("modo-exportacao-pdf");
+      document.title = tituloAnterior;
+    },
+    1500
+  );
 }
 
 window.exportarPDF = exportarPDF;
@@ -2613,10 +3133,13 @@ window.exportarPDF = exportarPDF;
 ========================= */
 
 function configurarEventosFiltros() {
-  filtroRegional?.addEventListener("change", () => {
-    carregarLocalidadesPorRegional(filtroRegional.value);
-    aplicarFiltros();
-  });
+  filtroRegional?.addEventListener(
+    "change",
+    () => {
+      carregarLocalidadesPorRegional(filtroRegional.value);
+      aplicarFiltros();
+    }
+  );
 
   filtroLocalidade?.addEventListener("change", aplicarFiltros);
   filtroAno?.addEventListener("change", aplicarFiltros);
@@ -2625,44 +3148,75 @@ function configurarEventosFiltros() {
 }
 
 function configurarEventosModalDatas() {
-  btnFecharModalEdicaoDatas?.addEventListener("click", fecharModalEdicaoDatas);
-  btnCancelarEdicaoDatas?.addEventListener("click", fecharModalEdicaoDatas);
-  formEditarDatas?.addEventListener("submit", salvarEdicaoDatas);
+  btnFecharModalEdicaoDatas?.addEventListener(
+    "click",
+    fecharModalEdicaoDatas
+  );
 
-  modalEditarDatas?.addEventListener("click", (event) => {
-    if (event.target === modalEditarDatas) {
-      fecharModalEdicaoDatas();
+  btnCancelarEdicaoDatas?.addEventListener(
+    "click",
+    fecharModalEdicaoDatas
+  );
+
+  formEditarDatas?.addEventListener(
+    "submit",
+    salvarEdicaoDatas
+  );
+
+  modalEditarDatas?.addEventListener(
+    "click",
+    (event) => {
+      if (event.target === modalEditarDatas) {
+        fecharModalEdicaoDatas();
+      }
     }
-  });
+  );
 }
 
 function configurarEventosModalExclusao() {
-  btnFecharModalExcluirObra?.addEventListener("click", fecharModalExcluirObra);
-  btnCancelarExcluirObra?.addEventListener("click", fecharModalExcluirObra);
-  formExcluirObra?.addEventListener("submit", excluirObraCompleta);
+  btnFecharModalExcluirObra?.addEventListener(
+    "click",
+    fecharModalExcluirObra
+  );
 
-  modalExcluirObra?.addEventListener("click", (event) => {
-    if (event.target === modalExcluirObra) {
-      fecharModalExcluirObra();
+  btnCancelarExcluirObra?.addEventListener(
+    "click",
+    fecharModalExcluirObra
+  );
+
+  formExcluirObra?.addEventListener(
+    "submit",
+    excluirObraCompleta
+  );
+
+  modalExcluirObra?.addEventListener(
+    "click",
+    (event) => {
+      if (event.target === modalExcluirObra) {
+        fecharModalExcluirObra();
+      }
     }
-  });
+  );
 }
 
 function configurarEventosTeclado() {
-  document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") {
-      return;
-    }
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key !== "Escape") {
+        return;
+      }
 
-    if (modalExcluirObra?.classList.contains("ativo")) {
-      fecharModalExcluirObra();
-      return;
-    }
+      if (modalExcluirObra?.classList.contains("ativo")) {
+        fecharModalExcluirObra();
+        return;
+      }
 
-    if (modalEditarDatas?.classList.contains("ativo")) {
-      fecharModalEdicaoDatas();
+      if (modalEditarDatas?.classList.contains("ativo")) {
+        fecharModalEdicaoDatas();
+      }
     }
-  });
+  );
 }
 
 function configurarEventos() {
@@ -2700,26 +3254,36 @@ function validarElementosPrincipais() {
     }
   ];
 
-  const elementosAusentes = elementosObrigatorios
-    .filter((item) => !item.elemento)
-    .map((item) => item.nome);
+  const elementosAusentes =
+    elementosObrigatorios
+      .filter((item) => !item.elemento)
+      .map((item) => item.nome);
 
   if (elementosAusentes.length) {
-    console.warn("Elementos não encontrados no HTML:", elementosAusentes);
+    console.warn(
+      "Elementos não encontrados no HTML:",
+      elementosAusentes
+    );
   }
 }
 
 function exibirErroIdentificacaoUsuario(erro) {
-  console.error("Erro ao identificar o usuário:", erro);
+  console.error(
+    "Erro ao identificar o usuário:",
+    erro
+  );
 
   const emailAuth = normalizarEmail(auth.currentUser?.email || "");
 
   if (usuarioEmailTopo) {
-    usuarioEmailTopo.textContent = emailAuth || "Email não identificado";
+    usuarioEmailTopo.textContent =
+      emailAuth ||
+      "Email não identificado";
   }
 
   if (usuarioPerfilTopo) {
-    usuarioPerfilTopo.textContent = "Perfil não identificado";
+    usuarioPerfilTopo.textContent =
+      "Perfil não identificado";
   }
 
   if (usuarioLogadoInfo) {
@@ -2733,46 +3297,53 @@ function exibirErroIdentificacaoUsuario(erro) {
     "usuario-admin-regional"
   );
 
-  document.querySelectorAll("[data-admin-only]").forEach((elemento) => {
-    elemento.style.display = "none";
-    elemento.setAttribute("aria-disabled", "true");
-  });
+  document
+    .querySelectorAll("[data-admin-only]")
+    .forEach((elemento) => {
+      elemento.style.display = "none";
+      elemento.setAttribute("aria-disabled", "true");
+    });
 }
 
 /* =========================
    INICIALIZAÇÃO
 ========================= */
 
-document.addEventListener("DOMContentLoaded", async () => {
-  validarElementosPrincipais();
+document.addEventListener(
+  "DOMContentLoaded",
+  async () => {
+    validarElementosPrincipais();
 
-  try {
-    const usuarioProtegido = await protegerPagina();
+    try {
+      const usuarioProtegido = await protegerPagina();
 
-    usuarioLogadoGlobal = await carregarUsuarioCompleto(usuarioProtegido);
+      usuarioLogadoGlobal = await carregarUsuarioCompleto(usuarioProtegido);
 
-    exibirUsuarioLogadoNoTopo();
-    aplicarVisibilidadeAdministrador();
-    configurarEventos();
+      exibirUsuarioLogadoNoTopo();
 
-    await carregarProjetos();
-  } catch (error) {
-    exibirErroIdentificacaoUsuario(error);
+      aplicarVisibilidadeAdministrador();
 
-    mostrarMensagemTabela(
-      "Erro ao iniciar a Gestão de Obras. Verifique o login, o perfil do usuário e as permissões do Firestore."
-    );
+      configurarEventos();
 
-    alert(
-      [
-        "Não foi possível iniciar a Gestão de Obras.",
-        "",
-        "Verifique:",
-        "• se o usuário está autenticado;",
-        "• se existe um cadastro em usuariosSistema;",
-        "• se o campo perfil está preenchido;",
-        "• se as regras do Firestore foram publicadas."
-      ].join("\n")
-    );
+      await carregarProjetos();
+    } catch (error) {
+      exibirErroIdentificacaoUsuario(error);
+
+      mostrarMensagemTabela(
+        "Erro ao iniciar a Gestão de Obras. Verifique o login, o perfil do usuário e as permissões do Firestore."
+      );
+
+      alert(
+        [
+          "Não foi possível iniciar a Gestão de Obras.",
+          "",
+          "Verifique:",
+          "• se o usuário está autenticado;",
+          "• se existe um cadastro em usuariosSistema;",
+          "• se o campo perfil está preenchido;",
+          "• se as regras do Firestore foram publicadas."
+        ].join("\n")
+      );
+    }
   }
-});
+);

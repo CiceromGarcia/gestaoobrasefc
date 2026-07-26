@@ -17,7 +17,7 @@
   <!-- CSS PRINCIPAL -->
   <link
     rel="stylesheet"
-    href="./gestaodeobras.css?v=309"
+    href="./gestaodeobras.css?v=313"
   >
 
   <!-- FONT AWESOME -->
@@ -36,82 +36,59 @@
   >
 
     <!-- =====================================
-         CABEÇALHO
+         CABEÇALHO PADRÃO DASHBOARD
     ====================================== -->
 
     <header class="app-header">
 
-      <div class="header-left">
+      <div class="header-textos">
 
-        <div class="header-icon">
+        <h1>
+          Painel Executivo de Obras
+        </h1>
 
-          <i class="fa-solid fa-chart-line"></i>
+        <span class="header-subtitulo">
+          Gestão estratégica, operacional e financeira das obras
+        </span>
 
-        </div>
+        <div
+          class="usuario-logado-info sg-usuario-logado-info"
+          id="usuarioLogadoInfo"
+        >
 
-        <div class="header-textos">
+          <span class="usuario-logado-item sg-usuario-logado-item">
 
-          <h1>
-            Painel Executivo de Obras
-          </h1>
+            <span class="usuario-label">
+              Email:
+            </span>
 
-          <span class="header-subtitulo">
-            Gestão estratégica, operacional e financeira das obras
+            <strong id="usuarioEmailTopo">
+              Carregando...
+            </strong>
+
           </span>
 
-          <!-- USUÁRIO LOGADO -->
+          <span class="usuario-logado-separador sg-usuario-logado-separador">
+            |
+          </span>
 
-          <div
-            class="usuario-logado-info"
-            id="usuarioLogadoInfo"
-          >
+          <span class="usuario-logado-item sg-usuario-logado-item">
 
-            <span class="usuario-logado-item">
-
-              <i class="fa-solid fa-envelope"></i>
-
-              <strong id="usuarioEmailTopo">
-                Carregando usuário...
-              </strong>
-
+            <span class="usuario-label">
+              Perfil:
             </span>
 
-            <span class="usuario-logado-separador">
-              |
-            </span>
+            <strong id="usuarioPerfilTopo">
+              Carregando...
+            </strong>
 
-            <span class="usuario-logado-item">
-
-              <i class="fa-solid fa-user-shield"></i>
-
-              <span>
-                Perfil:
-              </span>
-
-              <strong id="usuarioPerfilTopo">
-                Carregando...
-              </strong>
-
-            </span>
-
-          </div>
+          </span>
 
         </div>
 
       </div>
 
       <div class="header-actions">
-
-        <a
-          href="./dashboard.html"
-          class="btn-voltar"
-        >
-
-          <i class="fa-solid fa-arrow-left"></i>
-
-          Voltar
-
-        </a>
 
         <button
           class="btn-pdf"
@@ -472,10 +449,6 @@
               </th>
 
               <th>
-                Cliente
-              </th>
-
-              <th>
                 Status
               </th>
 
@@ -495,7 +468,7 @@
 
             <tr>
 
-              <td colspan="11">
+              <td colspan="10">
                 Carregando projetos...
               </td>
 
@@ -513,7 +486,7 @@
 
   <!-- =====================================
        MODAL - EDITAR DATAS DA OBRA
-       ADMINISTRADOR GERAL OU REGIONAL
+       SOMENTE ADMINISTRADOR GERAL
   ====================================== -->
 
   <div
@@ -534,7 +507,7 @@
           </h2>
 
           <span>
-            Alteração permitida somente para Administrador Geral ou Administrador Regional
+            Alteração permitida somente para Administrador Geral
           </span>
 
         </div>
@@ -808,7 +781,7 @@
 
   <!-- =====================================
        MODAL - EXCLUIR OBRA COMPLETA
-       ADMINISTRADOR GERAL OU REGIONAL
+       SOMENTE ADMINISTRADOR GERAL
   ====================================== -->
 
   <div
@@ -829,7 +802,7 @@
           </h2>
 
           <span>
-            Exclusão permitida somente para Administrador Geral ou Administrador Regional
+            Exclusão permitida somente para Administrador Geral
           </span>
 
         </div>
@@ -995,7 +968,7 @@
   <!-- JAVASCRIPT PRINCIPAL -->
   <script
     type="module"
-    src="./gestaodeobras.js?v=309"
+    src="./gestaodeobras.js?v=313"
   ></script>
 
 </body>
