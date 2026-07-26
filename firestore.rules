@@ -15,15 +15,6 @@ service cloud.firestore {
       return estaLogado() ? request.auth.token.email : "";
     }
 
-    function ehAdministradorGeralPorEmail() {
-      return estaLogado()
-        && emailLogado() in [
-          "cicero.garcia@vale.com",
-          "c0706341@vale.com",
-          "ciceromgarcia@gmail.com"
-        ];
-    }
-
     function usuarioExiste() {
       return estaLogado()
         && exists(/databases/$(database)/documents/usuariosSistema/$(request.auth.uid));
@@ -33,23 +24,15 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/usuariosSistema/$(request.auth.uid)).data;
     }
 
-    function usuarioAtivo() {
-      return usuarioExiste()
-        && !(
-          dadosUsuarioLogado().status in [
-            "inativo",
-            "bloqueado",
-            "bloqueada",
-            "pendente",
-            "reprovado",
-            "reprovada"
-          ]
-        );
-    }
-
     function perfilUsuarioLogado() {
       return usuarioExiste()
         ? dadosUsuarioLogado().perfil
+        : "";
+    }
+
+    function statusUsuarioLogado() {
+      return usuarioExiste()
+        ? dadosUsuarioLogado().status
         : "";
     }
 
@@ -59,71 +42,86 @@ service cloud.firestore {
         : "";
     }
 
-    function podeAprovarRMUsuarioLogado() {
+    function perfilValido(perfil) {
+      return perfil in [
+        "administrador",
+        "planejador",
+        "usuario"
+      ];
+    }
+
+    function statusValido(status) {
+      return status in [
+        "ativo",
+        "pendente",
+        "inativo"
+      ];
+    }
+
+    function usuarioAtivo() {
       return usuarioExiste()
-        && dadosUsuarioLogado().podeAprovarRM == true;
+        && statusUsuarioLogado() == "ativo"
+        && perfilValido(perfilUsuarioLogado());
     }
 
     function ehAdministradorGeral() {
-      return ehAdministradorGeralPorEmail()
-        || (
-          usuarioAtivo()
-          && perfilUsuarioLogado() in [
-            "administrador",
-            "admin",
-            "adm",
-            "Administrador",
-            "Administrador Geral",
-            "administrador geral"
-          ]
-        );
-    }
-
-    function ehAdministradorRegional() {
       return usuarioAtivo()
-        && (
-          perfilUsuarioLogado() in [
-            "administradorRegional",
-            "administrador regional",
-            "Administrador Regional",
-            "adminRegional",
-            "admin regional",
-            "aprovadorRM"
-          ]
-          || podeAprovarRMUsuarioLogado()
-        );
+        && perfilUsuarioLogado() == "administrador";
     }
 
-    function ehAdministradorObras() {
-      return ehAdministradorGeral()
-        || ehAdministradorRegional();
+    function ehPlanejador() {
+      return usuarioAtivo()
+        && perfilUsuarioLogado() == "planejador";
+    }
+
+    function ehUsuarioComum() {
+      return usuarioAtivo()
+        && perfilUsuarioLogado() == "usuario";
     }
 
     function ehUsuarioSistema() {
-      return usuarioAtivo()
-        || ehAdministradorGeralPorEmail();
+      return usuarioAtivo();
     }
 
-    function ehEditorObras() {
-      return ehAdministradorObras()
-        || (
-          usuarioAtivo()
-          && perfilUsuarioLogado() in [
-            "gestor",
-            "planejador",
-            "engenharia",
-            "editor"
-          ]
-        );
-    }
-
-    function podeAprovarRegional(regionalRM) {
+    function podeCriarObra() {
       return ehAdministradorGeral()
-        || (
-          ehAdministradorRegional()
-          && regionalRM is string
-          && regionalUsuarioLogado() == regionalRM
-        );
+        || ehPlanejador();
+    }
+
+    function podeEditarObraProgramada() {
+      return ehAdministradorGeral();
+    }
+
+    function podeExcluirObraProgramada() {
+      return ehAdministradorGeral();
+    }
+
+    function podeAprovarRM() {
+      return ehAdministradorGeral();
+    }
+
+    function usuarioSistemaValido(dados) {
+      return dados.keys().hasAll([
+        "email",
+        "perfil",
+        "status"
+      ])
+      && dados.email is string
+      && dados.perfil is string
+      && dados.status is string
+      && perfilValido(dados.perfil)
+      && statusValido(dados.status);
+    }
+
+    function atualizacaoSeguraDoProprioUsuario() {
+      return request.auth.uid == resource.data.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.perfil == resource.data.perfil
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.regional == resource.data.regional
+        && request.resource.data.podeAprovarRM == resource.data.podeAprovarRM
+        && request.resource.data.adminRebaixado == resource.data.adminRebaixado;
     }
 
     /* ==============================
@@ -242,13 +240,8 @@ service cloud.firestore {
        FUNÇÕES PLANEJAMENTO CURVA S
     ============================== */
 
-    function ehUsuarioPlanejamentoCurvaS() {
-      return ehEditorObras()
-        || usuarioAtivo();
-    }
-
     function criacaoValidaPlanejamentoCurvaS() {
-      return ehUsuarioPlanejamentoCurvaS()
+      return podeCriarObra()
         && request.resource.data.keys().hasAll([
           "obra",
           "obraNome",
@@ -268,41 +261,6 @@ service cloud.firestore {
         && request.resource.data.criadoPorEmail == emailLogado();
     }
 
-    function camposSubstituicaoPlanejamentoCurvaS() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        "ativo",
-        "substituidoPorReplanejamento",
-        "substituidoEm",
-        "substituidoPorUid",
-        "substituidoPorEmail",
-        "motivoSubstituicao"
-      ])
-      && request.resource.data.substituidoPorUid == request.auth.uid
-      && request.resource.data.substituidoPorEmail == emailLogado();
-    }
-
-    function camposPlanejamentoObra() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-        "dataInicio",
-        "dataFim",
-        "dataInicioPrevisto",
-        "dataTerminoPrevisto",
-        "dataFimPrevisto",
-
-        "planejamentoCurvaSAtivo",
-        "replanejamentoNecessario",
-        "reprogramacaoNecessaria",
-
-        "planejamentoAtualizadoEm",
-        "planejamentoAtualizadoPorUid",
-        "planejamentoAtualizadoPorEmail",
-
-        "versaoPlanejamentoAtual"
-      ])
-      && request.resource.data.planejamentoAtualizadoPorUid == request.auth.uid
-      && request.resource.data.planejamentoAtualizadoPorEmail == emailLogado();
-    }
-
     /* ==============================
        USUÁRIOS DO SISTEMA
     ============================== */
@@ -312,21 +270,25 @@ service cloud.firestore {
       allow get: if estaLogado()
         && (
           request.auth.uid == uid
-          || ehAdministradorObras()
+          || ehAdministradorGeral()
         );
 
       allow list: if estaLogado()
         && (
-          ehAdministradorObras()
+          ehAdministradorGeral()
           || resource.data.uid == request.auth.uid
           || resource.data.email == emailLogado()
           || resource.data.emailAuth == emailLogado()
           || resource.data.usuarioEmail == emailLogado()
+          || resource.data.login == emailLogado()
         );
 
       allow create: if estaLogado()
         && (
-          ehAdministradorObras()
+          (
+            ehAdministradorGeral()
+            && usuarioSistemaValido(request.resource.data)
+          )
           ||
           (
             request.auth.uid == uid
@@ -334,23 +296,21 @@ service cloud.firestore {
             && request.resource.data.email == emailLogado()
             && request.resource.data.perfil == "usuario"
             && request.resource.data.status == "pendente"
-            && request.resource.data.podeAprovarRM != true
+            && (
+              !request.resource.data.keys().hasAny(["podeAprovarRM"])
+              || request.resource.data.podeAprovarRM == false
+            )
           )
         );
 
       allow update: if estaLogado()
         && (
-          ehAdministradorObras()
-          ||
           (
-            request.auth.uid == uid
-            && request.resource.data.uid == resource.data.uid
-            && request.resource.data.email == resource.data.email
-            && request.resource.data.perfil == resource.data.perfil
-            && request.resource.data.status == resource.data.status
-            && request.resource.data.podeAprovarRM == resource.data.podeAprovarRM
-            && request.resource.data.regional == resource.data.regional
+            ehAdministradorGeral()
+            && usuarioSistemaValido(request.resource.data)
           )
+          ||
+          atualizacaoSeguraDoProprioUsuario()
         );
 
       allow delete: if ehAdministradorGeral();
@@ -364,15 +324,13 @@ service cloud.firestore {
 
       allow get: if ehUsuarioSistema()
         && (
-          ehAdministradorObras()
-          || podeAprovarRegional(resource.data.regional)
+          ehAdministradorGeral()
           || donoDaRM(resource.data)
         );
 
       allow list: if ehUsuarioSistema()
         && (
-          ehAdministradorObras()
-          || podeAprovarRegional(resource.data.regional)
+          ehAdministradorGeral()
           || donoDaRM(resource.data)
         );
 
@@ -381,17 +339,17 @@ service cloud.firestore {
 
       allow update: if ehUsuarioSistema()
         && (
-          ehAdministradorObras()
+          ehAdministradorGeral()
           ||
           (
-            podeAprovarRegional(resource.data.regional)
+            podeAprovarRM()
             && rmEstaPendente()
             && decisaoValidaRM()
             && camposDeAprovacaoRM()
           )
         );
 
-      allow delete: if ehAdministradorObras();
+      allow delete: if ehAdministradorGeral();
     }
 
     /* ==============================
@@ -401,15 +359,11 @@ service cloud.firestore {
     match /obras/{obraId} {
       allow read: if ehUsuarioSistema();
 
-      allow create: if ehEditorObras();
+      allow create: if podeCriarObra();
 
-      allow update: if ehEditorObras()
-        || (
-          ehUsuarioPlanejamentoCurvaS()
-          && camposPlanejamentoObra()
-        );
+      allow update: if podeEditarObraProgramada();
 
-      allow delete: if ehAdministradorObras();
+      allow delete: if podeExcluirObraProgramada();
     }
 
     /* ==============================
@@ -418,9 +372,36 @@ service cloud.firestore {
 
     match /projetos/{projetoId} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehEditorObras();
-      allow update: if ehEditorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow create: if podeCriarObra();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
+    }
+
+    /* ==============================
+       SUBCOLEÇÕES DOS PROJETOS
+    ============================== */
+
+    match /projetos/{projetoId}/cronogramaSemanal/{semanaId} {
+      allow read: if ehUsuarioSistema();
+
+      allow create: if podeCriarObra();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
+    }
+
+    match /projetos/{projetoId}/rollups/{rollupId} {
+      allow read: if ehUsuarioSistema();
+
+      allow create: if podeEditarObraProgramada();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     /* ==============================
@@ -432,13 +413,9 @@ service cloud.firestore {
 
       allow create: if criacaoValidaPlanejamentoCurvaS();
 
-      allow update: if ehEditorObras()
-        || (
-          ehUsuarioPlanejamentoCurvaS()
-          && camposSubstituicaoPlanejamentoCurvaS()
-        );
+      allow update: if podeEditarObraProgramada();
 
-      allow delete: if ehAdministradorObras();
+      allow delete: if podeExcluirObraProgramada();
     }
 
     /* ==============================
@@ -447,9 +424,12 @@ service cloud.firestore {
 
     match /realizadoCurvaS/{realizadoId} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehEditorObras();
-      allow update: if ehEditorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow create: if podeCriarObra();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     /* ==============================
@@ -458,27 +438,26 @@ service cloud.firestore {
 
     match /projetos_atualizados/{atualizacaoId} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehEditorObras();
-      allow update: if ehEditorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow create: if podeCriarObra();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     /* ==============================
        CRONOGRAMA SEMANAL
     ============================== */
 
-    match /projetos/{projetoId}/cronogramaSemanal/{semanaId} {
-      allow read: if ehUsuarioSistema();
-      allow create: if ehEditorObras();
-      allow update: if ehEditorObras();
-      allow delete: if ehAdministradorObras();
-    }
-
     match /cronogramaSemanal/{semanaId} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehEditorObras();
-      allow update: if ehEditorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow create: if podeCriarObra();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     /* ==============================
@@ -487,9 +466,12 @@ service cloud.firestore {
 
     match /contador/{contadorId} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehEditorObras();
-      allow update: if ehEditorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow create: if podeCriarObra();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     /* ==============================
@@ -498,9 +480,12 @@ service cloud.firestore {
 
     match /custos/{id} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehEditorObras();
-      allow update: if ehEditorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow create: if podeCriarObra();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     /* ==============================
@@ -509,20 +494,12 @@ service cloud.firestore {
 
     match /anomalias/{id} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehEditorObras();
-      allow update: if ehEditorObras();
-      allow delete: if ehAdministradorObras();
-    }
 
-    /* ==============================
-       ROLLUPS POR PROJETO
-    ============================== */
+      allow create: if podeCriarObra();
 
-    match /projetos/{projetoId}/rollups/{rollupId} {
-      allow read: if ehUsuarioSistema();
-      allow create: if ehAdministradorObras();
-      allow update: if ehAdministradorObras();
-      allow delete: if ehAdministradorObras();
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     /* ==============================
@@ -531,30 +508,42 @@ service cloud.firestore {
 
     match /rollupsIndicadores/{id} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehAdministradorObras();
-      allow update: if ehAdministradorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow create: if podeEditarObraProgramada();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     match /indicadoresObra_snapshot/{id} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehAdministradorObras();
-      allow update: if ehAdministradorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow create: if podeEditarObraProgramada();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     match /indicadoresObra_semanal/{id} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehAdministradorObras();
-      allow update: if ehAdministradorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow create: if podeEditarObraProgramada();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     match /indicadoresObra_mensal/{id} {
       allow read: if ehUsuarioSistema();
-      allow create: if ehAdministradorObras();
-      allow update: if ehAdministradorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow create: if podeEditarObraProgramada();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     /* ==============================
@@ -563,16 +552,22 @@ service cloud.firestore {
 
     match /pesquisasObras/{id} {
       allow read: if ehUsuarioSistema();
+
       allow create: if ehUsuarioSistema();
-      allow update: if ehAdministradorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow update: if podeEditarObraProgramada();
+
+      allow delete: if podeExcluirObraProgramada();
     }
 
     match /pesquisasRespostas/{id} {
-      allow read: if ehAdministradorObras();
+      allow read: if ehAdministradorGeral();
+
       allow create: if ehUsuarioSistema();
-      allow update: if ehAdministradorObras();
-      allow delete: if ehAdministradorObras();
+
+      allow update: if ehAdministradorGeral();
+
+      allow delete: if ehAdministradorGeral();
     }
 
     /* ==============================
@@ -580,16 +575,22 @@ service cloud.firestore {
     ============================== */
 
     match /historicoExclusoesObras/{id} {
-      allow read: if ehAdministradorObras();
-      allow create: if ehAdministradorObras();
-      allow update: if ehAdministradorObras();
+      allow read: if ehAdministradorGeral();
+
+      allow create: if ehAdministradorGeral();
+
+      allow update: if ehAdministradorGeral();
+
       allow delete: if ehAdministradorGeral();
     }
 
     match /auditoriaExclusoesObras/{id} {
-      allow read: if ehAdministradorObras();
-      allow create: if ehAdministradorObras();
-      allow update: if ehAdministradorObras();
+      allow read: if ehAdministradorGeral();
+
+      allow create: if ehAdministradorGeral();
+
+      allow update: if ehAdministradorGeral();
+
       allow delete: if ehAdministradorGeral();
     }
 

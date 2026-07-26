@@ -1,385 +1,439 @@
 /* =====================================================
    ADMIN PAINEL - USUÁRIOS DO SISTEMA
    Arquivo: admin-painel.css
-   Versão: v002
+   Versão: v003
 ===================================================== */
 
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-  font-family:'Segoe UI',sans-serif;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', sans-serif;
 }
 
-body{
-  background:#f4f5f7;
-  color:#1f2937;
-  min-height:100vh;
+body {
+  background: #f4f5f7;
+  color: #1f2937;
+  min-height: 100vh;
 }
 
 /* =========================================
    TOPBAR
 ========================================= */
 
-.topbar{
-  width:100%;
-  min-height:72px;
-  background:#fff;
-  border-bottom:1px solid #e5e7eb;
-  padding:14px 36px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:20px;
-  position:sticky;
-  top:0;
-  z-index:100;
+.topbar {
+  width: 100%;
+  min-height: 78px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 14px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-.topbar-left h1{
-  font-size:20px;
-  color:#007E7A;
-  font-weight:800;
-  line-height:1.2;
+.topbar-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
-.topbar-left p{
-  margin-top:4px;
-  font-size:12px;
-  color:#6b7280;
+.topbar-left h1 {
+  font-size: 20px;
+  color: #007E7A;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
-.topbar-actions{
-  display:flex;
-  align-items:center;
-  gap:10px;
+.topbar-left p {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* =========================================
+   USUÁRIO LOGADO NO TOPO
+========================================= */
+
+.usuario-logado-info {
+  margin-top: 8px;
+  padding: 6px 10px;
+
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  border: 1px solid #bde8e3;
+  border-radius: 10px;
+
+  background: #e7f7f5;
+  color: #075e59;
+
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.usuario-logado-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.usuario-logado-item i {
+  color: #007E7A;
+  font-size: 11px;
+}
+
+.usuario-logado-item strong {
+  color: #005f5b;
+  font-weight: 800;
+}
+
+.usuario-logado-separador {
+  color: #7aa9a4;
+}
+
+.usuario-logado-info.perfil-administrador {
+  background: #e7f7f5;
+  border-color: #7ed8ce;
 }
 
 /* =========================================
    CONTAINER
 ========================================= */
 
-.container{
-  width:100%;
-  padding:24px 36px 40px;
+.container {
+  width: 100%;
+  padding: 24px 36px 40px;
 }
 
 /* =========================================
    CARDS
 ========================================= */
 
-.card{
-  background:#fff;
-  border-radius:16px;
-  padding:22px 18px;
-  box-shadow:0 4px 14px rgba(0,0,0,.05);
-  border:1px solid #edf0f2;
-  margin-bottom:22px;
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 22px 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .05);
+  border: 1px solid #edf0f2;
+  margin-bottom: 22px;
 }
 
-.card-header{
-  margin-bottom:18px;
+.card-header {
+  margin-bottom: 18px;
 }
 
-.card-header h2{
-  font-size:20px;
-  color:#111827;
-  font-weight:800;
-  margin-bottom:8px;
+.card-header h2 {
+  font-size: 20px;
+  color: #111827;
+  font-weight: 800;
+  margin-bottom: 8px;
 }
 
-.card-header p{
-  font-size:13px;
-  color:#5f6b7a;
-  line-height:1.5;
+.card-header p {
+  font-size: 13px;
+  color: #5f6b7a;
+  line-height: 1.5;
 }
 
-.card-header-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:16px;
-  flex-wrap:wrap;
+.card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 /* =========================================
    FORMULÁRIO
 ========================================= */
 
-.form-grid{
-  display:grid;
-  grid-template-columns:1.2fr 1.2fr .9fr .8fr .8fr 1fr;
-  gap:14px;
-  align-items:end;
+.form-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr .9fr .8fr .8fr 1fr;
+  gap: 14px;
+  align-items: end;
 }
 
-.field{
-  display:flex;
-  flex-direction:column;
-  gap:7px;
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
 }
 
-.field label{
-  font-size:13px;
-  color:#111827;
-  font-weight:700;
+.field label {
+  font-size: 13px;
+  color: #111827;
+  font-weight: 700;
 }
 
 .field input,
 .field select,
-.table-actions select{
-  width:100%;
-  height:42px;
-  border:1px solid #d9dde3;
-  border-radius:12px;
-  background:#fff;
-  color:#1f2937;
-  padding:0 13px;
-  font-size:13px;
-  outline:none;
-  transition:.2s ease;
+.table-actions select {
+  width: 100%;
+  height: 42px;
+  border: 1px solid #d9dde3;
+  border-radius: 12px;
+  background: #fff;
+  color: #1f2937;
+  padding: 0 13px;
+  font-size: 13px;
+  outline: none;
+  transition: .2s ease;
 }
 
 .field input:focus,
 .field select:focus,
-.table-actions select:focus{
-  border-color:#007E7A;
-  box-shadow:0 0 0 3px rgba(0,126,122,.10);
+.table-actions select:focus {
+  border-color: #007E7A;
+  box-shadow: 0 0 0 3px rgba(0, 126, 122, .10);
 }
 
-.field input::placeholder{
-  color:#9ca3af;
+.field input::placeholder {
+  color: #9ca3af;
 }
 
 .field input:disabled,
-.field select:disabled{
-  background:#f3f4f6;
-  color:#6b7280;
-  cursor:not-allowed;
+.field select:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
 }
 
 /* =========================================
-   CHECKBOX / APROVAÇÃO RM
+   CHECKBOX / PERMISSÃO
 ========================================= */
 
-.field-check{
-  justify-content:end;
+.field-check {
+  justify-content: end;
 }
 
-.check-card{
-  height:42px;
-  width:100%;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:0 12px;
-  border:1px solid #d9dde3;
-  border-radius:12px;
-  background:#f8fafc;
-  transition:.2s ease;
+.check-card {
+  height: 42px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid #d9dde3;
+  border-radius: 12px;
+  background: #f8fafc;
+  transition: .2s ease;
 }
 
-.check-card:hover{
-  border-color:#007E7A;
-  background:#eef8f7;
+.check-card:hover {
+  border-color: #007E7A;
+  background: #eef8f7;
 }
 
-.check-card input{
-  width:18px;
-  height:18px;
-  min-width:18px;
-  accent-color:#007E7A;
-  cursor:pointer;
+.check-card input {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  accent-color: #007E7A;
+  cursor: pointer;
 }
 
-.check-card label{
-  font-size:12px;
-  color:#374151;
-  font-weight:700;
-  cursor:pointer;
-  line-height:1.2;
+.check-card label {
+  font-size: 12px;
+  color: #374151;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1.2;
 }
 
-.checkbox-field{
-  align-items:center;
-  justify-content:end;
-  gap:10px;
+.checkbox-field {
+  align-items: center;
+  justify-content: end;
+  gap: 10px;
 }
 
-.checkbox-field label{
-  width:100%;
-  text-align:left;
+.checkbox-field label {
+  width: 100%;
+  text-align: left;
 }
 
-.checkbox-field input{
-  width:22px;
-  height:22px;
-  accent-color:#007E7A;
-  cursor:pointer;
+.checkbox-field input {
+  width: 22px;
+  height: 22px;
+  accent-color: #007E7A;
+  cursor: pointer;
 }
 
 /* =========================================
    ALERTA DE PERMISSÃO
 ========================================= */
 
-.alerta-permissao{
-  margin-top:16px;
-  padding:12px 14px;
-  border-radius:12px;
-  border:1px solid #bde8e3;
-  background:#e7f7f5;
-  color:#075e59;
-  display:flex;
-  align-items:flex-start;
-  gap:10px;
-  font-size:12px;
-  line-height:1.45;
+.alerta-permissao {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #bde8e3;
+  background: #e7f7f5;
+  color: #075e59;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
-.alerta-permissao i{
-  margin-top:2px;
-  color:#007E7A;
+.alerta-permissao i {
+  margin-top: 2px;
+  color: #007E7A;
 }
 
-.alerta-permissao strong{
-  color:#005f5b;
+.alerta-permissao strong {
+  color: #005f5b;
 }
 
 /* =========================================
    AÇÕES DO FORMULÁRIO
 ========================================= */
 
-.form-actions{
-  margin-top:16px;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
+.form-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* =========================================
    BOTÕES GERAIS
 ========================================= */
 
-.btn{
-  height:38px;
-  border:none;
-  border-radius:11px;
-  padding:0 16px;
-  font-size:12px;
-  font-weight:700;
-  cursor:pointer;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  transition:.2s ease;
-  white-space:nowrap;
+.btn {
+  height: 38px;
+  border: none;
+  border-radius: 11px;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: .2s ease;
+  white-space: nowrap;
 }
 
-.btn i{
-  font-size:13px;
+.btn i {
+  font-size: 13px;
 }
 
-.btn-primary{
-  background:#007E7A;
-  color:#fff;
-  box-shadow:0 6px 14px rgba(0,126,122,.18);
+.btn-primary {
+  background: #007E7A;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(0, 126, 122, .18);
 }
 
-.btn-primary:hover{
-  background:#006b67;
-  transform:translateY(-1px);
+.btn-primary:hover {
+  background: #006b67;
+  transform: translateY(-1px);
 }
 
-.btn-outline{
-  background:#fff;
-  color:#007E7A;
-  border:1px solid #d9e5e4;
+.btn-outline {
+  background: #fff;
+  color: #007E7A;
+  border: 1px solid #d9e5e4;
 }
 
-.btn-outline:hover{
-  background:#eef8f7;
-  border-color:#007E7A;
+.btn-outline:hover {
+  background: #eef8f7;
+  border-color: #007E7A;
 }
 
-.btn-danger{
-  background:#fee2e2;
-  color:#b42318;
-  border:1px solid #fecaca;
+.btn-danger {
+  background: #fee2e2;
+  color: #b42318;
+  border: 1px solid #fecaca;
 }
 
-.btn-danger:hover{
-  background:#fecaca;
+.btn-danger:hover {
+  background: #fecaca;
 }
 
 /* =========================================
    AÇÕES DA TABELA
 ========================================= */
 
-.table-actions{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.table-actions select{
-  width:180px;
+.table-actions select {
+  width: 180px;
 }
 
 .table-actions #filtroRegional,
-.table-actions #filtroAprovacaoRM{
-  width:190px;
+.table-actions #filtroAprovacaoRM {
+  width: 190px;
 }
 
 /* =========================================
    TABELA
 ========================================= */
 
-.table-scroll{
-  width:100%;
-  overflow:auto;
-  border:1px solid #e5e7eb;
-  border-radius:14px;
+.table-scroll {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
 }
 
-table{
-  width:100%;
-  min-width:1250px;
-  border-collapse:collapse;
-  background:#fff;
+table {
+  width: 100%;
+  min-width: 1250px;
+  border-collapse: collapse;
+  background: #fff;
 }
 
-thead{
-  background:#f8fafc;
+thead {
+  background: #f8fafc;
 }
 
-th{
-  padding:14px 14px;
-  text-align:left;
-  color:#111827;
-  font-size:13px;
-  font-weight:800;
-  border-bottom:1px solid #e5e7eb;
-  white-space:nowrap;
+th {
+  padding: 14px 14px;
+  text-align: left;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
 }
 
-td{
-  padding:13px 14px;
-  font-size:13px;
-  color:#374151;
-  border-bottom:1px solid #edf0f2;
-  vertical-align:middle;
+td {
+  padding: 13px 14px;
+  font-size: 13px;
+  color: #374151;
+  border-bottom: 1px solid #edf0f2;
+  vertical-align: middle;
 }
 
-tbody tr:hover td{
-  background:#f8fbfb;
+tbody tr:hover td {
+  background: #f8fbfb;
 }
 
-tbody tr:last-child td{
-  border-bottom:none;
+tbody tr:last-child td {
+  border-bottom: none;
 }
 
 /* =========================================
@@ -387,57 +441,57 @@ tbody tr:last-child td{
 ========================================= */
 
 th:nth-child(1),
-td:nth-child(1){
-  min-width:190px;
+td:nth-child(1) {
+  min-width: 190px;
 }
 
 th:nth-child(2),
-td:nth-child(2){
-  min-width:230px;
+td:nth-child(2) {
+  min-width: 230px;
 }
 
 th:nth-child(3),
-td:nth-child(3){
-  min-width:160px;
+td:nth-child(3) {
+  min-width: 150px;
 }
 
 th:nth-child(4),
-td:nth-child(4){
-  min-width:120px;
+td:nth-child(4) {
+  min-width: 120px;
 }
 
 th:nth-child(5),
-td:nth-child(5){
-  min-width:110px;
-  text-align:center;
+td:nth-child(5) {
+  min-width: 110px;
+  text-align: center;
 }
 
 th:nth-child(6),
-td:nth-child(6){
-  min-width:110px;
-  text-align:center;
+td:nth-child(6) {
+  min-width: 110px;
+  text-align: center;
 }
 
 th:nth-child(7),
-td:nth-child(7){
-  min-width:150px;
+td:nth-child(7) {
+  min-width: 150px;
 }
 
 th:nth-child(8),
-td:nth-child(8){
-  min-width:260px;
+td:nth-child(8) {
+  min-width: 250px;
 }
 
 /* =========================================
    LINHA PENDENTE
 ========================================= */
 
-.linha-pendente td{
-  background:#fffbeb;
+.linha-pendente td {
+  background: #fffbeb;
 }
 
-.linha-pendente:hover td{
-  background:#fef3c7;
+.linha-pendente:hover td {
+  background: #fef3c7;
 }
 
 /* =========================================
@@ -446,244 +500,258 @@ td:nth-child(8){
 
 .status-ativo,
 .status-inativo,
-.status-pendente{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-width:78px;
-  height:24px;
-  border-radius:999px;
-  font-size:11px;
-  font-weight:800;
-  padding:0 10px;
-  white-space:nowrap;
+.status-pendente {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 78px;
+  height: 24px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 0 10px;
+  white-space: nowrap;
 }
 
-.status-ativo{
-  color:#007E7A;
-  background:#e7f7f5;
-  border:1px solid #bde8e3;
+.status-ativo {
+  color: #007E7A;
+  background: #e7f7f5;
+  border: 1px solid #bde8e3;
 }
 
-.status-pendente{
-  color:#92400e;
-  background:#fef3c7;
-  border:1px solid #fde68a;
+.status-pendente {
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
 }
 
-.status-inativo{
-  color:#b42318;
-  background:#fff1f1;
-  border:1px solid #fecaca;
+.status-inativo {
+  color: #b42318;
+  background: #fff1f1;
+  border: 1px solid #fecaca;
 }
 
 /* =========================================
    BOTÕES DE AÇÃO DA TABELA
 ========================================= */
 
-.acoes-usuario{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  flex-wrap:wrap;
+.acoes-usuario {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
-.btn-acao{
-  height:30px;
-  border:none;
-  border-radius:9px;
-  padding:0 10px;
-  font-size:11px;
-  font-weight:700;
-  cursor:pointer;
-  background:#eef8f7;
-  color:#007E7A;
-  border:1px solid #d4ece9;
-  transition:.2s ease;
-  white-space:nowrap;
+.btn-acao {
+  height: 30px;
+  border: none;
+  border-radius: 9px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #eef8f7;
+  color: #007E7A;
+  border: 1px solid #d4ece9;
+  transition: .2s ease;
+  white-space: nowrap;
 }
 
-.btn-acao:hover{
-  background:#007E7A;
-  color:#fff;
+.btn-acao:hover {
+  background: #007E7A;
+  color: #fff;
 }
 
-.btn-acao.success{
-  background:#e7f7f5;
-  color:#007E7A;
-  border-color:#bde8e3;
+.btn-acao.success {
+  background: #e7f7f5;
+  color: #007E7A;
+  border-color: #bde8e3;
 }
 
-.btn-acao.success:hover{
-  background:#007E7A;
-  color:#fff;
+.btn-acao.success:hover {
+  background: #007E7A;
+  color: #fff;
 }
 
-.btn-acao.warning{
-  background:#fff7ed;
-  color:#c2410c;
-  border-color:#fed7aa;
+.btn-acao.warning {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fed7aa;
 }
 
-.btn-acao.warning:hover{
-  background:#c2410c;
-  color:#fff;
+.btn-acao.warning:hover {
+  background: #c2410c;
+  color: #fff;
 }
 
-.btn-acao.danger{
-  background:#fff1f1;
-  color:#b42318;
-  border-color:#fecaca;
+.btn-acao.danger {
+  background: #fff1f1;
+  color: #b42318;
+  border-color: #fecaca;
 }
 
-.btn-acao.danger:hover{
-  background:#b42318;
-  color:#fff;
+.btn-acao.danger:hover {
+  background: #b42318;
+  color: #fff;
 }
 
 /* =========================================
    ALERTAS VISUAIS
 ========================================= */
 
-.sem-registro{
-  text-align:center;
-  color:#6b7280;
-  font-weight:600;
+.sem-registro {
+  text-align: center;
+  color: #6b7280;
+  font-weight: 600;
 }
 
 /* =========================================
    SCROLL
 ========================================= */
 
-::-webkit-scrollbar{
-  width:8px;
-  height:8px;
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-::-webkit-scrollbar-track{
-  background:#f1f5f9;
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
 }
 
-::-webkit-scrollbar-thumb{
-  background:#cbd5e1;
-  border-radius:999px;
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
 }
 
-::-webkit-scrollbar-thumb:hover{
-  background:#94a3b8;
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* =========================================
    RESPONSIVO
 ========================================= */
 
-@media(max-width:1300px){
+@media(max-width: 1300px) {
 
-  .form-grid{
-    grid-template-columns:1fr 1fr 1fr;
+  .form-grid {
+    grid-template-columns: 1fr 1fr 1fr;
   }
 
 }
 
-@media(max-width:1100px){
+@media(max-width: 1100px) {
 
-  .form-grid{
-    grid-template-columns:1fr 1fr;
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
   .checkbox-field,
-  .field-check{
-    align-items:flex-start;
+  .field-check {
+    align-items: flex-start;
   }
 
-  .table-actions select{
-    width:170px;
+  .table-actions select {
+    width: 170px;
   }
 
 }
 
-@media(max-width:768px){
+@media(max-width: 768px) {
 
-  .topbar{
-    padding:14px 18px;
-    flex-direction:column;
-    align-items:flex-start;
+  .topbar {
+    padding: 14px 18px;
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  .topbar-actions{
-    width:100%;
+  .topbar-actions {
+    width: 100%;
   }
 
-  .topbar-actions .btn{
-    flex:1;
+  .topbar-actions .btn {
+    flex: 1;
   }
 
-  .container{
-    padding:18px;
+  .usuario-logado-info {
+    width: 100%;
+    align-items: flex-start;
+    gap: 6px;
   }
 
-  .form-grid{
-    grid-template-columns:1fr;
+  .usuario-logado-separador {
+    display: none;
   }
 
-  .form-actions{
-    justify-content:stretch;
+  .usuario-logado-item {
+    width: 100%;
   }
 
-  .form-actions .btn{
-    width:100%;
+  .container {
+    padding: 18px;
   }
 
-  .card-header-row{
-    align-items:flex-start;
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 
-  .table-actions{
-    width:100%;
+  .form-actions {
+    justify-content: stretch;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+
+  .card-header-row {
+    align-items: flex-start;
+  }
+
+  .table-actions {
+    width: 100%;
   }
 
   .table-actions select,
   .table-actions .btn,
   .table-actions #filtroRegional,
-  .table-actions #filtroAprovacaoRM{
-    flex:1 1 100%;
-    width:100%;
+  .table-actions #filtroAprovacaoRM {
+    flex: 1 1 100%;
+    width: 100%;
   }
 
-  .alerta-permissao{
-    font-size:11px;
+  .alerta-permissao {
+    font-size: 11px;
   }
 
 }
 
-@media(max-width:520px){
+@media(max-width: 520px) {
 
-  .topbar-left h1{
-    font-size:18px;
+  .topbar-left h1 {
+    font-size: 18px;
   }
 
-  .card{
-    padding:18px 14px;
-    border-radius:14px;
+  .card {
+    padding: 18px 14px;
+    border-radius: 14px;
   }
 
-  .card-header h2{
-    font-size:18px;
+  .card-header h2 {
+    font-size: 18px;
   }
 
-  .btn{
-    padding:0 12px;
-    font-size:11px;
+  .btn {
+    padding: 0 12px;
+    font-size: 11px;
   }
 
-  .acoes-usuario{
-    gap:4px;
+  .acoes-usuario {
+    gap: 4px;
   }
 
-  .btn-acao{
-    height:28px;
-    padding:0 8px;
-    font-size:10px;
+  .btn-acao {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 10px;
   }
 
 }

@@ -14,9 +14,10 @@
     Planejamento Curva S
   </title>
 
+  <!-- CSS -->
   <link
     rel="stylesheet"
-    href="./planejamento.css"
+    href="./planejamento.css?v=003"
   >
 
   <!-- CHART JS -->
@@ -31,11 +32,13 @@
 
   <div class="container">
 
-    <!-- HEADER -->
+    <!-- =====================================
+         CABEÇALHO
+    ====================================== -->
 
     <div class="header">
 
-      <div>
+      <div class="header-textos">
 
         <h1>
           Planejamento da Curva S
@@ -45,19 +48,48 @@
           Planejamento físico e financeiro semanal da obra
         </p>
 
-      </div>
+        <div
+          class="usuario-logado-info sg-usuario-logado-info"
+          id="usuarioLogadoInfo"
+        >
 
-      <button
-        type="button"
-        id="btnVoltar"
-        class="btn-voltar"
-      >
-        Voltar
-      </button>
+          <span class="usuario-logado-item sg-usuario-logado-item">
+
+            <span class="usuario-label">
+              Email:
+            </span>
+
+            <strong id="usuarioEmailTopo">
+              Carregando...
+            </strong>
+
+          </span>
+
+          <span class="usuario-logado-separador sg-usuario-logado-separador">
+            |
+          </span>
+
+          <span class="usuario-logado-item sg-usuario-logado-item">
+
+            <span class="usuario-label">
+              Perfil:
+            </span>
+
+            <strong id="usuarioPerfilTopo">
+              Carregando...
+            </strong>
+
+          </span>
+
+        </div>
+
+      </div>
 
     </div>
 
-    <!-- FILTROS -->
+    <!-- =====================================
+         FILTROS
+    ====================================== -->
 
     <div class="filtros">
 
@@ -155,7 +187,9 @@
 
     </div>
 
-    <!-- TABELA -->
+    <!-- =====================================
+         TABELA
+    ====================================== -->
 
     <div class="tabela-card">
 
@@ -201,7 +235,9 @@
 
     </div>
 
-    <!-- GRÁFICOS -->
+    <!-- =====================================
+         GRÁFICOS
+    ====================================== -->
 
     <div class="graficos">
 
@@ -237,11 +273,13 @@
 
   </div>
 
-  <!-- JS MODULAR -->
+  <!-- =====================================
+       JS MODULAR
+  ====================================== -->
 
   <script
     type="module"
-    src="./planejamento.js"
+    src="./planejamento.js?v=003"
   ></script>
 
 </body>

@@ -1,5 +1,12 @@
 /* =====================================================
-   PLANEJAMENTO DA OBRA - CORRIGIDO
+   PLANEJAMENTO DA CURVA S
+   Arquivo: planejamento.js
+   Versão: v003
+
+   Ajustes:
+   - Removido botão Voltar.
+   - Mantida proteção com authGuard.
+   - Email e perfil são exibidos pelo authGuard no cabeçalho.
 ===================================================== */
 
 import { db } from "./firebaseConfig.js";
@@ -23,12 +30,20 @@ let usuarioLogadoGlobal = null;
    ELEMENTOS
 ========================= */
 
-const selectObra = document.getElementById("obra");
-const dataInicio = document.getElementById("dataInicio");
-const dataFim = document.getElementById("dataFim");
-const valorTotal = document.getElementById("valorTotal");
-const tbody = document.getElementById("tbodyPlanejamento");
-const btnVoltar = document.getElementById("btnVoltar");
+const selectObra =
+  document.getElementById("obra");
+
+const dataInicio =
+  document.getElementById("dataInicio");
+
+const dataFim =
+  document.getElementById("dataFim");
+
+const valorTotal =
+  document.getElementById("valorTotal");
+
+const tbody =
+  document.getElementById("tbodyPlanejamento");
 
 /* =========================
    VARIÁVEIS
@@ -45,11 +60,19 @@ let semanasGeradas = [];
    CHART
 ========================= */
 
-const ChartJS = window.Chart;
-const ChartDataLabelsPlugin = window.ChartDataLabels;
+const ChartJS =
+  window.Chart;
 
-if (ChartJS && ChartDataLabelsPlugin) {
-  ChartJS.register(ChartDataLabelsPlugin);
+const ChartDataLabelsPlugin =
+  window.ChartDataLabels;
+
+if (
+  ChartJS &&
+  ChartDataLabelsPlugin
+) {
+  ChartJS.register(
+    ChartDataLabelsPlugin
+  );
 }
 
 /* =========================
@@ -69,12 +92,15 @@ function normalizarTexto(valor) {
 ========================= */
 
 function moeda(valor) {
-  return Number(valor || 0).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
+  return Number(valor || 0).toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }
+  );
 }
 
 /* =========================
@@ -82,22 +108,30 @@ function moeda(valor) {
 ========================= */
 
 function moedaParaNumero(valor) {
-  if (valor === null || valor === undefined || valor === "") {
+  if (
+    valor === null ||
+    valor === undefined ||
+    valor === ""
+  ) {
     return 0;
   }
 
-  if (typeof valor === "number") {
+  if (
+    typeof valor === "number"
+  ) {
     return valor;
   }
 
-  let valorLimpo = String(valor)
-    .replace("R$", "")
-    .replace(/\s/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".")
-    .trim();
+  let valorLimpo =
+    String(valor)
+      .replace("R$", "")
+      .replace(/\s/g, "")
+      .replace(/\./g, "")
+      .replace(",", ".")
+      .trim();
 
-  valorLimpo = valorLimpo.replace(/[^\d.-]/g, "");
+  valorLimpo =
+    valorLimpo.replace(/[^\d.-]/g, "");
 
   return Number(valorLimpo) || 0;
 }
@@ -107,7 +141,9 @@ function moedaParaNumero(valor) {
 ========================= */
 
 function percentual(valor) {
-  return `${Number(valor || 0).toFixed(2).replace(".", ",")}%`;
+  return `${Number(valor || 0)
+    .toFixed(2)
+    .replace(".", ",")}%`;
 }
 
 /* =========================
@@ -134,22 +170,33 @@ function obterValorObra(item) {
 ========================= */
 
 function criarDataLocal(valor) {
-  if (!valor) return null;
+  if (!valor) {
+    return null;
+  }
 
   if (valor?.toDate) {
     return valor.toDate();
   }
 
   if (valor?.seconds) {
-    return new Date(valor.seconds * 1000);
+    return new Date(
+      valor.seconds * 1000
+    );
   }
 
   if (valor instanceof Date) {
-    return isNaN(valor.getTime()) ? null : valor;
+    return isNaN(valor.getTime())
+      ? null
+      : valor;
   }
 
-  if (typeof valor === "string" && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
-    const partes = valor.split("-");
+  if (
+    typeof valor === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(valor)
+  ) {
+    const partes =
+      valor.split("-");
+
     return new Date(
       Number(partes[0]),
       Number(partes[1]) - 1,
@@ -157,8 +204,13 @@ function criarDataLocal(valor) {
     );
   }
 
-  if (typeof valor === "string" && valor.includes("/")) {
-    const partes = valor.split("/");
+  if (
+    typeof valor === "string" &&
+    valor.includes("/")
+  ) {
+    const partes =
+      valor.split("/");
+
     if (partes.length === 3) {
       return new Date(
         Number(partes[2]),
@@ -168,8 +220,12 @@ function criarDataLocal(valor) {
     }
   }
 
-  const data = new Date(valor);
-  if (isNaN(data.getTime())) {
+  const data =
+    new Date(valor);
+
+  if (
+    isNaN(data.getTime())
+  ) {
     return null;
   }
 
@@ -181,12 +237,23 @@ function criarDataLocal(valor) {
 ========================= */
 
 function formatarDataInput(data) {
-  const dt = criarDataLocal(data);
-  if (!dt) return "";
+  const dt =
+    criarDataLocal(data);
 
-  const ano = dt.getFullYear();
-  const mes = String(dt.getMonth() + 1).padStart(2, "0");
-  const dia = String(dt.getDate()).padStart(2, "0");
+  if (!dt) {
+    return "";
+  }
+
+  const ano =
+    dt.getFullYear();
+
+  const mes =
+    String(dt.getMonth() + 1)
+      .padStart(2, "0");
+
+  const dia =
+    String(dt.getDate())
+      .padStart(2, "0");
 
   return `${ano}-${mes}-${dia}`;
 }
@@ -196,9 +263,16 @@ function formatarDataInput(data) {
 ========================= */
 
 function formatarData(data) {
-  const dt = criarDataLocal(data);
-  if (!dt) return "-";
-  return dt.toLocaleDateString("pt-BR");
+  const dt =
+    criarDataLocal(data);
+
+  if (!dt) {
+    return "-";
+  }
+
+  return dt.toLocaleDateString(
+    "pt-BR"
+  );
 }
 
 /* =========================
@@ -253,10 +327,19 @@ function obterChavesPlanejamento(item) {
     .map(normalizarTexto);
 }
 
-function registroPertenceAObra(registro, obra) {
-  const chavesObra = obterChavesObra(obra);
-  const chavesRegistro = obterChavesPlanejamento(registro);
-  return chavesRegistro.some((chave) => chavesObra.includes(chave));
+function registroPertenceAObra(
+  registro,
+  obra
+) {
+  const chavesObra =
+    obterChavesObra(obra);
+
+  const chavesRegistro =
+    obterChavesPlanejamento(registro);
+
+  return chavesRegistro.some((chave) =>
+    chavesObra.includes(chave)
+  );
 }
 
 /* =========================
@@ -264,12 +347,19 @@ function registroPertenceAObra(registro, obra) {
 ========================= */
 
 function obterObraSelecionada() {
-  const valorSelecionado = selectObra?.value || "";
+  const valorSelecionado =
+    selectObra?.value || "";
 
   return (
-    obrasCadastradas.find((obra) => obra.id === valorSelecionado) ||
-    obrasCadastradas.find((obra) => obterCodigoPrincipalObra(obra) === valorSelecionado) ||
-    obrasCadastradas.find((obra) => obra.nomeProjeto === valorSelecionado) ||
+    obrasCadastradas.find((obra) =>
+      obra.id === valorSelecionado
+    ) ||
+    obrasCadastradas.find((obra) =>
+      obterCodigoPrincipalObra(obra) === valorSelecionado
+    ) ||
+    obrasCadastradas.find((obra) =>
+      obra.nomeProjeto === valorSelecionado
+    ) ||
     null
   );
 }
@@ -278,12 +368,24 @@ function obterObraSelecionada() {
    CRIAR OPTION SEGURA
 ========================= */
 
-function adicionarOption(select, valor, texto) {
-  if (!select) return;
+function adicionarOption(
+  select,
+  valor,
+  texto
+) {
+  if (!select) {
+    return;
+  }
 
-  const option = document.createElement("option");
-  option.value = valor;
-  option.textContent = texto;
+  const option =
+    document.createElement("option");
+
+  option.value =
+    valor;
+
+  option.textContent =
+    texto;
+
   select.appendChild(option);
 }
 
@@ -292,10 +394,17 @@ function adicionarOption(select, valor, texto) {
 ========================= */
 
 function limparSelectObras() {
-  if (!selectObra) return;
+  if (!selectObra) {
+    return;
+  }
 
   selectObra.innerHTML = "";
-  adicionarOption(selectObra, "", "Selecione uma obra");
+
+  adicionarOption(
+    selectObra,
+    "",
+    "Selecione uma obra"
+  );
 }
 
 /* =========================
@@ -303,17 +412,26 @@ function limparSelectObras() {
 ========================= */
 
 function mostrarMensagemTabela(mensagem) {
-  if (!tbody) return;
+  if (!tbody) {
+    return;
+  }
 
   tbody.innerHTML = "";
 
-  const tr = document.createElement("tr");
-  const td = document.createElement("td");
+  const tr =
+    document.createElement("tr");
 
-  td.colSpan = 6;
-  td.textContent = mensagem;
+  const td =
+    document.createElement("td");
+
+  td.colSpan =
+    6;
+
+  td.textContent =
+    mensagem;
 
   tr.appendChild(td);
+
   tbody.appendChild(tr);
 }
 
@@ -323,15 +441,27 @@ function mostrarMensagemTabela(mensagem) {
 
 function obraPossuiCurvaAtiva(obra) {
   return planejamentosExistentes.some((item) => {
-    if (item.ativo === false) return false;
-    return registroPertenceAObra(item, obra);
+    if (item.ativo === false) {
+      return false;
+    }
+
+    return registroPertenceAObra(
+      item,
+      obra
+    );
   });
 }
 
 function obterPlanejamentosAtivosDaObra(obra) {
   return planejamentosExistentes.filter((item) => {
-    if (item.ativo === false) return false;
-    return registroPertenceAObra(item, obra);
+    if (item.ativo === false) {
+      return false;
+    }
+
+    return registroPertenceAObra(
+      item,
+      obra
+    );
   });
 }
 
@@ -346,8 +476,21 @@ async function carregarObras() {
     obrasCadastradas = [];
     planejamentosExistentes = [];
 
-    const obrasSnapshot = await getDocs(collection(db, "obras"));
-    const planejamentoSnapshot = await getDocs(collection(db, "planejamentoCurvaS"));
+    const obrasSnapshot =
+      await getDocs(
+        collection(
+          db,
+          "obras"
+        )
+      );
+
+    const planejamentoSnapshot =
+      await getDocs(
+        collection(
+          db,
+          "planejamentoCurvaS"
+        )
+      );
 
     planejamentoSnapshot.forEach((docItem) => {
       planejamentosExistentes.push({
@@ -360,7 +503,8 @@ async function carregarObras() {
     const obrasTemp = [];
 
     obrasSnapshot.forEach((docItem) => {
-      const item = docItem.data();
+      const item =
+        docItem.data();
 
       const nomeObra =
         item.nomeProjeto ||
@@ -369,13 +513,18 @@ async function carregarObras() {
         item.obra ||
         "";
 
-      if (!nomeObra) return;
+      if (!nomeObra) {
+        return;
+      }
 
-      const obraTemReplanejamento = Boolean(
-        item.replanejamentoNecessario || item.reprogramacaoNecessaria
-      );
+      const obraTemReplanejamento =
+        Boolean(
+          item.replanejamentoNecessario ||
+          item.reprogramacaoNecessaria
+        );
 
-      const valorObra = obterValorObra(item);
+      const valorObra =
+        obterValorObra(item);
 
       const obraTratada = {
         id: docItem.id,
@@ -410,9 +559,11 @@ async function carregarObras() {
           item.obraId ||
           "",
 
-        nomeProjeto: nomeObra,
+        nomeProjeto:
+          nomeObra,
 
-        valorObra: valorObra,
+        valorObra:
+          valorObra,
 
         dataInicio:
           item.dataInicio ||
@@ -435,39 +586,67 @@ async function carregarObras() {
           item.dataFinal ||
           "",
 
-        localidade: item.localidade || "",
-        regional: item.regional || "",
+        localidade:
+          item.localidade || "",
+
+        regional:
+          item.regional || "",
+
         centroCusto:
           item.centroCusto ||
           item.centroDeCusto ||
           item.numeroOM ||
           "",
 
-        replanejamentoNecessario: obraTemReplanejamento,
-        reprogramacaoNecessaria: obraTemReplanejamento
+        replanejamentoNecessario:
+          obraTemReplanejamento,
+
+        reprogramacaoNecessaria:
+          obraTemReplanejamento
       };
 
-      const possuiCurva = obraPossuiCurvaAtiva(obraTratada);
+      const possuiCurva =
+        obraPossuiCurvaAtiva(
+          obraTratada
+        );
 
-      if (possuiCurva && !obraTemReplanejamento) {
+      if (
+        possuiCurva &&
+        !obraTemReplanejamento
+      ) {
         return;
       }
 
-      obraTratada.possuiCurvaAtiva = possuiCurva;
-      obrasTemp.push(obraTratada);
+      obraTratada.possuiCurvaAtiva =
+        possuiCurva;
+
+      obrasTemp.push(
+        obraTratada
+      );
     });
 
     obrasTemp.sort((a, b) =>
-      String(a.nomeProjeto || "").localeCompare(String(b.nomeProjeto || ""), "pt-BR")
+      String(a.nomeProjeto || "")
+        .localeCompare(
+          String(b.nomeProjeto || ""),
+          "pt-BR"
+        )
     );
 
     obrasTemp.forEach((obraTratada) => {
-      obrasCadastradas.push(obraTratada);
+      obrasCadastradas.push(
+        obraTratada
+      );
 
-      const codigo = obterCodigoPrincipalObra(obraTratada);
-      const labelBase = codigo
-        ? `${codigo} - ${obraTratada.nomeProjeto}`
-        : obraTratada.nomeProjeto;
+      const codigo =
+        obterCodigoPrincipalObra(
+          obraTratada
+        );
+
+      const labelBase =
+        codigo
+          ? `${codigo} - ${obraTratada.nomeProjeto}`
+          : obraTratada.nomeProjeto;
 
       adicionarOption(
         selectObra,
@@ -478,7 +657,10 @@ async function carregarObras() {
       );
     });
 
-    if (obrasCadastradas.length === 0 && selectObra) {
+    if (
+      obrasCadastradas.length === 0 &&
+      selectObra
+    ) {
       adicionarOption(
         selectObra,
         "",
@@ -486,8 +668,14 @@ async function carregarObras() {
       );
     }
   } catch (error) {
-    console.error("Erro ao carregar obras:", error);
-    alert("Erro ao carregar obras. Verifique suas permissões no Firestore.");
+    console.error(
+      "Erro ao carregar obras:",
+      error
+    );
+
+    alert(
+      "Erro ao carregar obras. Verifique suas permissões no Firestore."
+    );
   }
 }
 
@@ -496,43 +684,76 @@ async function carregarObras() {
 ========================= */
 
 function preencherDadosObra() {
-  const obraSelecionada = obterObraSelecionada();
+  const obraSelecionada =
+    obterObraSelecionada();
 
   if (!obraSelecionada) {
-    if (valorTotal) valorTotal.value = moeda(0);
-    if (dataInicio) dataInicio.value = "";
-    if (dataFim) dataFim.value = "";
+    if (valorTotal) {
+      valorTotal.value = moeda(0);
+    }
+
+    if (dataInicio) {
+      dataInicio.value = "";
+    }
+
+    if (dataFim) {
+      dataFim.value = "";
+    }
 
     planejamentoAtual = [];
     semanasGeradas = [];
 
-    if (tbody) tbody.innerHTML = "";
+    if (tbody) {
+      tbody.innerHTML = "";
+    }
 
     destruirGraficos();
+
     return;
   }
 
   if (valorTotal) {
-    valorTotal.value = moeda(obraSelecionada.valorObra);
+    valorTotal.value =
+      moeda(
+        obraSelecionada.valorObra
+      );
   }
 
-  const inicio = formatarDataInput(obraSelecionada.dataInicio);
-  const fim = formatarDataInput(obraSelecionada.dataFim);
+  const inicio =
+    formatarDataInput(
+      obraSelecionada.dataInicio
+    );
 
-  if (dataInicio) dataInicio.value = inicio;
-  if (dataFim) dataFim.value = fim;
+  const fim =
+    formatarDataInput(
+      obraSelecionada.dataFim
+    );
+
+  if (dataInicio) {
+    dataInicio.value =
+      inicio;
+  }
+
+  if (dataFim) {
+    dataFim.value =
+      fim;
+  }
 
   planejamentoAtual = [];
   semanasGeradas = [];
 
   destruirGraficos();
 
-  if (obraSelecionada.replanejamentoNecessario) {
+  if (
+    obraSelecionada.replanejamentoNecessario
+  ) {
     mostrarMensagemTabela(
       "Esta obra teve as datas alteradas e precisa de replanejamento. Gere uma nova Curva S para substituir o planejamento anterior."
     );
   } else {
-    if (tbody) tbody.innerHTML = "";
+    if (tbody) {
+      tbody.innerHTML = "";
+    }
   }
 }
 
@@ -541,21 +762,44 @@ function preencherDadosObra() {
 ========================= */
 
 function validarCamposGeracao() {
-  if (!selectObra?.value || !dataInicio?.value || !dataFim?.value) {
-    alert("Preencha todos os campos antes de gerar o planejamento.");
+  if (
+    !selectObra?.value ||
+    !dataInicio?.value ||
+    !dataFim?.value
+  ) {
+    alert(
+      "Preencha todos os campos antes de gerar o planejamento."
+    );
+
     return false;
   }
 
-  const inicio = criarDataLocal(dataInicio.value);
-  const fim = criarDataLocal(dataFim.value);
+  const inicio =
+    criarDataLocal(
+      dataInicio.value
+    );
 
-  if (!inicio || !fim) {
-    alert("Datas inválidas.");
+  const fim =
+    criarDataLocal(
+      dataFim.value
+    );
+
+  if (
+    !inicio ||
+    !fim
+  ) {
+    alert(
+      "Datas inválidas."
+    );
+
     return false;
   }
 
   if (fim < inicio) {
-    alert("A data final não pode ser menor que a data inicial.");
+    alert(
+      "A data final não pode ser menor que a data inicial."
+    );
+
     return false;
   }
 
@@ -567,77 +811,165 @@ function validarCamposGeracao() {
 ========================= */
 
 function gerarPlanejamento() {
-  if (!tbody) return;
-  if (!validarCamposGeracao()) return;
+  if (!tbody) {
+    return;
+  }
+
+  if (!validarCamposGeracao()) {
+    return;
+  }
 
   tbody.innerHTML = "";
   planejamentoAtual = [];
   semanasGeradas = [];
+
   destruirGraficos();
 
-  const inicio = criarDataLocal(dataInicio.value);
-  const fim = criarDataLocal(dataFim.value);
+  const inicio =
+    criarDataLocal(
+      dataInicio.value
+    );
 
-  let dataAtual = new Date(inicio);
-  let numeroSemana = 1;
+  const fim =
+    criarDataLocal(
+      dataFim.value
+    );
+
+  let dataAtual =
+    new Date(inicio);
+
+  let numeroSemana =
+    1;
 
   while (dataAtual <= fim) {
-    const inicioSemana = new Date(dataAtual);
-    let fimSemana = new Date(dataAtual);
-    fimSemana.setDate(fimSemana.getDate() + 6);
+    const inicioSemana =
+      new Date(dataAtual);
+
+    let fimSemana =
+      new Date(dataAtual);
+
+    fimSemana.setDate(
+      fimSemana.getDate() + 6
+    );
 
     if (fimSemana > fim) {
-      fimSemana = new Date(fim);
+      fimSemana =
+        new Date(fim);
     }
 
     semanasGeradas.push({
-      numero: numeroSemana,
-      label: `SEM ${numeroSemana}`,
-      inicio: new Date(inicioSemana),
-      fim: new Date(fimSemana)
+      numero:
+        numeroSemana,
+
+      label:
+        `SEM ${numeroSemana}`,
+
+      inicio:
+        new Date(inicioSemana),
+
+      fim:
+        new Date(fimSemana)
     });
 
-    dataAtual = new Date(fimSemana);
-    dataAtual.setDate(dataAtual.getDate() + 1);
+    dataAtual =
+      new Date(fimSemana);
+
+    dataAtual.setDate(
+      dataAtual.getDate() + 1
+    );
+
     numeroSemana++;
   }
 
   semanasGeradas.forEach((semana, index) => {
-    const tr = document.createElement("tr");
+    const tr =
+      document.createElement("tr");
 
-    const tdSemana = document.createElement("td");
-    tdSemana.textContent = semana.label;
+    const tdSemana =
+      document.createElement("td");
 
-    const tdPeriodo = document.createElement("td");
-    tdPeriodo.textContent = `${formatarData(semana.inicio)} a ${formatarData(semana.fim)}`;
+    tdSemana.textContent =
+      semana.label;
 
-    const tdFisico = document.createElement("td");
-    const inputFisico = document.createElement("input");
-    inputFisico.type = "number";
-    inputFisico.className = "input-fisico";
-    inputFisico.dataset.index = String(index);
-    inputFisico.placeholder = "0";
-    inputFisico.min = "0";
-    inputFisico.max = "100";
-    inputFisico.step = "0.01";
-    tdFisico.appendChild(inputFisico);
+    const tdPeriodo =
+      document.createElement("td");
 
-    const tdFisicoAcumulado = document.createElement("td");
-    tdFisicoAcumulado.className = "fisico-acumulado";
-    tdFisicoAcumulado.textContent = percentual(0);
+    tdPeriodo.textContent =
+      `${formatarData(semana.inicio)} a ${formatarData(semana.fim)}`;
 
-    const tdFinanceiro = document.createElement("td");
-    const inputFinanceiro = document.createElement("input");
-    inputFinanceiro.type = "text";
-    inputFinanceiro.inputMode = "decimal";
-    inputFinanceiro.className = "input-financeiro";
-    inputFinanceiro.dataset.index = String(index);
-    inputFinanceiro.placeholder = "R$ 0,00";
-    tdFinanceiro.appendChild(inputFinanceiro);
+    const tdFisico =
+      document.createElement("td");
 
-    const tdFinanceiroAcumulado = document.createElement("td");
-    tdFinanceiroAcumulado.className = "financeiro-acumulado";
-    tdFinanceiroAcumulado.textContent = moeda(0);
+    const inputFisico =
+      document.createElement("input");
+
+    inputFisico.type =
+      "number";
+
+    inputFisico.className =
+      "input-fisico";
+
+    inputFisico.dataset.index =
+      String(index);
+
+    inputFisico.placeholder =
+      "0";
+
+    inputFisico.min =
+      "0";
+
+    inputFisico.max =
+      "100";
+
+    inputFisico.step =
+      "0.01";
+
+    tdFisico.appendChild(
+      inputFisico
+    );
+
+    const tdFisicoAcumulado =
+      document.createElement("td");
+
+    tdFisicoAcumulado.className =
+      "fisico-acumulado";
+
+    tdFisicoAcumulado.textContent =
+      percentual(0);
+
+    const tdFinanceiro =
+      document.createElement("td");
+
+    const inputFinanceiro =
+      document.createElement("input");
+
+    inputFinanceiro.type =
+      "text";
+
+    inputFinanceiro.inputMode =
+      "decimal";
+
+    inputFinanceiro.className =
+      "input-financeiro";
+
+    inputFinanceiro.dataset.index =
+      String(index);
+
+    inputFinanceiro.placeholder =
+      "R$ 0,00";
+
+    tdFinanceiro.appendChild(
+      inputFinanceiro
+    );
+
+    const tdFinanceiroAcumulado =
+      document.createElement("td");
+
+    tdFinanceiroAcumulado.className =
+      "financeiro-acumulado";
+
+    tdFinanceiroAcumulado.textContent =
+      moeda(0);
 
     tr.appendChild(tdSemana);
     tr.appendChild(tdPeriodo);
@@ -650,38 +982,63 @@ function gerarPlanejamento() {
   });
 
   ativarEventosInputs();
+
   atualizarTabela();
 }
 
-window.gerarPlanejamento = gerarPlanejamento;
+window.gerarPlanejamento =
+  gerarPlanejamento;
 
 /* =========================
    EVENTOS INPUTS
 ========================= */
 
 function ativarEventosInputs() {
-  const inputsFisico = document.querySelectorAll(".input-fisico");
-  const inputsFinanceiro = document.querySelectorAll(".input-financeiro");
+  const inputsFisico =
+    document.querySelectorAll(
+      ".input-fisico"
+    );
+
+  const inputsFinanceiro =
+    document.querySelectorAll(
+      ".input-financeiro"
+    );
 
   inputsFinanceiro.forEach((input) => {
     input.addEventListener("input", (e) => {
-      let v = e.target.value.replace(/\D/g, "");
-      v = (Number(v || 0) / 100).toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL"
-      });
+      let v =
+        e.target.value.replace(/\D/g, "");
 
-      e.target.value = v;
+      v =
+        (
+          Number(v || 0) / 100
+        ).toLocaleString(
+          "pt-BR",
+          {
+            style: "currency",
+            currency: "BRL"
+          }
+        );
+
+      e.target.value =
+        v;
+
       atualizarTabela();
     });
   });
 
   inputsFisico.forEach((input) => {
     input.addEventListener("input", () => {
-      const valor = Number(input.value || 0);
+      const valor =
+        Number(input.value || 0);
 
-      if (valor < 0) input.value = "0";
-      if (valor > 100) input.value = "100";
+      if (valor < 0) {
+        input.value = "0";
+      }
+
+      if (valor > 100) {
+        input.value = "100";
+      }
 
       atualizarTabela();
     });
@@ -695,100 +1052,228 @@ function ativarEventosInputs() {
 function atualizarTabela() {
   planejamentoAtual = [];
 
-  if (!tbody) return;
+  if (!tbody) {
+    return;
+  }
 
-  const linhas = tbody.querySelectorAll("tr");
-  let acumuladoFisico = 0;
-  let acumuladoFinanceiro = 0;
+  const linhas =
+    tbody.querySelectorAll("tr");
+
+  let acumuladoFisico =
+    0;
+
+  let acumuladoFinanceiro =
+    0;
 
   const labels = [];
   const dadosFisico = [];
   const dadosFinanceiro = [];
 
-  const obraSelecionada = obterObraSelecionada();
-  const codigoPrincipal = obterCodigoPrincipalObra(obraSelecionada);
+  const obraSelecionada =
+    obterObraSelecionada();
+
+  const codigoPrincipal =
+    obterCodigoPrincipalObra(
+      obraSelecionada
+    );
 
   linhas.forEach((linha, index) => {
-    const semanaInfo = semanasGeradas[index];
+    const semanaInfo =
+      semanasGeradas[index];
 
-    const inputFisico = linha.querySelector(".input-fisico");
-    const inputFinanceiro = linha.querySelector(".input-financeiro");
+    const inputFisico =
+      linha.querySelector(
+        ".input-fisico"
+      );
 
-    if (!inputFisico || !inputFinanceiro || !semanaInfo) {
+    const inputFinanceiro =
+      linha.querySelector(
+        ".input-financeiro"
+      );
+
+    if (
+      !inputFisico ||
+      !inputFinanceiro ||
+      !semanaInfo
+    ) {
       return;
     }
 
-    const fisico = Number(inputFisico.value || 0);
-    const financeiro = moedaParaNumero(inputFinanceiro.value || 0);
+    const fisico =
+      Number(inputFisico.value || 0);
 
-    acumuladoFisico += fisico;
-    acumuladoFinanceiro += financeiro;
+    const financeiro =
+      moedaParaNumero(
+        inputFinanceiro.value || 0
+      );
+
+    acumuladoFisico +=
+      fisico;
+
+    acumuladoFinanceiro +=
+      financeiro;
 
     if (acumuladoFisico > 100) {
       acumuladoFisico = 100;
     }
 
-    const celulaFisicoAcumulado = linha.querySelector(".fisico-acumulado");
-    const celulaFinanceiroAcumulado = linha.querySelector(".financeiro-acumulado");
+    const celulaFisicoAcumulado =
+      linha.querySelector(
+        ".fisico-acumulado"
+      );
+
+    const celulaFinanceiroAcumulado =
+      linha.querySelector(
+        ".financeiro-acumulado"
+      );
 
     if (celulaFisicoAcumulado) {
-      celulaFisicoAcumulado.textContent = percentual(acumuladoFisico);
+      celulaFisicoAcumulado.textContent =
+        percentual(acumuladoFisico);
     }
 
     if (celulaFinanceiroAcumulado) {
-      celulaFinanceiroAcumulado.textContent = moeda(acumuladoFinanceiro);
+      celulaFinanceiroAcumulado.textContent =
+        moeda(acumuladoFinanceiro);
     }
 
     planejamentoAtual.push({
-      obra: obraSelecionada?.nomeProjeto || "",
-      obraNome: obraSelecionada?.nomeProjeto || "",
-      nomeProjeto: obraSelecionada?.nomeProjeto || "",
+      obra:
+        obraSelecionada?.nomeProjeto || "",
 
-      obraDocId: obraSelecionada?.id || "",
-      obraId: codigoPrincipal || "",
-      idObra: obraSelecionada?.idObra || codigoPrincipal || "",
-      codigoObra: codigoPrincipal || "",
-      idProjeto: obraSelecionada?.idProjeto || obraSelecionada?.idObra || codigoPrincipal || "",
+      obraNome:
+        obraSelecionada?.nomeProjeto || "",
 
-      localidade: obraSelecionada?.localidade || "",
-      regional: obraSelecionada?.regional || "",
-      centroCusto: obraSelecionada?.centroCusto || "",
+      nomeProjeto:
+        obraSelecionada?.nomeProjeto || "",
 
-      valorTotalObra: moedaParaNumero(valorTotal?.value),
-      dataInicio: dataInicio?.value || "",
-      dataFim: dataFim?.value || "",
-      dataInicioPrevisto: dataInicio?.value || "",
-      dataTerminoPrevisto: dataFim?.value || "",
+      obraDocId:
+        obraSelecionada?.id || "",
 
-      semana: semanaInfo.label,
-      semanaNumero: semanaInfo.numero,
-      ordemSemana: semanaInfo.numero,
+      obraId:
+        codigoPrincipal || "",
 
-      periodo: `${formatarData(semanaInfo.inicio)} a ${formatarData(semanaInfo.fim)}`,
-      periodoInicio: formatarDataInput(semanaInfo.inicio),
-      periodoFim: formatarDataInput(semanaInfo.fim),
-      inicioSemana: formatarDataInput(semanaInfo.inicio),
-      fimSemana: formatarDataInput(semanaInfo.fim),
+      idObra:
+        obraSelecionada?.idObra ||
+        codigoPrincipal ||
+        "",
 
-      fisico: Number(fisico).toFixed(2),
-      fisicoAcum: Number(acumuladoFisico).toFixed(2),
-      fisicoAcumulado: percentual(acumuladoFisico),
+      codigoObra:
+        codigoPrincipal || "",
 
-      financeiro: Number(financeiro).toFixed(2),
-      financeiroAcum: Number(acumuladoFinanceiro).toFixed(2),
-      financeiroAcumulado: moeda(acumuladoFinanceiro),
+      idProjeto:
+        obraSelecionada?.idProjeto ||
+        obraSelecionada?.idObra ||
+        codigoPrincipal ||
+        "",
 
-      statusPlanejamento: "PLANEJADO",
-      replanejamento: Boolean(obraSelecionada?.replanejamentoNecessario)
+      localidade:
+        obraSelecionada?.localidade || "",
+
+      regional:
+        obraSelecionada?.regional || "",
+
+      centroCusto:
+        obraSelecionada?.centroCusto || "",
+
+      valorTotalObra:
+        moedaParaNumero(
+          valorTotal?.value
+        ),
+
+      dataInicio:
+        dataInicio?.value || "",
+
+      dataFim:
+        dataFim?.value || "",
+
+      dataInicioPrevisto:
+        dataInicio?.value || "",
+
+      dataTerminoPrevisto:
+        dataFim?.value || "",
+
+      semana:
+        semanaInfo.label,
+
+      semanaNumero:
+        semanaInfo.numero,
+
+      ordemSemana:
+        semanaInfo.numero,
+
+      periodo:
+        `${formatarData(semanaInfo.inicio)} a ${formatarData(semanaInfo.fim)}`,
+
+      periodoInicio:
+        formatarDataInput(
+          semanaInfo.inicio
+        ),
+
+      periodoFim:
+        formatarDataInput(
+          semanaInfo.fim
+        ),
+
+      inicioSemana:
+        formatarDataInput(
+          semanaInfo.inicio
+        ),
+
+      fimSemana:
+        formatarDataInput(
+          semanaInfo.fim
+        ),
+
+      fisico:
+        Number(fisico).toFixed(2),
+
+      fisicoAcum:
+        Number(acumuladoFisico).toFixed(2),
+
+      fisicoAcumulado:
+        percentual(acumuladoFisico),
+
+      financeiro:
+        Number(financeiro).toFixed(2),
+
+      financeiroAcum:
+        Number(acumuladoFinanceiro).toFixed(2),
+
+      financeiroAcumulado:
+        moeda(acumuladoFinanceiro),
+
+      statusPlanejamento:
+        "PLANEJADO",
+
+      replanejamento:
+        Boolean(
+          obraSelecionada?.replanejamentoNecessario
+        )
     });
 
-    labels.push(semanaInfo.label);
-    dadosFisico.push(acumuladoFisico);
-    dadosFinanceiro.push(acumuladoFinanceiro);
+    labels.push(
+      semanaInfo.label
+    );
+
+    dadosFisico.push(
+      acumuladoFisico
+    );
+
+    dadosFinanceiro.push(
+      acumuladoFinanceiro
+    );
   });
 
-  criarGraficoFisico(labels, dadosFisico);
-  criarGraficoFinanceiro(labels, dadosFinanceiro);
+  criarGraficoFisico(
+    labels,
+    dadosFisico
+  );
+
+  criarGraficoFinanceiro(
+    labels,
+    dadosFinanceiro
+  );
 }
 
 /* =========================
@@ -797,38 +1282,66 @@ function atualizarTabela() {
 
 function validarPlanejamentoAntesSalvar() {
   if (planejamentoAtual.length === 0) {
-    alert("Preencha ou gere o planejamento antes de salvar.");
+    alert(
+      "Preencha ou gere o planejamento antes de salvar."
+    );
+
     return false;
   }
 
-  const somaFisica = planejamentoAtual.reduce((total, item) => {
-    return total + Number(item.fisico || 0);
-  }, 0);
+  const somaFisica =
+    planejamentoAtual.reduce((total, item) => {
+      return total + Number(item.fisico || 0);
+    }, 0);
 
-  const somaFinanceira = planejamentoAtual.reduce((total, item) => {
-    return total + Number(item.financeiro || 0);
-  }, 0);
+  const somaFinanceira =
+    planejamentoAtual.reduce((total, item) => {
+      return total + Number(item.financeiro || 0);
+    }, 0);
 
-  const valorObraTotal = moedaParaNumero(valorTotal?.value);
-  const toleranciaFinanceira = 0.5;
+  const valorObraTotal =
+    moedaParaNumero(
+      valorTotal?.value
+    );
+
+  const toleranciaFinanceira =
+    0.5;
 
   if (somaFisica <= 0) {
-    alert("Informe o avanço físico semanal do planejamento.");
+    alert(
+      "Informe o avanço físico semanal do planejamento."
+    );
+
     return false;
   }
 
-  if (Math.abs(somaFisica - 100) > 0.01) {
-    alert("O avanço físico total do planejamento deve fechar em 100,00%.");
+  if (
+    Math.abs(somaFisica - 100) > 0.01
+  ) {
+    alert(
+      "O avanço físico total do planejamento deve fechar em 100,00%."
+    );
+
     return false;
   }
 
   if (somaFinanceira <= 0) {
-    alert("Informe o valor financeiro semanal do planejamento.");
+    alert(
+      "Informe o valor financeiro semanal do planejamento."
+    );
+
     return false;
   }
 
-  if (valorObraTotal > 0 && Math.abs(somaFinanceira - valorObraTotal) > toleranciaFinanceira) {
-    alert("O somatório financeiro semanal deve ser igual ao valor total da obra.");
+  if (
+    valorObraTotal > 0 &&
+    Math.abs(somaFinanceira - valorObraTotal) >
+      toleranciaFinanceira
+  ) {
+    alert(
+      "O somatório financeiro semanal deve ser igual ao valor total da obra."
+    );
+
     return false;
   }
 
@@ -841,7 +1354,10 @@ function validarPlanejamentoAntesSalvar() {
 
 async function salvarPlanejamento() {
   if (!usuarioLogadoGlobal) {
-    alert("Usuário não autenticado. Faça login novamente.");
+    alert(
+      "Usuário não autenticado. Faça login novamente."
+    );
+
     return;
   }
 
@@ -851,105 +1367,187 @@ async function salvarPlanejamento() {
     return;
   }
 
-  const obraSelecionada = obterObraSelecionada();
+  const obraSelecionada =
+    obterObraSelecionada();
 
   if (!obraSelecionada) {
-    alert("Selecione uma obra válida para salvar o planejamento.");
+    alert(
+      "Selecione uma obra válida para salvar o planejamento."
+    );
+
     return;
   }
 
-  const planejamentoEhReplanejamento = Boolean(
-    obraSelecionada.replanejamentoNecessario ||
-    obraSelecionada.reprogramacaoNecessaria
-  );
+  const planejamentoEhReplanejamento =
+    Boolean(
+      obraSelecionada.replanejamentoNecessario ||
+      obraSelecionada.reprogramacaoNecessaria
+    );
 
-  const mensagemConfirmacao = planejamentoEhReplanejamento
-    ? "Deseja salvar este replanejamento? O planejamento anterior será marcado como substituído e a nova Curva S ficará ativa."
-    : "Deseja realmente salvar este planejamento? Após salvar, a obra não aparecerá mais na lista de obras pendentes de planejamento.";
+  const mensagemConfirmacao =
+    planejamentoEhReplanejamento
+      ? "Deseja salvar este replanejamento? O planejamento anterior será marcado como substituído e a nova Curva S ficará ativa."
+      : "Deseja realmente salvar este planejamento? Após salvar, a obra não aparecerá mais na lista de obras pendentes de planejamento.";
 
-  const confirmar = confirm(mensagemConfirmacao);
+  const confirmar =
+    confirm(
+      mensagemConfirmacao
+    );
 
-  if (!confirmar) return;
+  if (!confirmar) {
+    return;
+  }
 
   try {
-    const batch = writeBatch(db);
-    const versaoPlanejamento = Date.now();
+    const batch =
+      writeBatch(db);
 
-    const planejamentosAntigos = planejamentoEhReplanejamento
-      ? obterPlanejamentosAtivosDaObra(obraSelecionada)
-      : [];
+    const versaoPlanejamento =
+      Date.now();
+
+    const planejamentosAntigos =
+      planejamentoEhReplanejamento
+        ? obterPlanejamentosAtivosDaObra(
+            obraSelecionada
+          )
+        : [];
 
     planejamentosAntigos.forEach((item) => {
-      if (!item.docId) return;
+      if (!item.docId) {
+        return;
+      }
 
-      const refAntigo = doc(db, "planejamentoCurvaS", item.docId);
+      const refAntigo =
+        doc(
+          db,
+          "planejamentoCurvaS",
+          item.docId
+        );
 
-      batch.update(refAntigo, {
-        ativo: false,
-        substituidoPorReplanejamento: true,
-        substituidoEm: serverTimestamp(),
-        substituidoPorUid: usuarioLogadoGlobal?.uid || "",
-        substituidoPorEmail:
-          usuarioLogadoGlobal?.email ||
-          usuarioLogadoGlobal?.emailAuth ||
-          "",
-        motivoSubstituicao:
-          "Replanejamento gerado após alteração das datas da obra."
-      });
+      batch.update(
+        refAntigo,
+        {
+          ativo:
+            false,
+
+          substituidoPorReplanejamento:
+            true,
+
+          substituidoEm:
+            serverTimestamp(),
+
+          substituidoPorUid:
+            usuarioLogadoGlobal?.uid || "",
+
+          substituidoPorEmail:
+            usuarioLogadoGlobal?.email ||
+            usuarioLogadoGlobal?.emailAuth ||
+            "",
+
+          motivoSubstituicao:
+            "Replanejamento gerado após alteração das datas da obra."
+        }
+      );
     });
 
     planejamentoAtual.forEach((item) => {
-      const refNovo = doc(collection(db, "planejamentoCurvaS"));
+      const refNovo =
+        doc(
+          collection(
+            db,
+            "planejamentoCurvaS"
+          )
+        );
 
-      batch.set(refNovo, {
-        ...item,
+      batch.set(
+        refNovo,
+        {
+          ...item,
 
-        ativo: true,
+          ativo:
+            true,
 
-        tipoPlanejamento: planejamentoEhReplanejamento
-          ? "REPLANEJAMENTO"
-          : "PLANEJAMENTO_INICIAL",
+          tipoPlanejamento:
+            planejamentoEhReplanejamento
+              ? "REPLANEJAMENTO"
+              : "PLANEJAMENTO_INICIAL",
 
-        versaoPlanejamento,
-        replanejamento: planejamentoEhReplanejamento,
+          versaoPlanejamento,
 
-        criadoPorUid: usuarioLogadoGlobal?.uid || "",
-        criadoPorEmail:
+          replanejamento:
+            planejamentoEhReplanejamento,
+
+          criadoPorUid:
+            usuarioLogadoGlobal?.uid || "",
+
+          criadoPorEmail:
+            usuarioLogadoGlobal?.email ||
+            usuarioLogadoGlobal?.emailAuth ||
+            "",
+
+          criadoPorNome:
+            usuarioLogadoGlobal?.nome ||
+            usuarioLogadoGlobal?.displayName ||
+            "",
+
+          criadoEm:
+            serverTimestamp(),
+
+          atualizadoEm:
+            serverTimestamp()
+        }
+      );
+    });
+
+    const refObra =
+      doc(
+        db,
+        "obras",
+        obraSelecionada.id
+      );
+
+    batch.update(
+      refObra,
+      {
+        dataInicio:
+          dataInicio?.value || "",
+
+        dataFim:
+          dataFim?.value || "",
+
+        dataInicioPrevisto:
+          dataInicio?.value || "",
+
+        dataTerminoPrevisto:
+          dataFim?.value || "",
+
+        dataFimPrevisto:
+          dataFim?.value || "",
+
+        planejamentoCurvaSAtivo:
+          true,
+
+        replanejamentoNecessario:
+          false,
+
+        reprogramacaoNecessaria:
+          false,
+
+        planejamentoAtualizadoEm:
+          serverTimestamp(),
+
+        planejamentoAtualizadoPorUid:
+          usuarioLogadoGlobal?.uid || "",
+
+        planejamentoAtualizadoPorEmail:
           usuarioLogadoGlobal?.email ||
           usuarioLogadoGlobal?.emailAuth ||
           "",
-        criadoPorNome:
-          usuarioLogadoGlobal?.nome ||
-          usuarioLogadoGlobal?.displayName ||
-          "",
 
-        criadoEm: serverTimestamp(),
-        atualizadoEm: serverTimestamp()
-      });
-    });
-
-    const refObra = doc(db, "obras", obraSelecionada.id);
-
-    batch.update(refObra, {
-      dataInicio: dataInicio?.value || "",
-      dataFim: dataFim?.value || "",
-      dataInicioPrevisto: dataInicio?.value || "",
-      dataTerminoPrevisto: dataFim?.value || "",
-      dataFimPrevisto: dataFim?.value || "",
-
-      planejamentoCurvaSAtivo: true,
-      replanejamentoNecessario: false,
-      reprogramacaoNecessaria: false,
-
-      planejamentoAtualizadoEm: serverTimestamp(),
-      planejamentoAtualizadoPorUid: usuarioLogadoGlobal?.uid || "",
-      planejamentoAtualizadoPorEmail:
-        usuarioLogadoGlobal?.email ||
-        usuarioLogadoGlobal?.emailAuth ||
-        "",
-
-      versaoPlanejamentoAtual: versaoPlanejamento
-    });
+        versaoPlanejamentoAtual:
+          versaoPlanejamento
+      }
+    );
 
     await batch.commit();
 
@@ -959,14 +1557,22 @@ async function salvarPlanejamento() {
         : "Planejamento salvo com sucesso!"
     );
 
-    window.location.href = "./dashboard.html";
+    window.location.href =
+      "./dashboard.html";
   } catch (error) {
-    console.error("Erro ao salvar planejamento:", error);
-    alert("Erro ao salvar planejamento. Verifique suas permissões no Firestore.");
+    console.error(
+      "Erro ao salvar planejamento:",
+      error
+    );
+
+    alert(
+      "Erro ao salvar planejamento. Verifique suas permissões no Firestore."
+    );
   }
 }
 
-window.salvarPlanejamento = salvarPlanejamento;
+window.salvarPlanejamento =
+  salvarPlanejamento;
 
 /* =========================
    DESTRUIR GRÁFICOS
@@ -988,149 +1594,281 @@ function destruirGraficos() {
    GRÁFICO FÍSICO
 ========================= */
 
-function criarGraficoFisico(labels, dados) {
-  const canvas = document.getElementById("graficoFisico");
-  if (!canvas || !ChartJS) return;
+function criarGraficoFisico(
+  labels,
+  dados
+) {
+  const canvas =
+    document.getElementById(
+      "graficoFisico"
+    );
+
+  if (!canvas || !ChartJS) {
+    return;
+  }
 
   if (graficoFisico) {
     graficoFisico.destroy();
   }
 
-  graficoFisico = new ChartJS(canvas, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Físico Acumulado",
-          data: dados,
-          borderColor: "#007E7A",
-          backgroundColor: "rgba(0,126,122,0.08)",
-          borderWidth: 2,
-          tension: 0.4,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          fill: true
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: true
-        },
-        datalabels: {
-          color: "#111",
-          anchor: "end",
-          align: "top",
-          offset: 8,
-          font: {
-            size: 10,
-            weight: "bold"
+  graficoFisico =
+    new ChartJS(
+      canvas,
+      {
+        type:
+          "line",
+
+        data:
+          {
+            labels,
+
+            datasets:
+              [
+                {
+                  label:
+                    "Físico Acumulado",
+
+                  data:
+                    dados,
+
+                  borderColor:
+                    "#007E7A",
+
+                  backgroundColor:
+                    "rgba(0,126,122,0.08)",
+
+                  borderWidth:
+                    2,
+
+                  tension:
+                    0.4,
+
+                  pointRadius:
+                    4,
+
+                  pointHoverRadius:
+                    6,
+
+                  fill:
+                    true
+                }
+              ]
           },
-          formatter: (value) => percentual(value)
-        },
-        tooltip: {
-          callbacks: {
-            label: (context) => {
-              return `${context.dataset.label}: ${percentual(context.raw || 0)}`;
-            }
+
+        options:
+          {
+            responsive:
+              true,
+
+            maintainAspectRatio:
+              false,
+
+            plugins:
+              {
+                legend:
+                  {
+                    display:
+                      true
+                  },
+
+                datalabels:
+                  {
+                    color:
+                      "#111",
+
+                    anchor:
+                      "end",
+
+                    align:
+                      "top",
+
+                    offset:
+                      8,
+
+                    font:
+                      {
+                        size:
+                          10,
+
+                        weight:
+                          "bold"
+                      },
+
+                    formatter:
+                      (value) => percentual(value)
+                  },
+
+                tooltip:
+                  {
+                    callbacks:
+                      {
+                        label:
+                          (context) => {
+                            return `${context.dataset.label}: ${percentual(context.raw || 0)}`;
+                          }
+                      }
+                  }
+              },
+
+            scales:
+              {
+                y:
+                  {
+                    beginAtZero:
+                      true,
+
+                    max:
+                      100,
+
+                    ticks:
+                      {
+                        callback:
+                          (value) => `${value}%`
+                      }
+                  }
+              }
           }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: 100,
-          ticks: {
-            callback: (value) => `${value}%`
-          }
-        }
       }
-    }
-  });
+    );
 }
 
 /* =========================
    GRÁFICO FINANCEIRO
 ========================= */
 
-function criarGraficoFinanceiro(labels, dados) {
-  const canvas = document.getElementById("graficoFinanceiro");
-  if (!canvas || !ChartJS) return;
+function criarGraficoFinanceiro(
+  labels,
+  dados
+) {
+  const canvas =
+    document.getElementById(
+      "graficoFinanceiro"
+    );
+
+  if (!canvas || !ChartJS) {
+    return;
+  }
 
   if (graficoFinanceiro) {
     graficoFinanceiro.destroy();
   }
 
-  graficoFinanceiro = new ChartJS(canvas, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Financeiro Acumulado",
-          data: dados,
-          borderColor: "#0ABB98",
-          backgroundColor: "rgba(10,187,152,0.08)",
-          borderWidth: 2,
-          tension: 0.4,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          fill: true
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: true
-        },
-        datalabels: {
-          color: "#111",
-          anchor: "end",
-          align: "top",
-          offset: 8,
-          font: {
-            size: 10,
-            weight: "bold"
+  graficoFinanceiro =
+    new ChartJS(
+      canvas,
+      {
+        type:
+          "line",
+
+        data:
+          {
+            labels,
+
+            datasets:
+              [
+                {
+                  label:
+                    "Financeiro Acumulado",
+
+                  data:
+                    dados,
+
+                  borderColor:
+                    "#0ABB98",
+
+                  backgroundColor:
+                    "rgba(10,187,152,0.08)",
+
+                  borderWidth:
+                    2,
+
+                  tension:
+                    0.4,
+
+                  pointRadius:
+                    4,
+
+                  pointHoverRadius:
+                    6,
+
+                  fill:
+                    true
+                }
+              ]
           },
-          formatter: (value) => moeda(value)
-        },
-        tooltip: {
-          callbacks: {
-            label: (context) => {
-              return `${context.dataset.label}: ${moeda(context.raw || 0)}`;
-            }
+
+        options:
+          {
+            responsive:
+              true,
+
+            maintainAspectRatio:
+              false,
+
+            plugins:
+              {
+                legend:
+                  {
+                    display:
+                      true
+                  },
+
+                datalabels:
+                  {
+                    color:
+                      "#111",
+
+                    anchor:
+                      "end",
+
+                    align:
+                      "top",
+
+                    offset:
+                      8,
+
+                    font:
+                      {
+                        size:
+                          10,
+
+                        weight:
+                          "bold"
+                      },
+
+                    formatter:
+                      (value) => moeda(value)
+                  },
+
+                tooltip:
+                  {
+                    callbacks:
+                      {
+                        label:
+                          (context) => {
+                            return `${context.dataset.label}: ${moeda(context.raw || 0)}`;
+                          }
+                      }
+                  }
+              },
+
+            scales:
+              {
+                y:
+                  {
+                    beginAtZero:
+                      true,
+
+                    ticks:
+                      {
+                        callback:
+                          (value) => moeda(value)
+                      }
+                  }
+              }
           }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            callback: (value) => moeda(value)
-          }
-        }
       }
-    }
-  });
-}
-
-/* =========================
-   BOTÃO VOLTAR
-========================= */
-
-function configurarBotaoVoltar() {
-  if (!btnVoltar) return;
-
-  btnVoltar.addEventListener("click", () => {
-    window.location.href = "./dashboard.html";
-  });
+    );
 }
 
 /* =========================
@@ -1138,21 +1876,35 @@ function configurarBotaoVoltar() {
 ========================= */
 
 function configurarEventos() {
-  selectObra?.addEventListener("change", preencherDadosObra);
-  configurarBotaoVoltar();
+  selectObra?.addEventListener(
+    "change",
+    preencherDadosObra
+  );
 }
 
 /* =========================
    INIT
 ========================= */
 
-document.addEventListener("DOMContentLoaded", async () => {
-  try {
-    usuarioLogadoGlobal = await protegerPagina();
-    configurarEventos();
-    await carregarObras();
-  } catch (error) {
-    console.error("Erro ao iniciar planejamento:", error);
-    alert("Erro ao iniciar a tela de planejamento.");
+document.addEventListener(
+  "DOMContentLoaded",
+  async () => {
+    try {
+      usuarioLogadoGlobal =
+        await protegerPagina();
+
+      configurarEventos();
+
+      await carregarObras();
+    } catch (error) {
+      console.error(
+        "Erro ao iniciar planejamento:",
+        error
+      );
+
+      alert(
+        "Erro ao iniciar a tela de planejamento."
+      );
+    }
   }
-});
+);

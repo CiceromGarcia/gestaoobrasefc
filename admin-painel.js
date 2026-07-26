@@ -1,7 +1,18 @@
 /* =====================================================
    ADMIN PAINEL - USUÁRIOS DO SISTEMA
    Arquivo: admin-painel.js
-   Versão: v002
+   Versão: v007
+
+   Perfis oficiais:
+   - Administrador Geral
+   - Planejador
+   - Usuário
+
+   Correções:
+   - Administrador Geral pode rebaixar outro administrador.
+   - E-mails oficiais podem ser rebaixados quando adminRebaixado = true.
+   - O próprio administrador logado não pode rebaixar a si mesmo.
+   - Exclusão remove todos os registros do mesmo e-mail em usuariosSistema.
 ===================================================== */
 
 import {
@@ -18,10 +29,10 @@ import {
   getDocs,
   addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   query,
   where,
+  writeBatch,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
@@ -30,10 +41,10 @@ import {
 ===================================================== */
 
 const COLECAO_USUARIOS =
-"usuariosSistema";
+  "usuariosSistema";
 
 const TELA_DASHBOARD =
-"./dashboard.html";
+  "./dashboard.html";
 
 const EMAILS_ADMIN_GERAL = [
   "cicero.garcia@vale.com",
@@ -41,14 +52,18 @@ const EMAILS_ADMIN_GERAL = [
   "ciceromgarcia@gmail.com"
 ];
 
+const PERFIS_VALIDOS = [
+  "administrador",
+  "planejador",
+  "usuario"
+];
+
 /* =====================================================
    VARIÁVEIS
 ===================================================== */
 
 let usuariosSistema = [];
-
 let usuarioLogadoGlobal = null;
-
 let usuarioEditandoId = null;
 
 /* =====================================================
@@ -56,171 +71,178 @@ let usuarioEditandoId = null;
 ===================================================== */
 
 function buscarElemento(ids) {
-
   for (const id of ids) {
-
     const elemento =
-    document.getElementById(id);
+      document.getElementById(id);
 
     if (elemento) {
       return elemento;
     }
-
   }
 
   return null;
-
 }
 
+const usuarioLogadoInfo =
+  buscarElemento([
+    "usuarioLogadoInfo"
+  ]);
+
+const usuarioEmailTopo =
+  buscarElemento([
+    "usuarioEmailTopo"
+  ]);
+
+const usuarioPerfilTopo =
+  buscarElemento([
+    "usuarioPerfilTopo"
+  ]);
+
 const inputNome =
-buscarElemento([
-  "nome",
-  "nomeUsuario",
-  "inputNome",
-  "usuarioNome"
-]);
+  buscarElemento([
+    "nome",
+    "nomeUsuario",
+    "inputNome",
+    "usuarioNome"
+  ]);
 
 const inputEmail =
-buscarElemento([
-  "email",
-  "emailUsuario",
-  "inputEmail",
-  "usuarioEmail"
-]);
+  buscarElemento([
+    "email",
+    "emailUsuario",
+    "inputEmail",
+    "usuarioEmail"
+  ]);
 
 const selectPerfil =
-buscarElemento([
-  "perfil",
-  "perfilUsuario",
-  "selectPerfil",
-  "usuarioPerfil"
-]);
+  buscarElemento([
+    "perfil",
+    "perfilUsuario",
+    "selectPerfil",
+    "usuarioPerfil"
+  ]);
 
 const selectStatus =
-buscarElemento([
-  "status",
-  "statusUsuario",
-  "selectStatus",
-  "usuarioStatus"
-]);
+  buscarElemento([
+    "status",
+    "statusUsuario",
+    "selectStatus",
+    "usuarioStatus"
+  ]);
 
 const selectRegional =
-buscarElemento([
-  "regionalUsuario",
-  "regional",
-  "selectRegional",
-  "usuarioRegional"
-]);
+  buscarElemento([
+    "regionalUsuario",
+    "regional",
+    "selectRegional",
+    "usuarioRegional"
+  ]);
 
 const checkPodeAprovarRM =
-buscarElemento([
-  "podeAprovarRM",
-  "checkPodeAprovarRM",
-  "usuarioPodeAprovarRM"
-]);
+  buscarElemento([
+    "podeAprovarRM",
+    "checkPodeAprovarRM",
+    "usuarioPodeAprovarRM"
+  ]);
 
 const checkAtivo =
-buscarElemento([
-  "ativo",
-  "statusAtivo",
-  "usuarioAtivo",
-  "checkAtivo"
-]);
+  buscarElemento([
+    "ativo",
+    "statusAtivo",
+    "usuarioAtivo",
+    "checkAtivo"
+  ]);
 
 const btnSalvar =
-buscarElemento([
-  "btnSalvarPerfil",
-  "btnSalvarUsuario",
-  "btnSalvar",
-  "salvarPerfil",
-  "salvarUsuario"
-]);
+  buscarElemento([
+    "btnSalvarPerfil",
+    "btnSalvarUsuario",
+    "btnSalvar",
+    "salvarPerfil",
+    "salvarUsuario"
+  ]);
 
 const tbodyUsuarios =
-buscarElemento([
-  "tbodyUsuarios",
-  "listaUsuarios",
-  "usuariosBody",
-  "tabelaUsuarios"
-]);
+  buscarElemento([
+    "tbodyUsuarios",
+    "listaUsuarios",
+    "usuariosBody",
+    "tabelaUsuarios"
+  ]);
 
 const filtroPerfil =
-buscarElemento([
-  "filtroPerfil",
-  "selectFiltroPerfil",
-  "perfilFiltro"
-]);
+  buscarElemento([
+    "filtroPerfil",
+    "selectFiltroPerfil",
+    "perfilFiltro"
+  ]);
 
 const filtroStatus =
-buscarElemento([
-  "filtroStatus",
-  "selectFiltroStatus",
-  "statusFiltro"
-]);
+  buscarElemento([
+    "filtroStatus",
+    "selectFiltroStatus",
+    "statusFiltro"
+  ]);
 
 const filtroRegional =
-buscarElemento([
-  "filtroRegional",
-  "selectFiltroRegional",
-  "regionalFiltro"
-]);
+  buscarElemento([
+    "filtroRegional",
+    "selectFiltroRegional",
+    "regionalFiltro"
+  ]);
 
 const filtroAprovacaoRM =
-buscarElemento([
-  "filtroAprovacaoRM",
-  "selectFiltroAprovacaoRM",
-  "aprovacaoRMFiltro"
-]);
+  buscarElemento([
+    "filtroAprovacaoRM",
+    "selectFiltroAprovacaoRM",
+    "aprovacaoRMFiltro"
+  ]);
 
 const btnAtualizar =
-buscarElemento([
-  "btnAtualizar",
-  "btnAtualizarUsuarios",
-  "atualizarUsuarios"
-]);
+  buscarElemento([
+    "btnAtualizar",
+    "btnAtualizarUsuarios",
+    "atualizarUsuarios"
+  ]);
 
 const btnLimpar =
-buscarElemento([
-  "btnLimpar",
-  "btnCancelar",
-  "btnNovoUsuario",
-  "limparFormulario"
-]);
+  buscarElemento([
+    "btnLimpar",
+    "btnCancelar",
+    "btnNovoUsuario",
+    "limparFormulario"
+  ]);
 
 const btnVoltarDashboard =
-buscarElemento([
-  "btnVoltarDashboard",
-  "btnVoltar",
-  "voltarDashboard"
-]);
+  buscarElemento([
+    "btnVoltarDashboard",
+    "btnVoltar",
+    "voltarDashboard"
+  ]);
 
 const btnSair =
-buscarElemento([
-  "btnSair",
-  "btnSairSistema",
-  "sairSistema"
-]);
+  buscarElemento([
+    "btnSair",
+    "btnSairSistema",
+    "sairSistema"
+  ]);
 
 /* =====================================================
    TEXTO
 ===================================================== */
 
 function normalizarTexto(valor) {
-
   return String(valor || "")
     .toLowerCase()
     .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
-
 }
 
 function emailNormalizado(valor) {
-
   return String(valor || "")
     .toLowerCase()
     .trim();
-
 }
 
 /* =====================================================
@@ -228,7 +250,6 @@ function emailNormalizado(valor) {
 ===================================================== */
 
 function formatarData(data) {
-
   if (!data) {
     return "-";
   }
@@ -236,104 +257,140 @@ function formatarData(data) {
   let dt;
 
   if (data?.toDate) {
-
-    dt =
-    data.toDate();
-
+    dt = data.toDate();
   } else {
-
-    dt =
-    new Date(data);
-
+    dt = new Date(data);
   }
 
   if (Number.isNaN(dt.getTime())) {
     return "-";
   }
 
-  return dt.toLocaleString(
-    "pt-BR"
-  );
-
+  return dt.toLocaleString("pt-BR");
 }
 
 /* =====================================================
    PERFIL / STATUS / PERMISSÕES
 ===================================================== */
 
-function usuarioEhAdministrador(usuario) {
+function normalizarPerfilSistema(perfil) {
+  const perfilNormalizado =
+    normalizarTexto(perfil);
 
-  const perfil =
-  normalizarTexto(
-    usuario?.perfil
-  );
+  if (
+    perfilNormalizado === "administrador" ||
+    perfilNormalizado === "admin" ||
+    perfilNormalizado === "adm" ||
+    perfilNormalizado === "administrator" ||
+    perfilNormalizado === "administrador geral"
+  ) {
+    return "administrador";
+  }
 
-  const email =
-  emailNormalizado(
-    usuario?.email ||
-    usuario?.emailAuth
-  );
+  if (
+    perfilNormalizado === "planejador" ||
+    perfilNormalizado === "gestor" ||
+    perfilNormalizado === "engenharia" ||
+    perfilNormalizado === "editor" ||
+    perfilNormalizado === "administradorregional" ||
+    perfilNormalizado === "administrador regional" ||
+    perfilNormalizado === "adminregional" ||
+    perfilNormalizado === "admin regional" ||
+    perfilNormalizado === "aprovadorrm"
+  ) {
+    return "planejador";
+  }
 
-  return (
-    perfil === "administrador" ||
-    perfil === "administrator" ||
-    perfil === "admin" ||
-    perfil === "adm" ||
-    EMAILS_ADMIN_GERAL.includes(email)
-  );
+  if (
+    perfilNormalizado === "usuario" ||
+    perfilNormalizado === "usuário" ||
+    perfilNormalizado === "visualizador" ||
+    perfilNormalizado === "viewer"
+  ) {
+    return "usuario";
+  }
 
+  return perfilNormalizado || "usuario";
 }
 
-function usuarioEhAdministradorRegional(usuario) {
-
-  const perfil =
-  normalizarTexto(
-    usuario?.perfil
+function perfilEhValido(perfil) {
+  return PERFIS_VALIDOS.includes(
+    normalizarPerfilSistema(perfil)
   );
+}
 
-  return (
-    perfil === "administradorregional" ||
-    perfil === "adminregional" ||
-    perfil === "aprovadorrm"
+function obterEmailUsuario(usuario) {
+  return emailNormalizado(
+    usuario?.email ||
+    usuario?.emailAuth ||
+    usuario?.usuarioEmail ||
+    usuario?.login ||
+    ""
   );
+}
 
+function emailStringEhAdministradorGeral(email) {
+  return EMAILS_ADMIN_GERAL.includes(
+    emailNormalizado(email)
+  );
+}
+
+function usuarioTemAcessoInicialAdmin(usuario) {
+  const email =
+    obterEmailUsuario(usuario);
+
+  if (!EMAILS_ADMIN_GERAL.includes(email)) {
+    return false;
+  }
+
+  return usuario?.adminRebaixado !== true;
+}
+
+function obterPerfilEfetivo(usuario) {
+  const perfilSalvo =
+    normalizarPerfilSistema(
+      usuario?.perfil
+    );
+
+  if (perfilSalvo === "administrador") {
+    return "administrador";
+  }
+
+  if (usuarioTemAcessoInicialAdmin(usuario)) {
+    return "administrador";
+  }
+
+  return perfilSalvo;
+}
+
+function usuarioEhAdministrador(usuario) {
+  return obterPerfilEfetivo(usuario) === "administrador";
 }
 
 function usuarioPodeAprovarRM(usuario) {
-
-  return Boolean(
-    usuarioEhAdministrador(usuario) ||
-    usuarioEhAdministradorRegional(usuario) ||
-    usuario?.podeAprovarRM === true
-  );
-
+  return usuarioEhAdministrador(usuario);
 }
 
 function obterStatusUsuario(usuario) {
-
   return normalizarTexto(
     usuario?.status ||
     "pendente"
   );
-
 }
 
 function usuarioEstaAtivo(usuario) {
-
   const status =
-  obterStatusUsuario(usuario);
+    obterStatusUsuario(usuario);
 
   return (
     status === "ativo" ||
     status === "active"
   );
-
 }
 
 function usuarioEstaPendente(usuario) {
-
   const status =
-  obterStatusUsuario(usuario);
+    obterStatusUsuario(usuario);
 
   return (
     status === "pendente" ||
@@ -341,13 +398,11 @@ function usuarioEstaPendente(usuario) {
     status === "aguardando aprovacao" ||
     status === "aguardando aprovação"
   );
-
 }
 
 function usuarioEstaInativo(usuario) {
-
   const status =
-  obterStatusUsuario(usuario);
+    obterStatusUsuario(usuario);
 
   return (
     status === "inativo" ||
@@ -355,48 +410,32 @@ function usuarioEstaInativo(usuario) {
     status === "bloqueado" ||
     status === "desativado"
   );
-
 }
 
 function mesmoUsuarioLogado(usuario) {
-
   return (
     usuarioLogadoGlobal?.id === usuario.id ||
     usuarioLogadoGlobal?.uid === usuario.uid ||
-    emailNormalizado(
-      usuarioLogadoGlobal?.email ||
-      usuarioLogadoGlobal?.emailAuth
-    ) === emailNormalizado(usuario.email)
+    obterEmailUsuario(usuarioLogadoGlobal) === obterEmailUsuario(usuario)
   );
-
 }
 
-function obterRotuloPerfil(perfil) {
-
-  const perfilNormalizado =
-  normalizarTexto(perfil);
+function obterRotuloPerfil(perfil, usuario = null) {
+  const perfilFinal =
+    usuario
+      ? obterPerfilEfetivo(usuario)
+      : normalizarPerfilSistema(perfil);
 
   const mapa = {
     administrador: "Administrador Geral",
-    admin: "Administrador Geral",
-    adm: "Administrador Geral",
-    administradorregional: "Administrador Regional",
-    adminregional: "Administrador Regional",
-    aprovadorrm: "Aprovador RM",
-    gestor: "Gestor",
     planejador: "Planejador",
-    engenharia: "Engenharia",
-    editor: "Editor",
-    usuario: "Usuário",
-    visualizador: "Visualizador"
+    usuario: "Usuário"
   };
 
-  return mapa[perfilNormalizado] || perfil || "-";
-
+  return mapa[perfilFinal] || "Usuário";
 }
 
 function obterRotuloStatus(usuario) {
-
   if (usuarioEstaAtivo(usuario)) {
     return "Ativo";
   }
@@ -410,11 +449,9 @@ function obterRotuloStatus(usuario) {
   }
 
   return usuario.status || "Pendente";
-
 }
 
 function obterClasseStatus(usuario) {
-
   if (usuarioEstaAtivo(usuario)) {
     return "status-ativo";
   }
@@ -424,50 +461,68 @@ function obterClasseStatus(usuario) {
   }
 
   return "status-inativo";
-
 }
 
 function obterRegionalUsuario(usuario) {
-
   return usuario?.regional || "";
-
 }
 
 function obterRotuloRegional(usuario) {
-
   const regional =
-  obterRegionalUsuario(usuario);
+    obterRegionalUsuario(usuario);
 
   return regional || "Sem Regional";
-
 }
 
 function obterRotuloAprovacaoRM(usuario) {
-
   if (usuarioEhAdministrador(usuario)) {
-    return "Geral";
-  }
-
-  if (usuarioPodeAprovarRM(usuario)) {
-    return "Sim";
+    return "Administrador";
   }
 
   return "Não";
-
 }
 
 function obterClasseAprovacaoRM(usuario) {
-
   if (usuarioEhAdministrador(usuario)) {
-    return "status-ativo";
-  }
-
-  if (usuarioPodeAprovarRM(usuario)) {
     return "status-ativo";
   }
 
   return "status-inativo";
+}
 
+function obterEmailUsuarioLogado() {
+  return obterEmailUsuario(
+    usuarioLogadoGlobal
+  );
+}
+
+function exibirUsuarioLogadoNoTopo() {
+  const email =
+    obterEmailUsuarioLogado() ||
+    "Email não identificado";
+
+  const perfil =
+    obterRotuloPerfil(
+      usuarioLogadoGlobal?.perfil,
+      usuarioLogadoGlobal
+    );
+
+  if (usuarioEmailTopo) {
+    usuarioEmailTopo.textContent =
+      email;
+  }
+
+  if (usuarioPerfilTopo) {
+    usuarioPerfilTopo.textContent =
+      perfil;
+  }
+
+  if (usuarioLogadoInfo) {
+    usuarioLogadoInfo.classList.toggle(
+      "perfil-administrador",
+      usuarioEhAdministrador(usuarioLogadoGlobal)
+    );
+  }
 }
 
 /* =====================================================
@@ -475,70 +530,63 @@ function obterClasseAprovacaoRM(usuario) {
 ===================================================== */
 
 function criarCelulaTexto(texto) {
-
   const td =
-  document.createElement("td");
+    document.createElement("td");
 
   td.textContent =
-  texto || "-";
+    texto || "-";
 
   return td;
-
 }
 
 function criarCelulaStatus(usuario) {
-
   const td =
-  document.createElement("td");
+    document.createElement("td");
 
   const span =
-  document.createElement("span");
+    document.createElement("span");
 
   span.className =
-  obterClasseStatus(usuario);
+    obterClasseStatus(usuario);
 
   span.textContent =
-  obterRotuloStatus(usuario);
+    obterRotuloStatus(usuario);
 
   td.appendChild(span);
 
   return td;
-
 }
 
 function criarCelulaAprovacaoRM(usuario) {
-
   const td =
-  document.createElement("td");
+    document.createElement("td");
 
   const span =
-  document.createElement("span");
+    document.createElement("span");
 
   span.className =
-  obterClasseAprovacaoRM(usuario);
+    obterClasseAprovacaoRM(usuario);
 
   span.textContent =
-  obterRotuloAprovacaoRM(usuario);
+    obterRotuloAprovacaoRM(usuario);
 
   td.appendChild(span);
 
   return td;
-
 }
 
 function criarBotao(texto, classe, acao) {
-
   const botao =
-  document.createElement("button");
+    document.createElement("button");
 
   botao.type =
-  "button";
+    "button";
 
   botao.className =
-  classe;
+    classe;
 
   botao.textContent =
-  texto;
+    texto;
 
   botao.addEventListener(
     "click",
@@ -546,62 +594,61 @@ function criarBotao(texto, classe, acao) {
   );
 
   return botao;
-
 }
 
 function criarCelulaAcoes(usuario) {
-
   const td =
-  document.createElement("td");
+    document.createElement("td");
 
   td.className =
-  "acoes-usuario";
+    "acoes-usuario";
+
+  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
+    td.textContent = "-";
+    return td;
+  }
 
   const btnEditar =
-  criarBotao(
-    "Editar",
-    "btn-acao",
-    () => editarUsuario(usuario.id)
-  );
+    criarBotao(
+      "Editar",
+      "btn-acao",
+      () => editarUsuario(usuario.id)
+    );
 
   td.appendChild(btnEditar);
 
   if (usuarioEstaPendente(usuario)) {
-
     const btnAprovar =
-    criarBotao(
-      "Aprovar",
-      "btn-acao success",
-      () => aprovarUsuario(usuario.id)
-    );
+      criarBotao(
+        "Aprovar",
+        "btn-acao success",
+        () => aprovarUsuario(usuario.id)
+      );
 
     td.appendChild(btnAprovar);
-
   }
 
   const btnStatus =
-  criarBotao(
-    usuarioEstaAtivo(usuario) ? "Inativar" : "Ativar",
-    usuarioEstaAtivo(usuario) ? "btn-acao warning" : "btn-acao success",
-    () => alternarStatusUsuario(usuario.id)
-  );
+    criarBotao(
+      usuarioEstaAtivo(usuario) ? "Inativar" : "Ativar",
+      usuarioEstaAtivo(usuario) ? "btn-acao warning" : "btn-acao success",
+      () => alternarStatusUsuario(usuario.id)
+    );
 
   const btnExcluir =
-  criarBotao(
-    "Excluir",
-    "btn-acao danger",
-    () => excluirUsuario(usuario.id)
-  );
+    criarBotao(
+      "Excluir",
+      "btn-acao danger",
+      () => excluirUsuario(usuario.id)
+    );
 
   td.appendChild(btnStatus);
   td.appendChild(btnExcluir);
 
   return td;
-
 }
 
 function mostrarMensagemTabela(mensagem) {
-
   if (!tbodyUsuarios) {
     return;
   }
@@ -609,21 +656,20 @@ function mostrarMensagemTabela(mensagem) {
   tbodyUsuarios.innerHTML = "";
 
   const tr =
-  document.createElement("tr");
+    document.createElement("tr");
 
   const td =
-  document.createElement("td");
+    document.createElement("td");
 
   td.colSpan =
-  8;
+    8;
 
   td.textContent =
-  mensagem;
+    mensagem;
 
   tr.appendChild(td);
 
   tbodyUsuarios.appendChild(tr);
-
 }
 
 /* =====================================================
@@ -631,14 +677,12 @@ function mostrarMensagemTabela(mensagem) {
 ===================================================== */
 
 function definirTextoBotaoSalvar(texto) {
-
   if (!btnSalvar) {
     return;
   }
 
   btnSalvar.innerHTML =
-  `<i class="fa-solid fa-floppy-disk"></i> ${texto}`;
-
+    `<i class="fa-solid fa-floppy-disk"></i> ${texto}`;
 }
 
 /* =====================================================
@@ -646,9 +690,8 @@ function definirTextoBotaoSalvar(texto) {
 ===================================================== */
 
 function limparFormulario() {
-
   usuarioEditandoId =
-  null;
+    null;
 
   if (inputNome) {
     inputNome.value = "";
@@ -661,6 +704,7 @@ function limparFormulario() {
 
   if (selectPerfil) {
     selectPerfil.value = "";
+    selectPerfil.disabled = false;
   }
 
   if (selectStatus) {
@@ -682,7 +726,6 @@ function limparFormulario() {
   definirTextoBotaoSalvar(
     "Salvar perfil"
   );
-
 }
 
 /* =====================================================
@@ -690,13 +733,11 @@ function limparFormulario() {
 ===================================================== */
 
 function obterStatusFormulario() {
-
   if (selectStatus) {
-
     const status =
-    normalizarTexto(
-      selectStatus.value
-    );
+      normalizarTexto(
+        selectStatus.value
+      );
 
     if (
       status === "pendente" ||
@@ -705,39 +746,44 @@ function obterStatusFormulario() {
     ) {
       return status;
     }
-
   }
 
   return checkAtivo?.checked
-  ? "ativo"
-  : "inativo";
-
+    ? "ativo"
+    : "inativo";
 }
 
 function validarFormulario() {
-
   const nome =
-  inputNome?.value.trim();
+    inputNome?.value.trim();
 
   const email =
-  emailNormalizado(
-    inputEmail?.value
-  );
+    emailNormalizado(
+      inputEmail?.value
+    );
 
   const perfil =
-  selectPerfil?.value;
+    normalizarPerfilSistema(
+      selectPerfil?.value
+    );
 
   const status =
-  obterStatusFormulario();
+    obterStatusFormulario();
 
-  const regional =
-  selectRegional?.value || "";
+  let regional =
+    selectRegional?.value || "";
 
-  const podeAprovarRM =
-  Boolean(checkPodeAprovarRM?.checked);
+  let podeAprovarRM =
+    Boolean(checkPodeAprovarRM?.checked);
+
+  const emailAdminOficial =
+    emailStringEhAdministradorGeral(email);
+
+  const adminRebaixado =
+    emailAdminOficial &&
+    perfil !== "administrador";
 
   if (!nome) {
-
     alert(
       "Informe o nome do usuário."
     );
@@ -745,11 +791,9 @@ function validarFormulario() {
     inputNome?.focus();
 
     return null;
-
   }
 
   if (!email) {
-
     alert(
       "Informe o e-mail do usuário."
     );
@@ -757,56 +801,42 @@ function validarFormulario() {
     inputEmail?.focus();
 
     return null;
-
   }
 
-  if (!perfil) {
-
+  if (!perfil || !perfilEhValido(perfil)) {
     alert(
-      "Selecione o perfil do usuário."
+      "Selecione um perfil válido: Administrador Geral, Planejador ou Usuário."
     );
 
     selectPerfil?.focus();
 
     return null;
-
   }
 
-  if (
-    (
-      perfil === "administradorRegional" ||
-      podeAprovarRM === true
-    ) &&
-    !regional
-  ) {
+  if (perfil === "administrador") {
+    regional =
+      regional || "Todas";
 
-    alert(
-      "Para aprovar RM por Regional, selecione a Regional do usuário."
-    );
-
-    selectRegional?.focus();
-
-    return null;
-
+    podeAprovarRM =
+      true;
   }
 
   if (
     perfil !== "administrador" &&
-    (
-      perfil === "administradorRegional" ||
-      podeAprovarRM === true
-    ) &&
     regional === "Todas"
   ) {
-
     alert(
-      "Administrador Regional não pode usar a opção Todas. Selecione uma Regional específica."
+      "Somente Administrador Geral pode usar a Regional Todas."
     );
 
     selectRegional?.focus();
 
     return null;
+  }
 
+  if (perfil !== "administrador") {
+    podeAprovarRM =
+      false;
   }
 
   return {
@@ -815,49 +845,77 @@ function validarFormulario() {
     perfil,
     status,
     regional,
-    podeAprovarRM
+    podeAprovarRM,
+    adminRebaixado
   };
-
 }
 
 /* =====================================================
-   EMAIL DUPLICADO
+   CONSULTA / DUPLICIDADE POR E-MAIL
 ===================================================== */
 
-async function emailJaExiste(email, ignorarId = null) {
+async function consultarDocumentosUsuarioPorEmail(email) {
+  const emailFinal =
+    emailNormalizado(email);
 
-  const qEmail =
-  query(
+  const documentosMap =
+    new Map();
 
-    collection(
-      db,
-      COLECAO_USUARIOS
-    ),
+  if (!emailFinal) {
+    return [];
+  }
 
-    where(
-      "email",
-      "==",
-      emailNormalizado(email)
-    )
+  const camposBusca = [
+    "email",
+    "emailAuth",
+    "usuarioEmail",
+    "login"
+  ];
 
-  );
+  for (const campo of camposBusca) {
+    try {
+      const consulta =
+        query(
+          collection(
+            db,
+            COLECAO_USUARIOS
+          ),
+          where(
+            campo,
+            "==",
+            emailFinal
+          )
+        );
 
-  const snapshot =
-  await getDocs(qEmail);
+      const snapshot =
+        await getDocs(consulta);
 
-  let existe =
-  false;
-
-  snapshot.forEach((docUsuario) => {
-
-    if (docUsuario.id !== ignorarId) {
-      existe = true;
+      snapshot.forEach((docUsuario) => {
+        documentosMap.set(
+          docUsuario.id,
+          docUsuario
+        );
+      });
+    } catch (error) {
+      console.warn(
+        `Consulta ignorada em usuariosSistema.${campo}:`,
+        error
+      );
     }
+  }
 
+  return Array.from(
+    documentosMap.values()
+  );
+}
+
+async function emailJaExiste(email, ignorarId = null) {
+  const documentos =
+    await consultarDocumentosUsuarioPorEmail(email);
+
+  return documentos.some((docUsuario) => {
+    return docUsuario.id !== ignorarId;
   });
-
-  return existe;
-
 }
 
 /* =====================================================
@@ -865,9 +923,8 @@ async function emailJaExiste(email, ignorarId = null) {
 ===================================================== */
 
 async function salvarPerfilUsuario() {
-
   const dadosFormulario =
-  validarFormulario();
+    validarFormulario();
 
   if (!dadosFormulario) {
     return;
@@ -877,151 +934,184 @@ async function salvarPerfilUsuario() {
     !usuarioLogadoGlobal ||
     !usuarioEhAdministrador(usuarioLogadoGlobal)
   ) {
-
     alert(
-      "Apenas administradores podem salvar usuários."
+      "Apenas Administrador Geral pode salvar usuários."
     );
 
     return;
-
   }
 
   try {
+    if (btnSalvar) {
+      btnSalvar.disabled = true;
+      definirTextoBotaoSalvar("Salvando...");
+    }
 
     const existeEmail =
-    await emailJaExiste(
-      dadosFormulario.email,
-      usuarioEditandoId
-    );
+      await emailJaExiste(
+        dadosFormulario.email,
+        usuarioEditandoId
+      );
 
     if (existeEmail) {
-
       alert(
         "Já existe um usuário cadastrado com este e-mail."
       );
 
       return;
-
     }
 
     if (usuarioEditandoId) {
-
       const usuarioAtual =
-      usuariosSistema.find(
-        item => item.id === usuarioEditandoId
-      );
+        usuariosSistema.find(
+          item => item.id === usuarioEditandoId
+        );
 
       if (
         usuarioAtual &&
         mesmoUsuarioLogado(usuarioAtual) &&
         dadosFormulario.status !== "ativo"
       ) {
-
         alert(
           "Você não pode alterar o status do próprio usuário administrador logado."
         );
 
         return;
+      }
 
+      if (
+        usuarioAtual &&
+        mesmoUsuarioLogado(usuarioAtual) &&
+        dadosFormulario.perfil !== "administrador"
+      ) {
+        alert(
+          "Você não pode rebaixar o próprio usuário logado. Peça para outro Administrador Geral fazer essa alteração."
+        );
+
+        return;
       }
 
       await updateDoc(
-
         doc(
           db,
           COLECAO_USUARIOS,
           usuarioEditandoId
         ),
-
         {
-          ...dadosFormulario,
+          nome:
+            dadosFormulario.nome,
+
+          email:
+            dadosFormulario.email,
+
+          perfil:
+            dadosFormulario.perfil,
+
+          status:
+            dadosFormulario.status,
+
+          regional:
+            dadosFormulario.regional,
+
+          podeAprovarRM:
+            dadosFormulario.podeAprovarRM,
+
+          adminRebaixado:
+            dadosFormulario.adminRebaixado,
 
           atualizadoEm:
-          serverTimestamp(),
+            serverTimestamp(),
 
           atualizadoPorUid:
-          usuarioLogadoGlobal.uid || "",
+            usuarioLogadoGlobal.uid || "",
 
           atualizadoPorEmail:
-          usuarioLogadoGlobal.email || usuarioLogadoGlobal.emailAuth || "",
+            obterEmailUsuario(usuarioLogadoGlobal),
 
           atualizadoPorNome:
-          usuarioLogadoGlobal.nome || ""
+            usuarioLogadoGlobal.nome || ""
         }
-
       );
 
       alert(
         "Perfil atualizado com sucesso!"
       );
-
     } else {
-
       const docRef =
-      await addDoc(
+        await addDoc(
+          collection(
+            db,
+            COLECAO_USUARIOS
+          ),
+          {
+            nome:
+              dadosFormulario.nome,
 
-        collection(
-          db,
-          COLECAO_USUARIOS
-        ),
+            email:
+              dadosFormulario.email,
 
-        {
-          ...dadosFormulario,
+            perfil:
+              dadosFormulario.perfil,
 
-          uid:
-          "",
+            status:
+              dadosFormulario.status,
 
-          criadoPorUid:
-          usuarioLogadoGlobal.uid || "",
+            regional:
+              dadosFormulario.regional,
 
-          criadoPorEmail:
-          usuarioLogadoGlobal.email || usuarioLogadoGlobal.emailAuth || "",
+            podeAprovarRM:
+              dadosFormulario.podeAprovarRM,
 
-          criadoPorNome:
-          usuarioLogadoGlobal.nome || "",
+            adminRebaixado:
+              dadosFormulario.adminRebaixado,
 
-          criadoEm:
-          serverTimestamp(),
+            uid:
+              "",
 
-          atualizadoEm:
-          serverTimestamp(),
+            criadoPorUid:
+              usuarioLogadoGlobal.uid || "",
 
-          ultimoLogin:
-          null
-        }
+            criadoPorEmail:
+              obterEmailUsuario(usuarioLogadoGlobal),
 
-      );
+            criadoPorNome:
+              usuarioLogadoGlobal.nome || "",
+
+            criadoEm:
+              serverTimestamp(),
+
+            atualizadoEm:
+              serverTimestamp(),
+
+            ultimoLogin:
+              null
+          }
+        );
 
       await updateDoc(
-
         doc(
           db,
           COLECAO_USUARIOS,
           docRef.id
         ),
-
         {
           uid:
-          docRef.id,
+            docRef.id,
 
           atualizadoEm:
-          serverTimestamp()
+            serverTimestamp()
         }
-
       );
 
       alert(
         "Perfil cadastrado com sucesso!"
       );
-
     }
 
     limparFormulario();
 
     await carregarUsuarios();
-
   } catch (error) {
-
     console.error(
       "Erro ao salvar perfil:",
       error
@@ -1030,9 +1120,12 @@ async function salvarPerfilUsuario() {
     alert(
       "Erro ao salvar perfil do usuário. Verifique as permissões do Firestore."
     );
-
+  } finally {
+    if (btnSalvar) {
+      btnSalvar.disabled = false;
+      definirTextoBotaoSalvar("Salvar perfil");
+    }
   }
-
 }
 
 /* =====================================================
@@ -1040,9 +1133,7 @@ async function salvarPerfilUsuario() {
 ===================================================== */
 
 async function carregarUsuarios() {
-
   try {
-
     mostrarMensagemTabela(
       "Carregando usuários..."
     );
@@ -1050,29 +1141,26 @@ async function carregarUsuarios() {
     usuariosSistema = [];
 
     const snapshot =
-    await getDocs(
-      collection(
-        db,
-        COLECAO_USUARIOS
-      )
-    );
+      await getDocs(
+        collection(
+          db,
+          COLECAO_USUARIOS
+        )
+      );
 
     snapshot.forEach((docUsuario) => {
-
       usuariosSistema.push({
         id: docUsuario.id,
         ...docUsuario.data()
       });
-
     });
 
     usuariosSistema.sort((a, b) => {
-
       const statusA =
-      usuarioEstaPendente(a) ? 0 : usuarioEstaAtivo(a) ? 1 : 2;
+        usuarioEstaPendente(a) ? 0 : usuarioEstaAtivo(a) ? 1 : 2;
 
       const statusB =
-      usuarioEstaPendente(b) ? 0 : usuarioEstaAtivo(b) ? 1 : 2;
+        usuarioEstaPendente(b) ? 0 : usuarioEstaAtivo(b) ? 1 : 2;
 
       if (statusA !== statusB) {
         return statusA - statusB;
@@ -1083,13 +1171,10 @@ async function carregarUsuarios() {
           String(b.nome || ""),
           "pt-BR"
         );
-
     });
 
     renderizarUsuarios();
-
   } catch (error) {
-
     console.error(
       "Erro ao carregar usuários:",
       error
@@ -1098,9 +1183,7 @@ async function carregarUsuarios() {
     mostrarMensagemTabela(
       "Erro ao carregar usuários."
     );
-
   }
-
 }
 
 /* =====================================================
@@ -1108,40 +1191,35 @@ async function carregarUsuarios() {
 ===================================================== */
 
 function obterUsuariosFiltrados() {
-
   let lista =
-  [...usuariosSistema];
+    [...usuariosSistema];
 
   const perfilFiltro =
-  normalizarTexto(
-    filtroPerfil?.value
-  );
+    normalizarTexto(
+      filtroPerfil?.value
+    );
 
   const statusFiltro =
-  normalizarTexto(
-    filtroStatus?.value
-  );
+    normalizarTexto(
+      filtroStatus?.value
+    );
 
   const regionalFiltro =
-  filtroRegional?.value || "todos";
+    filtroRegional?.value || "todos";
 
   const aprovacaoRMFiltro =
-  filtroAprovacaoRM?.value || "todos";
+    filtroAprovacaoRM?.value || "todos";
 
   if (
     perfilFiltro &&
     perfilFiltro !== "todos" &&
     perfilFiltro !== "todas"
   ) {
-
     lista =
-    lista.filter((usuario) => {
-
-      return normalizarTexto(usuario.perfil) ===
-      perfilFiltro;
-
-    });
-
+      lista.filter((usuario) => {
+        return obterPerfilEfetivo(usuario) ===
+          normalizarPerfilSistema(perfilFiltro);
+      });
   }
 
   if (
@@ -1149,27 +1227,23 @@ function obterUsuariosFiltrados() {
     statusFiltro !== "todos" &&
     statusFiltro !== "todas"
   ) {
-
     lista =
-    lista.filter((usuario) => {
+      lista.filter((usuario) => {
+        if (statusFiltro === "ativo") {
+          return usuarioEstaAtivo(usuario);
+        }
 
-      if (statusFiltro === "ativo") {
-        return usuarioEstaAtivo(usuario);
-      }
+        if (statusFiltro === "pendente") {
+          return usuarioEstaPendente(usuario);
+        }
 
-      if (statusFiltro === "pendente") {
-        return usuarioEstaPendente(usuario);
-      }
+        if (statusFiltro === "inativo") {
+          return usuarioEstaInativo(usuario);
+        }
 
-      if (statusFiltro === "inativo") {
-        return usuarioEstaInativo(usuario);
-      }
-
-      return normalizarTexto(usuario.status) ===
-      statusFiltro;
-
-    });
-
+        return normalizarTexto(usuario.status) ===
+          statusFiltro;
+      });
   }
 
   if (
@@ -1177,41 +1251,28 @@ function obterUsuariosFiltrados() {
     regionalFiltro !== "todos" &&
     regionalFiltro !== "todas"
   ) {
-
     lista =
-    lista.filter((usuario) => {
-
-      return obterRegionalUsuario(usuario) ===
-      regionalFiltro;
-
-    });
-
+      lista.filter((usuario) => {
+        return obterRegionalUsuario(usuario) ===
+          regionalFiltro;
+      });
   }
 
   if (aprovacaoRMFiltro === "sim") {
-
     lista =
-    lista.filter((usuario) => {
-
-      return usuarioPodeAprovarRM(usuario);
-
-    });
-
+      lista.filter((usuario) => {
+        return usuarioPodeAprovarRM(usuario);
+      });
   }
 
   if (aprovacaoRMFiltro === "nao") {
-
     lista =
-    lista.filter((usuario) => {
-
-      return !usuarioPodeAprovarRM(usuario);
-
-    });
-
+      lista.filter((usuario) => {
+        return !usuarioPodeAprovarRM(usuario);
+      });
   }
 
   return lista;
-
 }
 
 /* =====================================================
@@ -1219,37 +1280,31 @@ function obterUsuariosFiltrados() {
 ===================================================== */
 
 function renderizarUsuarios() {
-
   if (!tbodyUsuarios) {
     return;
   }
 
   const lista =
-  obterUsuariosFiltrados();
+    obterUsuariosFiltrados();
 
   tbodyUsuarios.innerHTML = "";
 
   if (lista.length === 0) {
-
     mostrarMensagemTabela(
       "Nenhum usuário encontrado."
     );
 
     return;
-
   }
 
   lista.forEach((usuario) => {
-
     const tr =
-    document.createElement("tr");
+      document.createElement("tr");
 
     if (usuarioEstaPendente(usuario)) {
-
       tr.classList.add(
         "linha-pendente"
       );
-
     }
 
     tr.appendChild(
@@ -1262,7 +1317,7 @@ function renderizarUsuarios() {
 
     tr.appendChild(
       criarCelulaTexto(
-        obterRotuloPerfil(usuario.perfil)
+        obterRotuloPerfil(usuario.perfil, usuario)
       )
     );
 
@@ -1291,9 +1346,7 @@ function renderizarUsuarios() {
     );
 
     tbodyUsuarios.appendChild(tr);
-
   });
-
 }
 
 /* =====================================================
@@ -1301,41 +1354,45 @@ function renderizarUsuarios() {
 ===================================================== */
 
 function editarUsuario(id) {
-
   const usuario =
-  usuariosSistema.find(
-    item => item.id === id
-  );
+    usuariosSistema.find(
+      item => item.id === id
+    );
 
   if (!usuario) {
     return;
   }
 
+  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
+    alert(
+      "Apenas Administrador Geral pode editar usuários."
+    );
+
+    return;
+  }
+
   usuarioEditandoId =
-  id;
+    id;
 
   if (inputNome) {
     inputNome.value =
-    usuario.nome || "";
+      usuario.nome || "";
   }
 
   if (inputEmail) {
-
     inputEmail.value =
-    usuario.email || "";
+      obterEmailUsuario(usuario) || usuario.email || "";
 
     inputEmail.disabled =
-    false;
-
+      true;
   }
 
   if (selectPerfil) {
     selectPerfil.value =
-    usuario.perfil || "usuario";
+      obterPerfilEfetivo(usuario);
   }
 
   if (selectStatus) {
-
     if (usuarioEstaAtivo(usuario)) {
       selectStatus.value = "ativo";
     } else if (usuarioEstaPendente(usuario)) {
@@ -1343,24 +1400,21 @@ function editarUsuario(id) {
     } else {
       selectStatus.value = "inativo";
     }
-
   }
 
   if (selectRegional) {
     selectRegional.value =
-    usuario.regional || "";
+      usuario.regional || "";
   }
 
   if (checkPodeAprovarRM) {
     checkPodeAprovarRM.checked =
-    Boolean(usuario.podeAprovarRM);
+      usuarioEhAdministrador(usuario);
   }
 
   if (checkAtivo) {
-
     checkAtivo.checked =
-    usuarioEstaAtivo(usuario);
-
+      usuarioEstaAtivo(usuario);
   }
 
   definirTextoBotaoSalvar(
@@ -1371,7 +1425,6 @@ function editarUsuario(id) {
     top: 0,
     behavior: "smooth"
   });
-
 }
 
 /* =====================================================
@@ -1379,74 +1432,83 @@ function editarUsuario(id) {
 ===================================================== */
 
 async function aprovarUsuario(id) {
-
   const usuario =
-  usuariosSistema.find(
-    item => item.id === id
-  );
+    usuariosSistema.find(
+      item => item.id === id
+    );
 
   if (!usuario) {
     return;
   }
 
-  if (mesmoUsuarioLogado(usuario)) {
+  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
+    alert(
+      "Apenas Administrador Geral pode aprovar usuários."
+    );
 
+    return;
+  }
+
+  if (mesmoUsuarioLogado(usuario)) {
     alert(
       "Você não pode aprovar ou alterar o próprio usuário logado por esta ação."
     );
 
     return;
-
   }
 
   const confirmar =
-  confirm(
-    `Deseja aprovar o acesso de ${usuario.nome || usuario.email || "este usuário"}?`
-  );
+    confirm(
+      `Deseja aprovar o acesso de ${usuario.nome || usuario.email || "este usuário"}?`
+    );
 
   if (!confirmar) {
     return;
   }
 
+  const perfilFinal =
+    obterPerfilEfetivo(usuario);
+
   try {
-
     await updateDoc(
-
       doc(
         db,
         COLECAO_USUARIOS,
         id
       ),
-
       {
         status:
-        "ativo",
+          "ativo",
 
         perfil:
-        usuario.perfil || "usuario",
+          perfilFinal,
 
         regional:
-        usuario.regional || "",
+          perfilFinal === "administrador"
+            ? (usuario.regional || "Todas")
+            : (usuario.regional || ""),
 
         podeAprovarRM:
-        Boolean(usuario.podeAprovarRM),
+          perfilFinal === "administrador",
+
+        adminRebaixado:
+          usuario?.adminRebaixado === true,
 
         aprovadoEm:
-        serverTimestamp(),
+          serverTimestamp(),
 
         aprovadoPorUid:
-        usuarioLogadoGlobal.uid || "",
+          usuarioLogadoGlobal.uid || "",
 
         aprovadoPorEmail:
-        usuarioLogadoGlobal.email || usuarioLogadoGlobal.emailAuth || "",
+          obterEmailUsuario(usuarioLogadoGlobal),
 
         aprovadoPorNome:
-        usuarioLogadoGlobal.nome || "",
+          usuarioLogadoGlobal.nome || "",
 
         atualizadoEm:
-        serverTimestamp()
+          serverTimestamp()
       }
-
     );
 
     alert(
@@ -1454,9 +1516,7 @@ async function aprovarUsuario(id) {
     );
 
     await carregarUsuarios();
-
   } catch (error) {
-
     console.error(
       "Erro ao aprovar usuário:",
       error
@@ -1465,9 +1525,7 @@ async function aprovarUsuario(id) {
     alert(
       "Erro ao aprovar usuário."
     );
-
   }
-
 }
 
 /* =====================================================
@@ -1475,24 +1533,29 @@ async function aprovarUsuario(id) {
 ===================================================== */
 
 async function alternarStatusUsuario(id) {
-
   const usuario =
-  usuariosSistema.find(
-    item => item.id === id
-  );
+    usuariosSistema.find(
+      item => item.id === id
+    );
 
   if (!usuario) {
     return;
   }
 
-  if (mesmoUsuarioLogado(usuario)) {
+  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
+    alert(
+      "Apenas Administrador Geral pode alterar status de usuário."
+    );
 
+    return;
+  }
+
+  if (mesmoUsuarioLogado(usuario)) {
     alert(
       "Você não pode alterar o status do próprio usuário administrador logado."
     );
 
     return;
-
   }
 
   let novoStatus = "ativo";
@@ -1506,68 +1569,60 @@ async function alternarStatusUsuario(id) {
   }
 
   const confirmar =
-  confirm(
-    `Deseja realmente ${novoStatus === "ativo" ? "ativar/aprovar" : "inativar"} este usuário?`
-  );
+    confirm(
+      `Deseja realmente ${novoStatus === "ativo" ? "ativar/aprovar" : "inativar"} este usuário?`
+    );
 
   if (!confirmar) {
     return;
   }
 
   try {
-
     const payload = {
       status:
-      novoStatus,
+        novoStatus,
 
       atualizadoEm:
-      serverTimestamp(),
+        serverTimestamp(),
 
       atualizadoPorUid:
-      usuarioLogadoGlobal.uid || "",
+        usuarioLogadoGlobal.uid || "",
 
       atualizadoPorEmail:
-      usuarioLogadoGlobal.email || usuarioLogadoGlobal.emailAuth || "",
+        obterEmailUsuario(usuarioLogadoGlobal),
 
       atualizadoPorNome:
-      usuarioLogadoGlobal.nome || ""
+        usuarioLogadoGlobal.nome || ""
     };
 
     if (
       novoStatus === "ativo" &&
       usuarioEstaPendente(usuario)
     ) {
-
       payload.aprovadoEm =
-      serverTimestamp();
+        serverTimestamp();
 
       payload.aprovadoPorUid =
-      usuarioLogadoGlobal.uid || "";
+        usuarioLogadoGlobal.uid || "";
 
       payload.aprovadoPorEmail =
-      usuarioLogadoGlobal.email || usuarioLogadoGlobal.emailAuth || "";
+        obterEmailUsuario(usuarioLogadoGlobal);
 
       payload.aprovadoPorNome =
-      usuarioLogadoGlobal.nome || "";
-
+        usuarioLogadoGlobal.nome || "";
     }
 
     await updateDoc(
-
       doc(
         db,
         COLECAO_USUARIOS,
         id
       ),
-
       payload
-
     );
 
     await carregarUsuarios();
-
   } catch (error) {
-
     console.error(
       "Erro ao alterar status:",
       error
@@ -1576,72 +1631,128 @@ async function alternarStatusUsuario(id) {
     alert(
       "Erro ao alterar status do usuário."
     );
-
   }
-
 }
 
 /* =====================================================
-   EXCLUIR USUÁRIO
+   EXCLUIR USUÁRIO DO BANCO
 ===================================================== */
 
 async function excluirUsuario(id) {
-
   const usuario =
-  usuariosSistema.find(
-    item => item.id === id
-  );
+    usuariosSistema.find(
+      item => item.id === id
+    );
 
   if (!usuario) {
     return;
   }
 
-  if (mesmoUsuarioLogado(usuario)) {
+  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
+    alert(
+      "Apenas Administrador Geral pode excluir usuários."
+    );
 
+    return;
+  }
+
+  if (mesmoUsuarioLogado(usuario)) {
     alert(
       "Você não pode excluir o próprio usuário administrador logado."
     );
 
     return;
-
   }
 
-  const confirmar =
-  confirm(
-    "Deseja realmente excluir este usuário do painel?"
+  const emailUsuario =
+    obterEmailUsuario(usuario) ||
+    emailNormalizado(usuario.email);
+
+  const documentosMesmoEmail =
+    await consultarDocumentosUsuarioPorEmail(emailUsuario);
+
+  const documentosParaExcluir =
+    new Map();
+
+  documentosParaExcluir.set(
+    id,
+    doc(
+      db,
+      COLECAO_USUARIOS,
+      id
+    )
   );
+
+  documentosMesmoEmail.forEach((docUsuario) => {
+    documentosParaExcluir.set(
+      docUsuario.id,
+      docUsuario.ref
+    );
+  });
+
+  const totalDocumentos =
+    documentosParaExcluir.size;
+
+  const confirmar =
+    confirm(
+      [
+        "Deseja realmente excluir este usuário do banco de dados?",
+        "",
+        `Nome: ${usuario.nome || "-"}`,
+        `E-mail: ${emailUsuario || "-"}`,
+        "",
+        `Registros encontrados para exclusão: ${totalDocumentos}`,
+        "",
+        "Todos os registros deste e-mail em usuariosSistema serão removidos para permitir novo cadastro."
+      ].join("\n")
+    );
 
   if (!confirmar) {
     return;
   }
 
   try {
+    const lote =
+      writeBatch(db);
 
-    await deleteDoc(
+    documentosParaExcluir.forEach((refDocumento) => {
+      lote.delete(refDocumento);
+    });
 
-      doc(
-        db,
-        COLECAO_USUARIOS,
-        id
-      )
+    await lote.commit();
 
-    );
+    if (usuarioEditandoId === id) {
+      limparFormulario();
+    }
 
     await carregarUsuarios();
 
+    alert(
+      [
+        "Usuário excluído do banco de dados com sucesso.",
+        "",
+        `E-mail: ${emailUsuario || "-"}`,
+        `Registros removidos: ${totalDocumentos}`,
+        "",
+        "Agora este e-mail pode ser cadastrado novamente."
+      ].join("\n")
+    );
   } catch (error) {
-
     console.error(
       "Erro ao excluir usuário:",
       error
     );
 
-    alert(
-      "Erro ao excluir usuário."
-    );
-
+    if (error?.code === "permission-denied") {
+      alert(
+        "O Firestore recusou a exclusão. Verifique se você está logado como Administrador Geral e se as regras foram publicadas."
+      );
+    } else {
+      alert(
+        "Erro ao excluir usuário do banco de dados."
+      );
+    }
   }
-
 }
 
 /* =====================================================
@@ -1649,30 +1760,16 @@ async function excluirUsuario(id) {
 ===================================================== */
 
 function configurarAjustesFormulario() {
-
   if (selectPerfil) {
-
     selectPerfil.addEventListener(
       "change",
       () => {
-
         const perfil =
-        selectPerfil.value;
-
-        if (perfil === "administradorRegional") {
-
-          if (checkPodeAprovarRM) {
-            checkPodeAprovarRM.checked = true;
-          }
-
-          if (selectRegional && !selectRegional.value) {
-            selectRegional.focus();
-          }
-
-        }
+          normalizarPerfilSistema(
+            selectPerfil.value
+          );
 
         if (perfil === "administrador") {
-
           if (checkPodeAprovarRM) {
             checkPodeAprovarRM.checked = true;
           }
@@ -1680,25 +1777,79 @@ function configurarAjustesFormulario() {
           if (selectRegional && !selectRegional.value) {
             selectRegional.value = "Todas";
           }
-
         }
 
         if (
-          perfil === "usuario" ||
-          perfil === "visualizador"
+          perfil === "planejador" ||
+          perfil === "usuario"
         ) {
-
           if (checkPodeAprovarRM) {
             checkPodeAprovarRM.checked = false;
           }
 
+          if (selectRegional?.value === "Todas") {
+            selectRegional.value = "";
+          }
         }
-
       }
     );
-
   }
 
+  if (inputEmail) {
+    inputEmail.addEventListener(
+      "blur",
+      () => {
+        const email =
+          emailNormalizado(
+            inputEmail.value
+          );
+
+        if (emailStringEhAdministradorGeral(email)) {
+          if (selectPerfil && !selectPerfil.value) {
+            selectPerfil.value = "administrador";
+          }
+
+          if (
+            selectPerfil?.value === "administrador" &&
+            selectRegional &&
+            !selectRegional.value
+          ) {
+            selectRegional.value = "Todas";
+          }
+
+          if (
+            selectPerfil?.value === "administrador" &&
+            checkPodeAprovarRM
+          ) {
+            checkPodeAprovarRM.checked = true;
+          }
+        }
+      }
+    );
+  }
+
+  if (checkPodeAprovarRM) {
+    checkPodeAprovarRM.addEventListener(
+      "change",
+      () => {
+        const perfil =
+          normalizarPerfilSistema(
+            selectPerfil?.value
+          );
+
+        if (
+          perfil !== "administrador" &&
+          checkPodeAprovarRM.checked
+        ) {
+          alert(
+            "Somente Administrador Geral pode receber permissão administrativa."
+          );
+
+          checkPodeAprovarRM.checked = false;
+        }
+      }
+    );
+  }
 }
 
 /* =====================================================
@@ -1706,7 +1857,6 @@ function configurarAjustesFormulario() {
 ===================================================== */
 
 function configurarBotaoVoltar() {
-
   if (!btnVoltarDashboard) {
     return;
   }
@@ -1714,13 +1864,10 @@ function configurarBotaoVoltar() {
   btnVoltarDashboard.addEventListener(
     "click",
     () => {
-
       window.location.href =
-      TELA_DASHBOARD;
-
+        TELA_DASHBOARD;
     }
   );
-
 }
 
 /* =====================================================
@@ -1728,7 +1875,6 @@ function configurarBotaoVoltar() {
 ===================================================== */
 
 function configurarBotaoSair() {
-
   if (!btnSair) {
     return;
   }
@@ -1736,21 +1882,18 @@ function configurarBotaoSair() {
   btnSair.addEventListener(
     "click",
     async () => {
-
       const confirmar =
-      confirm(
-        "Deseja realmente sair do sistema?"
-      );
+        confirm(
+          "Deseja realmente sair do sistema?"
+        );
 
       if (!confirmar) {
         return;
       }
 
       await sairDoSistema();
-
     }
   );
-
 }
 
 /* =====================================================
@@ -1758,7 +1901,6 @@ function configurarBotaoSair() {
 ===================================================== */
 
 function configurarEventos() {
-
   btnSalvar?.addEventListener(
     "click",
     salvarPerfilUsuario
@@ -1799,7 +1941,6 @@ function configurarEventos() {
   configurarBotaoVoltar();
 
   configurarBotaoSair();
-
 }
 
 /* =====================================================
@@ -1809,22 +1950,31 @@ function configurarEventos() {
 document.addEventListener(
   "DOMContentLoaded",
   async () => {
-
     try {
-
       usuarioLogadoGlobal =
-      await protegerPagina({
-        adminOnly: true
-      });
+        await protegerPagina({
+          adminOnly: true
+        });
+
+      if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
+        alert(
+          "Acesso restrito ao Administrador Geral."
+        );
+
+        window.location.href =
+          TELA_DASHBOARD;
+
+        return;
+      }
+
+      exibirUsuarioLogadoNoTopo();
 
       configurarEventos();
 
       limparFormulario();
 
       await carregarUsuarios();
-
     } catch (error) {
-
       console.error(
         "Erro ao iniciar painel admin:",
         error
@@ -1833,8 +1983,6 @@ document.addEventListener(
       alert(
         "Erro ao iniciar o painel administrativo."
       );
-
     }
-
   }
 );

@@ -1,5 +1,12 @@
 /* =====================================================
-   CADASTRAR OBRA - PROTEGIDO COM AUTH GUARD
+   CADASTRAR OBRA
+   Arquivo: cadastrar.js
+   Versão: v003
+
+   Ajustes:
+   - Mantida proteção com authGuard.
+   - Cabeçalho com Email e Perfil é preenchido automaticamente.
+   - Mantido botão Voltar para retornar ao Dashboard.
 ===================================================== */
 
 import {
@@ -28,63 +35,58 @@ let usuarioLogadoGlobal = null;
 ========================================= */
 
 const form =
-document.getElementById("formProjeto");
+  document.getElementById("formProjeto");
 
 const localidade =
-document.getElementById("localidade");
+  document.getElementById("localidade");
 
 const regional =
-document.getElementById("regional");
+  document.getElementById("regional");
 
 const gutGravidade =
-document.getElementById("gutGravidade");
+  document.getElementById("gutGravidade");
 
 const gutUrgencia =
-document.getElementById("gutUrgencia");
+  document.getElementById("gutUrgencia");
 
 const gutTendencia =
-document.getElementById("gutTendencia");
+  document.getElementById("gutTendencia");
 
 const gutScore =
-document.getElementById("gutScore");
+  document.getElementById("gutScore");
 
 const gutNivel =
-document.getElementById("gutNivel");
+  document.getElementById("gutNivel");
 
 const gutBadge =
-document.querySelector(".gut-badge");
+  document.querySelector(".gut-badge");
 
 const investimento =
-document.getElementById("investimento");
+  document.getElementById("investimento");
 
 const btnVoltar =
-document.getElementById("btnVoltar");
+  document.getElementById("btnVoltar");
 
 /* =========================================
    HELPERS
 ========================================= */
 
 function obterValorCampo(id) {
-
   return document
     .getElementById(id)
     ?.value
     ?.trim() || "";
-
 }
 
 function normalizarTexto(valor) {
-
   return String(valor || "")
     .toLowerCase()
     .trim()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
-
 }
 
 function converterMoedaParaNumero(valor) {
-
   if (
     valor === null ||
     valor === undefined ||
@@ -98,35 +100,31 @@ function converterMoedaParaNumero(valor) {
   }
 
   let texto =
-  String(valor)
-    .replace("R$", "")
-    .replace(/\s/g, "")
-    .trim();
+    String(valor)
+      .replace("R$", "")
+      .replace(/\s/g, "")
+      .trim();
 
   if (!texto) {
     return 0;
   }
 
   if (texto.includes(",")) {
-
     texto =
-    texto
-      .replace(/\./g, "")
-      .replace(",", ".");
+      texto
+        .replace(/\./g, "")
+        .replace(",", ".");
 
     return Number(texto) || 0;
-
   }
 
   texto =
-  texto.replace(/[^\d.-]/g, "");
+    texto.replace(/[^\d.-]/g, "");
 
   return Number(texto) || 0;
-
 }
 
 function formatarMoedaBR(valor) {
-
   return Number(valor || 0)
     .toLocaleString(
       "pt-BR",
@@ -135,29 +133,25 @@ function formatarMoedaBR(valor) {
         currency: "BRL"
       }
     );
-
 }
 
 function dataValida(valor) {
-
   if (!valor) {
     return false;
   }
 
   const data =
-  new Date(valor);
+    new Date(valor);
 
   return !isNaN(data);
-
 }
 
 function datasValidas() {
-
   const inicio =
-  obterValorCampo("dataInicioPrevisto");
+    obterValorCampo("dataInicioPrevisto");
 
   const fim =
-  obterValorCampo("dataTerminoPrevisto");
+    obterValorCampo("dataTerminoPrevisto");
 
   if (
     !dataValida(inicio) ||
@@ -167,13 +161,12 @@ function datasValidas() {
   }
 
   const dataInicio =
-  new Date(inicio);
+    new Date(inicio);
 
   const dataFim =
-  new Date(fim);
+    new Date(fim);
 
   return dataFim >= dataInicio;
-
 }
 
 /* =========================================
@@ -181,7 +174,6 @@ function datasValidas() {
 ========================================= */
 
 const mapaRegional = {
-
   "sao luis": "São Luís",
   "são luís": "São Luís",
 
@@ -203,13 +195,10 @@ const mapaRegional = {
   "auzilandia": "Regional 1",
   "auzilândia": "Regional 1",
 
-    "Mineirinho": "Regional 1",
   "mineirinho": "Regional 1",
 
   "vila pindare": "Regional 1",
   "vila pindaré": "Regional 1",
-
-  "mineirinho": "Regional 1",
 
   "nova vida": "Regional 2",
 
@@ -225,31 +214,31 @@ const mapaRegional = {
   "sao pedro d'agua branca": "Regional 3",
   "são pedro d'água branca": "Regional 3",
   "sao pedro d agua branca": "Regional 3",
-  "são pedro d água branca": "Regional 3"
-
+  "são pedro d água branca": "Regional 3",
+  "sao pedro dagua branca": "Regional 3",
+  "são pedro dagua branca": "Regional 3"
 };
 
 function configurarRegionalAutomatica() {
-
-  if (!localidade || !regional) {
+  if (
+    !localidade ||
+    !regional
+  ) {
     return;
   }
 
   localidade.addEventListener(
     "change",
     () => {
-
       const chave =
-      normalizarTexto(
-        localidade.value
-      );
+        normalizarTexto(
+          localidade.value
+        );
 
       regional.value =
-      mapaRegional[chave] || "";
-
+        mapaRegional[chave] || "";
     }
   );
-
 }
 
 /* =========================================
@@ -257,7 +246,6 @@ function configurarRegionalAutomatica() {
 ========================================= */
 
 function calcularGUT() {
-
   if (
     !gutGravidade ||
     !gutUrgencia ||
@@ -274,78 +262,79 @@ function calcularGUT() {
     gutUrgencia.value === "" ||
     gutTendencia.value === ""
   ) {
-
     gutScore.textContent =
-    "--";
+      "--";
 
     gutNivel.textContent =
-    "G/U/T";
+      "G/U/T";
 
     gutBadge.style.background =
-    "#007E7A";
+      "#007E7A";
 
     gutBadge.style.color =
-    "#fff";
+      "#fff";
 
     return;
-
   }
 
   const g =
-  Number(gutGravidade.value);
+    Number(gutGravidade.value);
 
   const u =
-  Number(gutUrgencia.value);
+    Number(gutUrgencia.value);
 
   const t =
-  Number(gutTendencia.value);
+    Number(gutTendencia.value);
 
   const total =
-  g * u * t;
+    g * u * t;
 
   gutScore.textContent =
-  String(total);
+    String(total);
 
   let nivel = "";
   let cor = "";
 
   if (total <= 20) {
+    nivel =
+      "Baixa";
 
-    nivel = "Baixa";
-    cor = "#22c55e";
-
+    cor =
+      "#22c55e";
   } else if (total <= 40) {
+    nivel =
+      "Moderada";
 
-    nivel = "Moderada";
-    cor = "#f59e0b";
-
+    cor =
+      "#f59e0b";
   } else if (total <= 80) {
+    nivel =
+      "Alta";
 
-    nivel = "Alta";
-    cor = "#ef4444";
-
+    cor =
+      "#ef4444";
   } else {
+    nivel =
+      "Crítica";
 
-    nivel = "Crítica";
-    cor = "#991b1b";
-
+    cor =
+      "#991b1b";
   }
 
   gutNivel.textContent =
-  nivel;
+    nivel;
 
   gutBadge.style.background =
-  cor;
+    cor;
 
   gutBadge.style.color =
-  "#fff";
+    "#fff";
 
   gutScore.style.color =
-  "#fff";
+    "#fff";
 
   gutNivel.style.color =
-  "#fff";
-
+    "#fff";
 }
 
 /* =========================================
@@ -353,7 +342,6 @@ function calcularGUT() {
 ========================================= */
 
 function configurarEventosGUT() {
-
   gutGravidade?.addEventListener(
     "change",
     calcularGUT
@@ -370,7 +358,6 @@ function configurarEventosGUT() {
   );
 
   calcularGUT();
-
 }
 
 /* =========================================
@@ -378,85 +365,72 @@ function configurarEventosGUT() {
 ========================================= */
 
 function configurarMoeda() {
-
   if (!investimento) {
     return;
   }
 
   investimento.addEventListener(
     "input",
-    (e) => {
-
+    (event) => {
       let valor =
-      e.target.value
-        .replace(/\D/g, "");
+        event.target.value
+          .replace(/\D/g, "");
 
       valor =
-      formatarMoedaBR(
-        Number(valor) / 100
-      );
+        formatarMoedaBR(
+          Number(valor) / 100
+        );
 
-      e.target.value =
-      valor;
-
+      event.target.value =
+        valor;
     }
   );
-
 }
 
 /* =========================================
    GERAR ID DA OBRA
-   Observação:
-   Este método lê os IDs existentes e gera o próximo.
-   Em etapa futura, o ideal é migrar para transaction.
 ========================================= */
 
 async function gerarNovoId() {
-
   const snapshot =
-  await getDocs(
-    collection(
-      db,
-      "obras"
-    )
-  );
+    await getDocs(
+      collection(
+        db,
+        "obras"
+      )
+    );
 
   let maiorNumero = 0;
 
   snapshot.forEach((documento) => {
-
     const dados =
-    documento.data();
+      documento.data();
 
     const idBase =
-    dados.idProjeto ||
-    dados.idObra ||
-    "";
+      dados.idProjeto ||
+      dados.idObra ||
+      "";
 
     const numero =
-    parseInt(
-      String(idBase)
-        .replace("OBR-", "")
-        .replace(/\D/g, "")
-    );
+      parseInt(
+        String(idBase)
+          .replace("OBR-", "")
+          .replace(/\D/g, "")
+      );
 
     if (
       !isNaN(numero) &&
       numero > maiorNumero
     ) {
-
       maiorNumero =
-      numero;
-
+        numero;
     }
-
   });
 
   const proximo =
-  maiorNumero + 1;
+    maiorNumero + 1;
 
   return `OBR-${String(proximo).padStart(4, "0")}`;
-
 }
 
 /* =========================================
@@ -464,18 +438,16 @@ async function gerarNovoId() {
 ========================================= */
 
 function validarFormulario() {
-
   const nomeProjeto =
-  obterValorCampo("nomeProjeto");
+    obterValorCampo("nomeProjeto");
 
   const tipoObra =
-  obterValorCampo("tipoObra");
+    obterValorCampo("tipoObra");
 
   const valorInvestimento =
-  investimento?.value || "";
+    investimento?.value || "";
 
   if (!nomeProjeto) {
-
     alert(
       "⚠️ Informe o nome da obra."
     );
@@ -485,11 +457,9 @@ function validarFormulario() {
       ?.focus();
 
     return false;
-
   }
 
   if (!tipoObra) {
-
     alert(
       "⚠️ Selecione o tipo da obra."
     );
@@ -499,11 +469,9 @@ function validarFormulario() {
       ?.focus();
 
     return false;
-
   }
 
   if (!localidade?.value) {
-
     alert(
       "⚠️ Selecione a localidade."
     );
@@ -511,11 +479,9 @@ function validarFormulario() {
     localidade?.focus();
 
     return false;
-
   }
 
   if (!regional?.value) {
-
     alert(
       "⚠️ A regional não foi definida. Verifique a localidade."
     );
@@ -523,14 +489,14 @@ function validarFormulario() {
     localidade?.focus();
 
     return false;
-
   }
 
   if (
     !valorInvestimento ||
-    converterMoedaParaNumero(valorInvestimento) <= 0
+    converterMoedaParaNumero(
+      valorInvestimento
+    ) <= 0
   ) {
-
     alert(
       "⚠️ Informe o valor orçado da obra."
     );
@@ -538,11 +504,13 @@ function validarFormulario() {
     investimento?.focus();
 
     return false;
-
   }
 
-  if (!obterValorCampo("dataInicioPrevisto")) {
-
+  if (
+    !obterValorCampo(
+      "dataInicioPrevisto"
+    )
+  ) {
     alert(
       "⚠️ Informe a data de início prevista."
     );
@@ -552,11 +520,13 @@ function validarFormulario() {
       ?.focus();
 
     return false;
-
   }
 
-  if (!obterValorCampo("dataTerminoPrevisto")) {
-
+  if (
+    !obterValorCampo(
+      "dataTerminoPrevisto"
+    )
+  ) {
     alert(
       "⚠️ Informe a data de término prevista."
     );
@@ -566,11 +536,9 @@ function validarFormulario() {
       ?.focus();
 
     return false;
-
   }
 
   if (!datasValidas()) {
-
     alert(
       "⚠️ A data de término não pode ser menor que a data de início."
     );
@@ -580,7 +548,6 @@ function validarFormulario() {
       ?.focus();
 
     return false;
-
   }
 
   if (
@@ -588,17 +555,14 @@ function validarFormulario() {
     !gutUrgencia?.value ||
     !gutTendencia?.value
   ) {
-
     alert(
       "⚠️ Preencha a matriz GUT."
     );
 
     return false;
-
   }
 
   return true;
-
 }
 
 /* =========================================
@@ -606,169 +570,206 @@ function validarFormulario() {
 ========================================= */
 
 async function montarDadosObra() {
-
   const novoId =
-  await gerarNovoId();
+    await gerarNovoId();
 
   const valorObraFormatado =
-  investimento?.value || "R$ 0,00";
+    investimento?.value || "R$ 0,00";
 
   const valorObraNumero =
-  converterMoedaParaNumero(
-    valorObraFormatado
-  );
+    converterMoedaParaNumero(
+      valorObraFormatado
+    );
 
   return {
-
     /* =====================================
        IDENTIFICAÇÃO
     ===================================== */
 
     idProjeto:
-    novoId,
+      novoId,
 
     idObra:
-    novoId,
+      novoId,
+
+    codigoObra:
+      novoId,
+
+    obraId:
+      novoId,
 
     /* =====================================
        DADOS GERAIS
     ===================================== */
 
     nomeProjeto:
-    obterValorCampo("nomeProjeto"),
+      obterValorCampo("nomeProjeto"),
+
+    nomeObra:
+      obterValorCampo("nomeProjeto"),
 
     tipoObra:
-    obterValorCampo("tipoObra"),
+      obterValorCampo("tipoObra"),
 
     numeroOM:
-    obterValorCampo("numeroOM"),
+      obterValorCampo("numeroOM"),
 
     localidade:
-    localidade?.value || "",
+      localidade?.value || "",
 
     regional:
-    regional?.value || "",
+      regional?.value || "",
 
     centroCusto:
-    obterValorCampo("centroCusto"),
+      obterValorCampo("centroCusto"),
 
     /* =====================================
        VALORES
     ===================================== */
 
     valorObra:
-    valorObraFormatado,
+      valorObraFormatado,
 
     investimento:
-    valorObraFormatado,
+      valorObraFormatado,
+
+    valorOrcado:
+      valorObraFormatado,
 
     valorObraNumero:
-    valorObraNumero,
+      valorObraNumero,
 
     investimentoNumero:
-    valorObraNumero,
+      valorObraNumero,
+
+    valorOrcadoNumero:
+      valorObraNumero,
 
     executado:
-    "R$ 0,00",
+      "R$ 0,00",
 
     executadoNumero:
-    0,
+      0,
+
+    valorExecutado:
+      "R$ 0,00",
+
+    valorExecutadoNumero:
+      0,
 
     /* =====================================
        ÁREA
     ===================================== */
 
     areaM2:
-    obterValorCampo("areaM2"),
+      obterValorCampo("areaM2"),
 
     /* =====================================
        APROVAÇÃO
     ===================================== */
 
     aprovacaoCliente:
-    obterValorCampo("aprovacaoCliente"),
+      obterValorCampo("aprovacaoCliente"),
 
     /* =====================================
        DATAS
     ===================================== */
 
     dataInicio:
-    obterValorCampo("dataInicioPrevisto"),
+      obterValorCampo("dataInicioPrevisto"),
 
     dataFim:
-    obterValorCampo("dataTerminoPrevisto"),
+      obterValorCampo("dataTerminoPrevisto"),
 
     dataInicioPrevisto:
-    obterValorCampo("dataInicioPrevisto"),
+      obterValorCampo("dataInicioPrevisto"),
 
     dataTerminoPrevisto:
-    obterValorCampo("dataTerminoPrevisto"),
+      obterValorCampo("dataTerminoPrevisto"),
+
+    dataFimPrevisto:
+      obterValorCampo("dataTerminoPrevisto"),
 
     /* =====================================
        GUT
     ===================================== */
 
     gravidade:
-    gutGravidade?.value || "",
+      gutGravidade?.value || "",
 
     urgencia:
-    gutUrgencia?.value || "",
+      gutUrgencia?.value || "",
 
     tendencia:
-    gutTendencia?.value || "",
+      gutTendencia?.value || "",
 
     score:
-    gutScore?.textContent || "",
+      gutScore?.textContent || "",
 
     gutScore:
-    gutScore?.textContent || "",
+      gutScore?.textContent || "",
 
     nivel:
-    gutNivel?.textContent || "",
+      gutNivel?.textContent || "",
 
     gutNivel:
-    gutNivel?.textContent || "",
+      gutNivel?.textContent || "",
 
     /* =====================================
        AVANÇO E STATUS
     ===================================== */
 
     avancoFisico:
-    0,
+      0,
 
     status:
-    "Planejado",
+      "Planejado",
+
+    fase:
+      "Planejado",
+
+    planejamentoCurvaSAtivo:
+      false,
+
+    replanejamentoNecessario:
+      false,
+
+    reprogramacaoNecessaria:
+      false,
 
     /* =====================================
        ESCOPO
     ===================================== */
 
     escopo:
-    obterValorCampo("escopoObra"),
+      obterValorCampo("escopoObra"),
+
+    escopoObra:
+      obterValorCampo("escopoObra"),
 
     /* =====================================
        AUDITORIA
     ===================================== */
 
     criadoPorUid:
-    usuarioLogadoGlobal?.uid || "",
+      usuarioLogadoGlobal?.uid || "",
 
     criadoPorEmail:
-    usuarioLogadoGlobal?.email ||
-    usuarioLogadoGlobal?.emailAuth ||
-    "",
+      usuarioLogadoGlobal?.email ||
+      usuarioLogadoGlobal?.emailAuth ||
+      "",
 
     criadoPorNome:
-    usuarioLogadoGlobal?.nome || "",
+      usuarioLogadoGlobal?.nome ||
+      usuarioLogadoGlobal?.displayName ||
+      "",
 
     criadoEm:
-    serverTimestamp(),
+      serverTimestamp(),
 
     atualizadoEm:
-    serverTimestamp()
-
+      serverTimestamp()
   };
-
 }
 
 /* =========================================
@@ -776,17 +777,14 @@ async function montarDadosObra() {
 ========================================= */
 
 async function salvarObra(event) {
-
   event.preventDefault();
 
   if (!usuarioLogadoGlobal) {
-
     alert(
       "Usuário não autenticado. Faça login novamente."
     );
 
     return;
-
   }
 
   if (!validarFormulario()) {
@@ -794,27 +792,24 @@ async function salvarObra(event) {
   }
 
   const botaoSubmit =
-  form?.querySelector(
-    "button[type='submit']"
-  );
+    form?.querySelector(
+      "button[type='submit']"
+    );
 
   const textoOriginalBotao =
-  botaoSubmit?.textContent || "Salvar Obra";
+    botaoSubmit?.textContent || "Salvar Obra";
 
   try {
-
     if (botaoSubmit) {
-
       botaoSubmit.disabled =
-      true;
+        true;
 
       botaoSubmit.textContent =
-      "Salvando...";
-
+        "Salvando...";
     }
 
     const dadosObra =
-    await montarDadosObra();
+      await montarDadosObra();
 
     await addDoc(
       collection(
@@ -825,24 +820,18 @@ async function salvarObra(event) {
     );
 
     const desejaPlanejar =
-    confirm(
-      `✅ Obra cadastrada com sucesso!\n\nID: ${dadosObra.idProjeto}\n\nDeseja realizar o planejamento desta obra agora?`
-    );
+      confirm(
+        `✅ Obra cadastrada com sucesso!\n\nID: ${dadosObra.idProjeto}\n\nDeseja realizar o planejamento desta obra agora?`
+      );
 
     if (desejaPlanejar) {
-
       window.location.href =
-      "./planejamento.html";
-
+        "./planejamento.html";
     } else {
-
       window.location.href =
-      "./dashboard.html";
-
+        "./dashboard.html";
     }
-
   } catch (error) {
-
     console.error(
       "Erro ao salvar obra:",
       error
@@ -851,21 +840,15 @@ async function salvarObra(event) {
     alert(
       "❌ Erro ao salvar obra. Verifique suas permissões no Firestore."
     );
-
   } finally {
-
     if (botaoSubmit) {
-
       botaoSubmit.disabled =
-      false;
+        false;
 
       botaoSubmit.textContent =
-      textoOriginalBotao;
-
+        textoOriginalBotao;
     }
-
   }
-
 }
 
 /* =========================================
@@ -873,7 +856,6 @@ async function salvarObra(event) {
 ========================================= */
 
 function configurarBotaoVoltar() {
-
   if (!btnVoltar) {
     return;
   }
@@ -881,13 +863,10 @@ function configurarBotaoVoltar() {
   btnVoltar.addEventListener(
     "click",
     () => {
-
       window.location.href =
-      "./dashboard.html";
-
+        "./dashboard.html";
     }
   );
-
 }
 
 /* =========================================
@@ -895,7 +874,6 @@ function configurarBotaoVoltar() {
 ========================================= */
 
 function configurarEventos() {
-
   configurarRegionalAutomatica();
 
   configurarEventosGUT();
@@ -908,7 +886,6 @@ function configurarEventos() {
     "submit",
     salvarObra
   );
-
 }
 
 /* =========================================
@@ -918,16 +895,12 @@ function configurarEventos() {
 document.addEventListener(
   "DOMContentLoaded",
   async () => {
-
     try {
-
       usuarioLogadoGlobal =
-      await protegerPagina();
+        await protegerPagina();
 
       configurarEventos();
-
     } catch (error) {
-
       console.error(
         "Erro ao iniciar cadastro:",
         error
@@ -936,8 +909,6 @@ document.addEventListener(
       alert(
         "Erro ao iniciar a tela de cadastro."
       );
-
     }
-
   }
 );

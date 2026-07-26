@@ -17,7 +17,7 @@
   <!-- CSS -->
   <link
     rel="stylesheet"
-    href="./admin-painel.css?v=002"
+    href="./admin-painel.css?v=006"
   >
 
   <!-- FONT AWESOME -->
@@ -45,6 +45,41 @@
       <p>
         Controle de acesso, aprovação, permissões e responsáveis por Regional
       </p>
+
+      <div
+        class="usuario-logado-info"
+        id="usuarioLogadoInfo"
+      >
+
+        <span class="usuario-logado-item">
+
+          <i class="fa-solid fa-envelope"></i>
+
+          <strong id="usuarioEmailTopo">
+            Carregando usuário...
+          </strong>
+
+        </span>
+
+        <span class="usuario-logado-separador">
+          |
+        </span>
+
+        <span class="usuario-logado-item">
+
+          <i class="fa-solid fa-user-shield"></i>
+
+          <span>
+            Perfil:
+          </span>
+
+          <strong id="usuarioPerfilTopo">
+            Carregando...
+          </strong>
+
+        </span>
+
+      </div>
 
     </div>
 
@@ -99,8 +134,8 @@
           </h2>
 
           <p>
-            Ajuste nome, perfil, status, Regional e permissão de aprovação de RM.
-            Para novos acessos, o ideal é o usuário se cadastrar pela tela de login e o administrador aprovar aqui.
+            Ajuste nome, perfil, status, Regional e permissão administrativa.
+            Apenas Administrador Geral pode editar usuários, liberar permissões e excluir registros administrativos.
           </p>
 
         </div>
@@ -155,32 +190,12 @@
               Administrador Geral
             </option>
 
-            <option value="administradorRegional">
-              Administrador Regional
-            </option>
-
-            <option value="gestor">
-              Gestor
-            </option>
-
             <option value="planejador">
               Planejador
             </option>
 
-            <option value="engenharia">
-              Engenharia
-            </option>
-
-            <option value="editor">
-              Editor
-            </option>
-
             <option value="usuario">
               Usuário
-            </option>
-
-            <option value="visualizador">
-              Visualizador
             </option>
 
           </select>
@@ -250,7 +265,7 @@
         <div class="field field-check">
 
           <label>
-            Aprovação de RM
+            Permissão administrativa
           </label>
 
           <div class="check-card">
@@ -261,7 +276,7 @@
             >
 
             <label for="podeAprovarRM">
-              Pode aprovar ou reprovar RM
+              Permissão de administrador
             </label>
 
           </div>
@@ -275,10 +290,11 @@
         <i class="fa-solid fa-circle-info"></i>
 
         <span>
-          Para aprovação regional, selecione o perfil
-          <strong>Administrador Regional</strong>,
-          escolha a <strong>Regional</strong> e marque
-          <strong>Pode aprovar ou reprovar RM</strong>.
+          Perfis disponíveis:
+          <strong>Administrador Geral</strong>,
+          <strong>Planejador</strong> e
+          <strong>Usuário</strong>.
+          Somente o Administrador Geral pode editar ou excluir obras já programadas.
         </span>
 
       </div>
@@ -345,32 +361,12 @@
               Administrador Geral
             </option>
 
-            <option value="administradorRegional">
-              Administrador Regional
-            </option>
-
-            <option value="gestor">
-              Gestor
-            </option>
-
             <option value="planejador">
               Planejador
             </option>
 
-            <option value="engenharia">
-              Engenharia
-            </option>
-
-            <option value="editor">
-              Editor
-            </option>
-
             <option value="usuario">
               Usuário
-            </option>
-
-            <option value="visualizador">
-              Visualizador
             </option>
 
           </select>
@@ -426,15 +422,15 @@
           <select id="filtroAprovacaoRM">
 
             <option value="todos">
-              Aprovação RM: todos
+              Permissão: todos
             </option>
 
             <option value="sim">
-              Pode aprovar
+              Administrador
             </option>
 
             <option value="nao">
-              Não aprova
+              Sem permissão
             </option>
 
           </select>
@@ -480,7 +476,7 @@
               </th>
 
               <th>
-                Aprova RM
+                Permissão
               </th>
 
               <th>
@@ -525,7 +521,7 @@
 
   <script
     type="module"
-    src="./admin-painel.js?v=002"
+    src="./admin-painel.js?v=006"
   ></script>
 
 </body>

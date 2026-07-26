@@ -1,35 +1,156 @@
+/* =====================================================
+   PLANEJAMENTO DA CURVA S
+   Arquivo: planejamento.css
+   Versão: v003
+===================================================== */
+
 *{
   margin:0;
   padding:0;
   box-sizing:border-box;
-  font-family:'Segoe UI';
+  font-family:'Segoe UI',sans-serif;
 }
 
 body{
-  background:#f4f6f8;
+  background:#f4f5f7;
+  color:#333;
   padding:25px;
 }
 
 .container{
+  width:100%;
   max-width:1600px;
   margin:auto;
 }
 
+/* =========================================
+   CABEÇALHO PADRÃO DASHBOARD
+========================================= */
+
 .header{
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
   margin-bottom:20px;
+  gap:20px;
+}
+
+.header-textos{
+  min-width:0;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
 }
 
 .header h1{
   font-size:30px;
-  color:#007E7A;
+  color:#222;
+  font-weight:700;
+  line-height:1.2;
 }
 
 .header p{
   color:#666;
+  margin-top:4px;
+  font-size:14px;
 }
 
+/* =========================================
+   USUÁRIO LOGADO NO CABEÇALHO - SEM RETÂNGULO
+========================================= */
+
+.header .usuario-logado-info,
+.header .sg-usuario-logado-info{
+  width:auto !important;
+  max-width:100% !important;
+  margin-top:6px !important;
+  padding:0 !important;
+
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  flex-wrap:wrap !important;
+  gap:6px !important;
+
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+
+  color:#64748b !important;
+  font-size:12px !important;
+  font-weight:600 !important;
+  line-height:1.25 !important;
+}
+
+.header .usuario-logado-info span,
+.header .sg-usuario-logado-info span{
+  margin-top:0 !important;
+  padding:0 !important;
+
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:4px !important;
+
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+
+  color:#64748b !important;
+  opacity:1 !important;
+
+  font-size:12px !important;
+  font-weight:600 !important;
+  line-height:1.25 !important;
+}
+
+.header .usuario-logado-info strong,
+.header .sg-usuario-logado-info strong{
+  color:#007E7A !important;
+  font-size:12px !important;
+  font-weight:800 !important;
+  line-height:1.25 !important;
+
+  max-width:380px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.header .usuario-label{
+  color:#64748b !important;
+  font-weight:700 !important;
+}
+
+.header .usuario-logado-separador,
+.header .sg-usuario-logado-separador{
+  color:#94a3b8 !important;
+  font-weight:700 !important;
+}
+
+.header .usuario-logado-info i,
+.header .sg-usuario-logado-info i{
+  display:none !important;
+}
+
+.header .usuario-logado-info.perfil-administrador,
+.header .usuario-logado-info.perfil-sem-permissao,
+.header .sg-usuario-logado-info.perfil-administrador,
+.header .sg-usuario-logado-info.perfil-sem-permissao{
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+/* =========================================
+   FILTROS
+========================================= */
+
 .filtros{
-  background:white;
+  background:#ffffff;
   padding:20px;
   border-radius:16px;
   display:grid;
@@ -37,6 +158,7 @@ body{
   gap:15px;
   margin-bottom:20px;
   align-items:end;
+  box-shadow:0 2px 10px rgba(0,0,0,.05);
 }
 
 .campo{
@@ -47,47 +169,85 @@ body{
 .campo label{
   margin-bottom:6px;
   font-size:13px;
-  font-weight:600;
+  font-weight:700;
+  color:#444;
 }
 
 .campo input,
 .campo select{
-  padding:12px;
+  height:42px;
+  padding:0 12px;
   border:1px solid #ddd;
   border-radius:10px;
   font-size:14px;
+  background:#fff;
+  color:#222;
+  outline:none;
+  transition:.2s;
 }
+
+.campo input:focus,
+.campo select:focus{
+  border-color:#007E7A;
+  box-shadow:0 0 0 3px rgba(0,126,122,.10);
+}
+
+.campo input[readonly]{
+  background:#f8fafc;
+  color:#111827;
+  font-weight:600;
+}
+
+/* =========================================
+   AÇÕES
+========================================= */
 
 .acoes{
   display:flex;
   gap:10px;
-  height:45px;
+  height:42px;
 }
 
 button{
   flex:1;
   border:none;
   background:#007E7A;
-  color:white;
+  color:#ffffff;
   border-radius:10px;
   cursor:pointer;
-  font-weight:600;
-  transition:0.3s;
+  font-weight:700;
+  transition:.2s;
+  font-size:13px;
+  white-space:nowrap;
 }
 
 button:hover{
-  opacity:0.9;
+  background:#006864;
+}
+
+button:disabled{
+  opacity:.55;
+  cursor:not-allowed;
 }
 
 .salvar{
   background:#16a34a;
 }
 
+.salvar:hover{
+  background:#15803d;
+}
+
+/* =========================================
+   TABELA
+========================================= */
+
 .tabela-card{
-  background:white;
+  background:#ffffff;
   border-radius:16px;
   overflow:hidden;
   margin-bottom:20px;
+  box-shadow:0 2px 10px rgba(0,0,0,.05);
 }
 
 table{
@@ -95,25 +255,53 @@ table{
   border-collapse:collapse;
 }
 
+thead{
+  background:#007E7A;
+}
+
 th{
   background:#007E7A;
-  color:white;
+  color:#ffffff;
   padding:14px;
   font-size:13px;
+  font-weight:700;
+  text-align:center;
+  white-space:nowrap;
 }
 
 td{
   padding:12px;
   border-top:1px solid #eee;
   font-size:13px;
+  text-align:center;
+  color:#333;
+  background:#fff;
+}
+
+tbody tr:hover td{
+  background:#f0f7f7;
 }
 
 td input{
   width:100%;
-  padding:10px;
+  height:38px;
+  padding:0 10px;
   border:1px solid #ddd;
   border-radius:8px;
+  outline:none;
+  text-align:center;
+  font-size:13px;
+  color:#222;
 }
+
+td input:focus{
+  border-color:#007E7A;
+  box-shadow:0 0 0 3px rgba(0,126,122,.10);
+}
+
+/* =========================================
+   GRÁFICOS
+========================================= */
 
 .graficos{
   display:grid;
@@ -122,18 +310,49 @@ td input{
 }
 
 .grafico-card{
-  background:white;
+  background:#ffffff;
   border-radius:16px;
   padding:20px;
+  box-shadow:0 2px 10px rgba(0,0,0,.05);
+  min-height:390px;
 }
 
 .grafico-card h3{
   margin-bottom:15px;
+  color:#007E7A;
+  font-size:17px;
+  font-weight:800;
 }
 
 canvas{
   height:320px !important;
 }
+
+/* =========================================
+   SCROLL
+========================================= */
+
+::-webkit-scrollbar{
+  width:8px;
+  height:8px;
+}
+
+::-webkit-scrollbar-track{
+  background:#f1f5f9;
+}
+
+::-webkit-scrollbar-thumb{
+  background:#cbd5e1;
+  border-radius:999px;
+}
+
+::-webkit-scrollbar-thumb:hover{
+  background:#94a3b8;
+}
+
+/* =========================================
+   RESPONSIVO
+========================================= */
 
 @media(max-width:1200px){
 
@@ -147,10 +366,80 @@ canvas{
 
 }
 
+@media(max-width:900px){
+
+  body{
+    padding:18px;
+  }
+
+  .header{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:12px;
+  }
+
+  .header h1{
+    font-size:26px;
+  }
+
+  .header .usuario-logado-info,
+  .header .sg-usuario-logado-info{
+    width:100% !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    gap:2px !important;
+  }
+
+  .header .usuario-logado-separador,
+  .header .sg-usuario-logado-separador{
+    display:none !important;
+  }
+
+  .header .usuario-logado-info strong,
+  .header .sg-usuario-logado-info strong{
+    max-width:calc(100vw - 70px);
+  }
+
+}
+
 @media(max-width:700px){
+
+  body{
+    padding:14px;
+  }
+
+  .header h1{
+    font-size:22px;
+  }
+
+  .header p{
+    font-size:13px;
+  }
 
   .filtros{
     grid-template-columns:1fr;
+    padding:14px;
+  }
+
+  .acoes{
+    height:auto;
+    flex-direction:column;
+  }
+
+  button{
+    height:42px;
+  }
+
+  .tabela-card{
+    overflow:auto;
+  }
+
+  table{
+    min-width:850px;
+  }
+
+  .grafico-card{
+    padding:14px;
   }
 
 }

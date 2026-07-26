@@ -14,26 +14,74 @@
     Cadastro de Obras
   </title>
 
+  <!-- CSS -->
   <link
     rel="stylesheet"
-    href="./cadastrar.css"
+    href="./cadastrar.css?v=003"
   >
 
 </head>
 
 <body>
 
-  <!-- HEADER -->
+  <!-- =====================================
+       CABEÇALHO PADRÃO DASHBOARD
+  ====================================== -->
 
   <header class="page-header">
 
-    <h1>
-      Cadastro de Obras
-    </h1>
+    <div class="page-header-textos">
+
+      <h1>
+        Cadastro de Obras
+      </h1>
+
+      <p>
+        Cadastro, priorização e planejamento inicial das obras
+      </p>
+
+      <div
+        class="usuario-logado-info sg-usuario-logado-info"
+        id="usuarioLogadoInfo"
+      >
+
+        <span class="usuario-logado-item sg-usuario-logado-item">
+
+          <span class="usuario-label">
+            Email:
+          </span>
+
+          <strong id="usuarioEmailTopo">
+            Carregando...
+          </strong>
+
+        </span>
+
+        <span class="usuario-logado-separador sg-usuario-logado-separador">
+          |
+        </span>
+
+        <span class="usuario-logado-item sg-usuario-logado-item">
+
+          <span class="usuario-label">
+            Perfil:
+          </span>
+
+          <strong id="usuarioPerfilTopo">
+            Carregando...
+          </strong>
+
+        </span>
+
+      </div>
+
+    </div>
 
   </header>
 
-  <!-- CONTAINER -->
+  <!-- =====================================
+       CONTAINER
+  ====================================== -->
 
   <div class="container">
 
@@ -494,9 +542,13 @@
 
   </div>
 
+  <!-- =====================================
+       JS
+  ====================================== -->
+
   <script
     type="module"
-    src="./cadastrar.js"
+    src="./cadastrar.js?v=003"
   ></script>
 
 </body>
