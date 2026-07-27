@@ -1,7 +1,15 @@
 /* =====================================================
    DASHBOARD - PAINEL EXECUTIVO DE OBRAS
    Arquivo: dashboard.js
-   Versão: v011
+   Versão: v013
+
+   Correções:
+   - Tabela:
+     ACUMULADO FINANCEIRO PLANEJADO agora aparece em R$.
+   - Gráfico financeiro:
+     continua aparecendo em percentual (%).
+   - Exportação PDF:
+     ajustada para gerar por blocos e evitar cortes grandes.
 ===================================================== */
 
 import {
@@ -115,33 +123,55 @@ const regionaisMap = {
 
   "Vitória do Mearim": "Regional 1",
 
+  "Vitoria do Mearim": "Regional 1",
+
   "Santa Inês": "Regional 1",
+
+  "Santa Ines": "Regional 1",
 
   "Alto Alegre": "Regional 1",
 
   "Alto Alegre do Pindaré": "Regional 1",
 
+  "Alto Alegre do Pindare": "Regional 1",
+
   "Altamira": "Regional 1",
 
   "Auzilândia": "Regional 1",
 
+  "Auzilandia": "Regional 1",
+
   "Vila Pindaré": "Regional 1",
+
+  "Vila Pindare": "Regional 1",
 
   "Mineirinho": "Regional 1",
 
   "Açailândia": "Regional 2",
 
+  "Acailandia": "Regional 2",
+
   "Nova Vida": "Regional 2",
 
   "Marabá": "Regional 3",
+
+  "Maraba": "Regional 3",
 
   "São Pedro d’Água Branca": "Regional 3",
 
   "São Pedro d'Água Branca": "Regional 3",
 
+  "São Pedro d'agua branca": "Regional 3",
+
+  "Sao Pedro d'agua branca": "Regional 3",
+
   "Itainópolis": "Regional 3",
 
-  "São Luís": "São Luís"
+  "Itainopolis": "Regional 3",
+
+  "São Luís": "São Luís",
+
+  "Sao Luis": "São Luís"
 
 };
 
@@ -280,6 +310,12 @@ function moeda(valor) {
 
 }
 
+function moedaCompleta(valor) {
+
+  return `R$ ${moeda(valor)}`;
+
+}
+
 function percentual(valor) {
 
   return `${Number(valor || 0)
@@ -300,15 +336,24 @@ function converterValor(valor) {
 
   if (typeof valor === "number") {
 
-    return Number.isFinite(valor)
-    ? valor
-    : 0;
+    if (!Number.isFinite(valor)) {
+      return 0;
+    }
+
+    if (
+      Number.isInteger(valor) &&
+      Math.abs(valor) >= 10000000
+    ) {
+      return valor / 100;
+    }
+
+    return valor;
 
   }
 
   let texto =
   String(valor)
-    .replace("R$", "")
+    .replace(/R\$/gi, "")
     .replace(/\s/g, "")
     .trim();
 
@@ -316,21 +361,52 @@ function converterValor(valor) {
     return 0;
   }
 
-  if (texto.includes(",")) {
+  const temVirgula =
+  texto.includes(",");
+
+  const temPonto =
+  texto.includes(".");
+
+  const somenteNumeros =
+  texto.replace(/\D/g, "");
+
+  if (temVirgula) {
 
     texto =
     texto
       .replace(/\./g, "")
       .replace(",", ".");
 
-    return Number(texto) || 0;
+    const convertido =
+    Number(texto) || 0;
+
+    if (
+      convertido >= 100000000 &&
+      temPonto
+    ) {
+      return convertido / 100;
+    }
+
+    return convertido;
 
   }
 
   texto =
   texto.replace(/[^\d.-]/g, "");
 
-  return Number(texto) || 0;
+  const convertido =
+  Number(texto) || 0;
+
+  if (
+    !temVirgula &&
+    !temPonto &&
+    somenteNumeros.length >= 8 &&
+    convertido >= 10000000
+  ) {
+    return convertido / 100;
+  }
+
+  return convertido;
 
 }
 
@@ -374,6 +450,32 @@ function converterPercentual(valor) {
 
 }
 
+function valorTemPercentual(valor) {
+
+  return String(valor || "")
+    .includes("%");
+
+}
+
+function limitarPercentual(valor) {
+
+  const numero =
+  Number(valor || 0);
+
+  if (!Number.isFinite(numero)) {
+    return 0;
+  }
+
+  return Math.min(
+    Math.max(
+      numero,
+      0
+    ),
+    100
+  );
+
+}
+
 function financeiroParaPercentual(
   valorFinanceiro,
   valorBase
@@ -390,6 +492,25 @@ function financeiroParaPercentual(
     Number(valorFinanceiro || 0) /
     base
   ) * 100;
+
+}
+
+function percentualParaFinanceiro(
+  valorPercentual,
+  valorBase
+) {
+
+  const base =
+  Number(valorBase || 0);
+
+  if (base <= 0) {
+    return 0;
+  }
+
+  return (
+    Number(valorPercentual || 0) /
+    100
+  ) * base;
 
 }
 
@@ -778,47 +899,151 @@ function obterFisicoRealizadoAcumulado(item) {
 
 }
 
-function obterFinanceiroRealizadoAcumulado(item) {
+function obterFinanceiroRealizadoValorAcumulado(
+  item,
+  valorBase
+) {
 
   if (!item) {
     return 0;
   }
 
-  if (item.financeiroRealAcum !== undefined) {
-    return converterValor(item.financeiroRealAcum);
+  const candidatos = [
+    item.financeiroRealAcum,
+    item.financeiroAcum,
+    item.financeiroRealAcumulado,
+    item.financeiroAcumulado,
+    item.valorExecutado,
+    item.executado,
+    item.financeiroReal,
+    item.investimentoNovo,
+    item.custoSemana,
+    item.custo,
+    item.financeiro
+  ];
+
+  for (const valor of candidatos) {
+
+    if (
+      valor === undefined ||
+      valor === null ||
+      valor === ""
+    ) {
+      continue;
+    }
+
+    if (valorTemPercentual(valor)) {
+
+      return percentualParaFinanceiro(
+        converterPercentual(valor),
+        valorBase
+      );
+
+    }
+
+    return converterValor(valor);
+
   }
 
-  if (item.financeiroAcum !== undefined) {
-    return converterValor(item.financeiroAcum);
+  return 0;
+
+}
+
+function obterFinanceiroRealizadoPercentualAcumulado(
+  item,
+  valorBase
+) {
+
+  if (!item) {
+    return null;
   }
 
-  if (item.financeiroRealAcumulado !== undefined) {
-    return converterValor(item.financeiroRealAcumulado);
+  const candidatosPercentuais = [
+    item.financeiroRealPercentualAcum,
+    item.financeiroPercentualAcum,
+    item.financeiroExecutadoPercentualAcum,
+    item.financeiroRealPercentual,
+    item.financeiroPercentual,
+    item.percentualFinanceiro,
+    item.percentualExecutadoFinanceiro
+  ];
+
+  for (const valor of candidatosPercentuais) {
+
+    if (
+      valor !== undefined &&
+      valor !== null &&
+      valor !== ""
+    ) {
+
+      return limitarPercentual(
+        converterPercentual(valor)
+      );
+
+    }
+
   }
 
-  if (item.financeiroAcumulado !== undefined) {
-    return converterValor(item.financeiroAcumulado);
+  const candidatosValores = [
+    item.financeiroRealAcum,
+    item.financeiroAcum,
+    item.financeiroRealAcumulado,
+    item.financeiroAcumulado,
+    item.valorExecutado,
+    item.executado,
+    item.financeiroReal,
+    item.investimentoNovo,
+    item.custoSemana,
+    item.custo,
+    item.financeiro
+  ];
+
+  for (const valor of candidatosValores) {
+
+    if (
+      valor === undefined ||
+      valor === null ||
+      valor === ""
+    ) {
+      continue;
+    }
+
+    if (valorTemPercentual(valor)) {
+
+      return limitarPercentual(
+        converterPercentual(valor)
+      );
+
+    }
+
+    const convertido =
+    converterValor(valor);
+
+    if (
+      convertido <= 100 &&
+      valorBase <= 0
+    ) {
+      return limitarPercentual(convertido);
+    }
+
+    if (
+      convertido <= 100 &&
+      valorBase > 0 &&
+      String(valor).includes("%")
+    ) {
+      return limitarPercentual(convertido);
+    }
+
+    return limitarPercentual(
+      financeiroParaPercentual(
+        convertido,
+        valorBase
+      )
+    );
+
   }
 
-  if (item.valorExecutado !== undefined) {
-    return converterValor(item.valorExecutado);
-  }
-
-  if (item.executado !== undefined) {
-    return converterValor(item.executado);
-  }
-
-  if (item.financeiroReal !== undefined) {
-    return converterValor(item.financeiroReal);
-  }
-
-  if (item.investimentoNovo !== undefined) {
-    return converterValor(item.investimentoNovo);
-  }
-
-  return converterValor(
-    item.financeiro || 0
-  );
+  return null;
 
 }
 
@@ -828,16 +1053,263 @@ function obterFinanceiroRealizadoAcumulado(item) {
 
 function obterValorOrcadoObra(dados) {
 
-  return converterValor(
-    dados.valorObra ||
-    dados.valorOrcado ||
-    dados.valorOrçado ||
-    dados.orcado ||
-    dados.investimento ||
-    dados.valorTotal ||
-    dados.valor ||
-    dados.custoTotal ||
-    0
+  const camposTexto = [
+    dados.valorObra,
+    dados.valorOrcado,
+    dados.valorOrçado,
+    dados.investimento,
+    dados.valorInvestimento,
+    dados.orcamento,
+    dados.orçamento,
+    dados.orcado,
+    dados.orçado,
+    dados.valorTotal,
+    dados.custoTotal,
+    dados.custoOrcado,
+    dados.orcadoTotal,
+    dados.orcamentoTotal,
+    dados.orçamentoTotal,
+    dados.investimentoTotal
+  ];
+
+  for (const valor of camposTexto) {
+
+    if (typeof valor !== "string") {
+      continue;
+    }
+
+    const convertido =
+    converterValor(valor);
+
+    if (convertido > 0) {
+      return convertido;
+    }
+
+  }
+
+  const camposNumericos = [
+    dados.valorObraNumero,
+    dados.valorObraNumerico,
+    dados.valorOrcadoNumero,
+    dados.valorOrçadoNumero,
+    dados.investimentoNumero,
+    dados.investimentoTotalNumero,
+    dados.valorInvestimentoNumero,
+    dados.orcamentoNumero,
+    dados.orçamentoNumero,
+    dados.orcadoNumero,
+    dados.orçadoNumero,
+    dados.valorTotalNumero,
+    dados.valorTotalNumerico,
+    dados.custoTotalNumero,
+    dados.custoOrcadoNumero,
+    dados.valorObra,
+    dados.valorOrcado,
+    dados.valorOrçado,
+    dados.investimento,
+    dados.valorInvestimento,
+    dados.orcamento,
+    dados.orçamento,
+    dados.orcado,
+    dados.orçado,
+    dados.valorTotal,
+    dados.custoTotal,
+    dados.custoOrcado,
+    dados.orcadoTotal,
+    dados.orcamentoTotal,
+    dados.orçamentoTotal,
+    dados.investimentoTotal,
+    dados.valor,
+    dados.custoTotal
+  ];
+
+  for (const valor of camposNumericos) {
+
+    const convertido =
+    converterValor(valor);
+
+    if (convertido > 0) {
+      return convertido;
+    }
+
+  }
+
+  return 0;
+
+}
+
+/* =====================================================
+   FINANCEIRO PLANEJADO
+===================================================== */
+
+function obterFinanceiroPlanejadoPercentualItem(
+  item,
+  valorBase
+) {
+
+  const candidatosPercentuais = [
+    item.financeiroAcumPercentual,
+    item.financeiroPlanejadoAcumPercentual,
+    item.financeiroPlanejadoPercentualAcum,
+    item.financeiroPercentualAcum,
+    item.percentualFinanceiroAcum,
+    item.percentualFinanceiroPlanejado,
+    item.financeiroPercentual
+  ];
+
+  for (const valor of candidatosPercentuais) {
+
+    if (
+      valor !== undefined &&
+      valor !== null &&
+      valor !== ""
+    ) {
+
+      return limitarPercentual(
+        converterPercentual(valor)
+      );
+
+    }
+
+  }
+
+  const candidatosAcumulados = [
+    item.financeiroAcum,
+    item.financeiroPlanejadoAcum,
+    item.financeiroPlanejadoAcumulado,
+    item.financeiroAcumulado,
+    item.financeiroAcumuladoCalculado
+  ];
+
+  for (const valor of candidatosAcumulados) {
+
+    if (
+      valor === undefined ||
+      valor === null ||
+      valor === ""
+    ) {
+      continue;
+    }
+
+    if (valorTemPercentual(valor)) {
+
+      return limitarPercentual(
+        converterPercentual(valor)
+      );
+
+    }
+
+    const convertido =
+    converterValor(valor);
+
+    if (convertido <= 100) {
+      return limitarPercentual(convertido);
+    }
+
+    return limitarPercentual(
+      financeiroParaPercentual(
+        convertido,
+        valorBase
+      )
+    );
+
+  }
+
+  const candidatosSemanais = [
+    item.financeiro,
+    item.financeiroPlanejado,
+    item.valorPlanejado
+  ];
+
+  for (const valor of candidatosSemanais) {
+
+    if (
+      valor === undefined ||
+      valor === null ||
+      valor === ""
+    ) {
+      continue;
+    }
+
+    if (valorTemPercentual(valor)) {
+      return limitarPercentual(
+        converterPercentual(valor)
+      );
+    }
+
+    const convertido =
+    converterValor(valor);
+
+    if (convertido <= 100) {
+      return limitarPercentual(convertido);
+    }
+
+    return limitarPercentual(
+      financeiroParaPercentual(
+        convertido,
+        valorBase
+      )
+    );
+
+  }
+
+  return 0;
+
+}
+
+function obterFinanceiroPlanejadoValorItem(
+  item,
+  valorBase
+) {
+
+  const candidatosValores = [
+    item.financeiroAcumValor,
+    item.financeiroPlanejadoAcumValor,
+    item.financeiroPlanejadoValorAcum,
+    item.financeiroValorAcum,
+    item.valorPlanejadoAcum,
+    item.valorPlanejadoAcumulado,
+    item.financeiroPlanejadoValor,
+    item.valorFinanceiroPlanejado
+  ];
+
+  for (const valor of candidatosValores) {
+
+    if (
+      valor === undefined ||
+      valor === null ||
+      valor === ""
+    ) {
+      continue;
+    }
+
+    if (valorTemPercentual(valor)) {
+
+      return percentualParaFinanceiro(
+        converterPercentual(valor),
+        valorBase
+      );
+
+    }
+
+    const convertido =
+    converterValor(valor);
+
+    if (convertido > 100) {
+      return convertido;
+    }
+
+  }
+
+  const percentualPlanejado =
+  obterFinanceiroPlanejadoPercentualItem(
+    item,
+    valorBase
+  );
+
+  return percentualParaFinanceiro(
+    percentualPlanejado,
+    valorBase
   );
 
 }
@@ -857,6 +1329,7 @@ function registroPertenceAObra(
 
   const chavesObra = [
     obra.firebaseId,
+    obra.docId,
     obra.idProjeto,
     obra.idObra,
     obra.obraId,
@@ -880,9 +1353,58 @@ function registroPertenceAObra(
     .filter(Boolean)
     .map(normalizarTexto);
 
-  return chavesRegistro.some((chave) =>
-    chavesObra.includes(chave)
+  if (
+    chavesRegistro.some((chave) =>
+      chavesObra.includes(chave)
+    )
+  ) {
+    return true;
+  }
+
+  const nomeObra =
+  normalizarTexto(
+    obra.nomeProjeto
   );
+
+  const nomeRegistro =
+  normalizarTexto(
+    registro.nomeProjeto ||
+    registro.nomeObra ||
+    registro.obraNome ||
+    registro.obra ||
+    registro.projeto
+  );
+
+  const centroObra =
+  normalizarTexto(
+    obra.centroCusto
+  );
+
+  const centroRegistro =
+  normalizarTexto(
+    registro.centroCusto ||
+    registro.centroDeCusto ||
+    registro.centroCustoApropriacao
+  );
+
+  if (
+    nomeObra &&
+    nomeRegistro &&
+    nomeObra === nomeRegistro
+  ) {
+    return true;
+  }
+
+  if (
+    centroObra &&
+    centroRegistro &&
+    centroObra === centroRegistro &&
+    !nomeRegistro
+  ) {
+    return true;
+  }
+
+  return false;
 
 }
 
@@ -1337,6 +1859,7 @@ async function carregarObrasFirebase() {
       const idPadrao =
       dados.idProjeto ||
       dados.idObra ||
+      dados.codigoObra ||
       `OBR-${String(contadorId).padStart(4, "0")}`;
 
       contadorId++;
@@ -1358,10 +1881,18 @@ async function carregarObrasFirebase() {
         dados
       );
 
+      const investimentoObra =
+      obterValorOrcadoObra(
+        dados
+      );
+
       const obraBase = {
 
         firebaseId:
         dados.firebaseId,
+
+        docId:
+        dados.docId,
 
         idProjeto:
         idPadrao,
@@ -1392,9 +1923,7 @@ async function carregarObrasFirebase() {
         "Não definida",
 
         investimento:
-        obterValorOrcadoObra(
-          dados
-        ),
+        investimentoObra,
 
         gutScore:
         Number(
@@ -1436,13 +1965,13 @@ async function carregarObrasFirebase() {
       let acumuladoFisicoPlanejadoResumo =
       0;
 
-      let acumuladoFinanceiroPlanejadoResumo =
+      let acumuladoFinanceiroPlanejadoPercentualResumo =
       0;
 
       let planejadoFisicoFinal =
       0;
 
-      let planejadoFinanceiro =
+      let planejadoFinanceiroValorFinal =
       0;
 
       const planejadoFisicoPorSemana =
@@ -1488,14 +2017,6 @@ async function carregarObrasFirebase() {
           0
         );
 
-        const financeiroSemana =
-        converterValor(
-          item.financeiro ||
-          item.financeiroPlanejado ||
-          item.valorPlanejado ||
-          0
-        );
-
         acumuladoFisicoPlanejadoResumo =
         item.fisicoAcum !== undefined
         ? converterPercentual(item.fisicoAcum)
@@ -1503,18 +2024,20 @@ async function carregarObrasFirebase() {
         ? converterPercentual(item.fisicoAcumulado)
         : acumuladoFisicoPlanejadoResumo + fisicoSemana;
 
-        acumuladoFinanceiroPlanejadoResumo =
-        item.financeiroAcum !== undefined
-        ? converterValor(item.financeiroAcum)
-        : item.financeiroAcumulado !== undefined
-        ? converterValor(item.financeiroAcumulado)
-        : acumuladoFinanceiroPlanejadoResumo + financeiroSemana;
+        acumuladoFinanceiroPlanejadoPercentualResumo =
+        obterFinanceiroPlanejadoPercentualItem(
+          item,
+          investimentoObra
+        );
 
         planejadoFisicoFinal =
         acumuladoFisicoPlanejadoResumo;
 
-        planejadoFinanceiro =
-        acumuladoFinanceiroPlanejadoResumo;
+        planejadoFinanceiroValorFinal =
+        obterFinanceiroPlanejadoValorItem(
+          item,
+          investimentoObra
+        );
 
         const numeroDaSemana =
         numeroSemana(
@@ -1567,8 +2090,9 @@ async function carregarObrasFirebase() {
 
       const executadoFinanceiro =
       ultimoRealizado
-      ? obterFinanceiroRealizadoAcumulado(
-        ultimoRealizado
+      ? obterFinanceiroRealizadoValorAcumulado(
+        ultimoRealizado,
+        investimentoObra
       )
       : converterValor(
         dados.valorExecutado ||
@@ -1610,7 +2134,10 @@ async function carregarObrasFirebase() {
         ...obraBase,
 
         planejadoFinanceiro:
-        planejadoFinanceiro,
+        planejadoFinanceiroValorFinal,
+
+        planejadoFinanceiroPercentual:
+        acumuladoFinanceiroPlanejadoPercentualResumo,
 
         executado:
         executadoFinanceiro,
@@ -2097,19 +2624,19 @@ function renderTabela() {
 
     tr.appendChild(
       criarCelulaTexto(
-        `R$ ${moeda(item.investimento)}`
+        moedaCompleta(item.investimento)
       )
     );
 
     tr.appendChild(
       criarCelulaTexto(
-        `R$ ${moeda(item.executado)}`
+        moedaCompleta(item.executado)
       )
     );
 
     tr.appendChild(
       criarCelulaTexto(
-        `R$ ${moeda(desvio)}`
+        moedaCompleta(desvio)
       )
     );
 
@@ -2147,9 +2674,9 @@ function selecionarLinha(linha) {
     .querySelectorAll(
       "#tbodyObras tr"
     )
-    .forEach((tr) => {
+    .forEach((item) => {
 
-      tr.classList.remove(
+      item.classList.remove(
         "selected"
       );
 
@@ -2161,47 +2688,33 @@ function selecionarLinha(linha) {
 
 }
 
-window.selecionarLinha =
-selecionarLinha;
-
 /* =====================================================
    ABRIR PLANEJAMENTO
 ===================================================== */
 
-async function abrirPlanejamento(idProjeto) {
+function abrirPlanejamento(firebaseId) {
 
-  if (!detalhamentoPlanejamento) {
-    return;
-  }
-
-  if (!tbodyPlanejado) {
-    return;
-  }
-
-  detalhamentoPlanejamento.style.display =
-  "block";
-
-  const obraSelecionada =
-  obras.find(
-    item =>
-    item.firebaseId === idProjeto
+  const obra =
+  obras.find((item) =>
+    item.firebaseId === firebaseId
   );
 
-  if (!obraSelecionada) {
+  if (!obra) {
     return;
   }
 
-  mostrarMensagemTabela(
-    tbodyPlanejado,
-    "Carregando planejamento...",
-    6
-  );
+  if (detalhamentoPlanejamento) {
+
+    detalhamentoPlanejamento.style.display =
+    "block";
+
+  }
 
   let planejadoLista =
   planejamentosBanco.filter((item) =>
     registroPertenceAObra(
       item,
-      obraSelecionada
+      obra
     )
   );
 
@@ -2214,7 +2727,7 @@ async function abrirPlanejamento(idProjeto) {
   realizadosBanco.filter((item) =>
     registroPertenceAObra(
       item,
-      obraSelecionada
+      obra
     )
   );
 
@@ -2223,150 +2736,156 @@ async function abrirPlanejamento(idProjeto) {
     realizadoLista
   );
 
-  const semanasPlanejadas =
-  new Set();
-
-  let acumuladoFisicoPlanejado =
-  0;
-
-  let acumuladoFinanceiroPlanejado =
-  0;
-
   const planejadoTratado =
-  [];
+  tratarPlanejamentoObra(
+    planejadoLista,
+    obra
+  );
 
-  planejadoLista.forEach((item) => {
+  const realizadoTratado =
+  tratarRealizadoObra(
+    realizadoLista,
+    obra
+  );
 
-    const chave =
-    `${item.semana}_${item.periodo}`;
+  renderPlanejamento(
+    planejadoTratado,
+    realizadoTratado
+  );
 
-    if (semanasPlanejadas.has(chave)) {
-      return;
-    }
+  criarGraficos(
+    planejadoTratado,
+    realizadoTratado
+  );
 
-    semanasPlanejadas.add(chave);
+  setTimeout(() => {
 
-    const fisico =
+    detalhamentoPlanejamento?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+
+    redimensionarGraficos();
+
+  }, 100);
+
+}
+
+/* =====================================================
+   TRATAR PLANEJAMENTO
+===================================================== */
+
+function tratarPlanejamentoObra(
+  lista,
+  obra
+) {
+
+  let acumuladoFisico =
+  0;
+
+  return lista.map((item) => {
+
+    const fisicoSemana =
     converterPercentual(
       item.fisico ||
       item.fisicoPlanejado ||
       0
     );
 
-    const financeiro =
-    converterValor(
-      item.financeiro ||
-      item.financeiroPlanejado ||
-      item.valorPlanejado ||
-      0
-    );
-
-    acumuladoFisicoPlanejado =
+    acumuladoFisico =
     item.fisicoAcum !== undefined
     ? converterPercentual(item.fisicoAcum)
     : item.fisicoAcumulado !== undefined
     ? converterPercentual(item.fisicoAcumulado)
-    : acumuladoFisicoPlanejado + fisico;
+    : acumuladoFisico + fisicoSemana;
 
-    acumuladoFinanceiroPlanejado =
-    item.financeiroAcum !== undefined
-    ? converterValor(item.financeiroAcum)
-    : item.financeiroAcumulado !== undefined
-    ? converterValor(item.financeiroAcumulado)
-    : acumuladoFinanceiroPlanejado + financeiro;
+    const financeiroPercentual =
+    obterFinanceiroPlanejadoPercentualItem(
+      item,
+      obra.investimento
+    );
 
-    planejadoTratado.push({
+    const financeiroValor =
+    obterFinanceiroPlanejadoValorItem(
+      item,
+      obra.investimento
+    );
+
+    return {
 
       ...item,
 
-      fisico,
-      financeiro,
-
       fisicoAcumuladoCalculado:
-      acumuladoFisicoPlanejado,
+      limitarPercentual(acumuladoFisico),
 
-      financeiroAcumuladoCalculado:
-      acumuladoFinanceiroPlanejado
+      financeiroAcumuladoPercentualCalculado:
+      limitarPercentual(financeiroPercentual),
 
-    });
+      financeiroAcumuladoValorCalculado:
+      financeiroValor
+
+    };
 
   });
 
-  const realizadoTratado =
-  [];
+}
 
-  realizadoLista.forEach((item) => {
+/* =====================================================
+   TRATAR REALIZADO
+===================================================== */
 
-    const fisico =
-    converterPercentual(
-      item.fisicoReal ||
-      item.fisico ||
-      item.avancoFisicoNovo ||
-      0
-    );
+function tratarRealizadoObra(
+  lista,
+  obra
+) {
 
-    const financeiro =
-    converterValor(
-      item.financeiroReal ||
-      item.financeiro ||
-      item.investimentoNovo ||
-      0
-    );
+  return lista.map((item) => {
 
-    const fisicoAcumulado =
+    const fisicoRealizado =
     obterFisicoRealizadoAcumulado(
       item
     );
 
-    const financeiroAcumulado =
-    obterFinanceiroRealizadoAcumulado(
-      item
+    const financeiroValor =
+    obterFinanceiroRealizadoValorAcumulado(
+      item,
+      obra.investimento
     );
 
-    realizadoTratado.push({
+    const financeiroPercentual =
+    obterFinanceiroRealizadoPercentualAcumulado(
+      item,
+      obra.investimento
+    );
+
+    return {
 
       ...item,
 
-      fisico,
-      financeiro,
-
       fisicoAcumuladoCalculado:
-      fisicoAcumulado,
+      limitarPercentual(fisicoRealizado),
 
-      financeiroAcumuladoCalculado:
-      financeiroAcumulado
+      financeiroAcumuladoValorCalculado:
+      financeiroValor,
 
-    });
+      financeiroAcumuladoPercentualCalculado:
+      financeiroPercentual !== null
+      ? limitarPercentual(financeiroPercentual)
+      : null
+
+    };
 
   });
 
-  renderizarPlanejamentoDetalhado(
-    planejadoTratado,
-    realizadoTratado,
-    obraSelecionada
-  );
-
-  criarGraficos(
-    planejadoTratado,
-    realizadoTratado,
-    obraSelecionada
-  );
-
-  redimensionarGraficos();
-
 }
 
-window.abrirPlanejamento =
-abrirPlanejamento;
-
 /* =====================================================
-   RENDER PLANEJAMENTO DETALHADO
+   RENDER PLANEJAMENTO
 ===================================================== */
 
-function renderizarPlanejamentoDetalhado(
+function renderPlanejamento(
   planejadoTratado,
-  realizadoTratado,
-  obraSelecionada
+  realizadoTratado
 ) {
 
   if (!tbodyPlanejado) {
@@ -2387,15 +2906,6 @@ function renderizarPlanejamentoDetalhado(
     return;
 
   }
-
-  const valorBase =
-  Number(
-    obraSelecionada?.investimento ||
-    planejadoTratado[
-      planejadoTratado.length - 1
-    ]?.financeiroAcumuladoCalculado ||
-    0
-  );
 
   const realizadoPorSemana =
   new Map();
@@ -2422,9 +2932,15 @@ function renderizarPlanejamentoDetalhado(
       0
     );
 
-    const financeiroPlanejado =
+    const financeiroPlanejadoPercentual =
     Number(
-      item.financeiroAcumuladoCalculado ||
+      item.financeiroAcumuladoPercentualCalculado ||
+      0
+    );
+
+    const financeiroPlanejadoValor =
+    Number(
+      item.financeiroAcumuladoValorCalculado ||
       0
     );
 
@@ -2436,25 +2952,13 @@ function renderizarPlanejamentoDetalhado(
     )
     : null;
 
-    const financeiroExecutado =
-    realizado
-    ? Number(
-      realizado.financeiroAcumuladoCalculado ||
-      0
-    )
-    : null;
-
-    const financeiroPlanejadoPercentual =
-    financeiroParaPercentual(
-      financeiroPlanejado,
-      valorBase
-    );
-
     const financeiroExecutadoPercentual =
-    financeiroExecutado !== null
-    ? financeiroParaPercentual(
-      financeiroExecutado,
-      valorBase
+    realizado &&
+    realizado.financeiroAcumuladoPercentualCalculado !== null &&
+    realizado.financeiroAcumuladoPercentualCalculado !== undefined
+    ? Number(
+      realizado.financeiroAcumuladoPercentualCalculado ||
+      0
     )
     : null;
 
@@ -2502,7 +3006,7 @@ function renderizarPlanejamentoDetalhado(
 
     tr.appendChild(
       criarCelulaTexto(
-        percentual(financeiroPlanejadoPercentual)
+        moedaCompleta(financeiroPlanejadoValor)
       )
     );
 
@@ -2524,202 +3028,12 @@ function renderizarPlanejamentoDetalhado(
 }
 
 /* =====================================================
-   OPÇÕES BASE DOS GRÁFICOS
-===================================================== */
-
-function opcoesBaseGrafico(
-  maximoY = 100
-) {
-
-  return {
-
-    responsive: true,
-    maintainAspectRatio: false,
-
-    layout: {
-      padding: {
-        top: 32,
-        right: 24,
-        bottom: 12,
-        left: 12
-      }
-    },
-
-    interaction: {
-      mode: "index",
-      intersect: false
-    },
-
-    plugins: {
-
-      legend: {
-        position: "top",
-
-        labels: {
-          color: "#333",
-          font: {
-            family: "'Segoe UI', sans-serif",
-            size: 12,
-            weight: "700"
-          },
-          boxWidth: 38,
-          boxHeight: 12,
-          padding: 18
-        }
-
-      },
-
-      datalabels: {
-
-        display: true,
-        clip: false,
-        clamp: true,
-
-        color: "#333",
-
-        backgroundColor: "rgba(255,255,255,.85)",
-
-        borderRadius: 4,
-
-        padding: {
-          top: 2,
-          right: 4,
-          bottom: 2,
-          left: 4
-        },
-
-        font: {
-          family: "'Segoe UI', sans-serif",
-          size: 10,
-          weight: "700"
-        },
-
-        formatter: (value) => {
-
-          if (
-            value === null ||
-            value === undefined
-          ) {
-            return "";
-          }
-
-          return percentual(value);
-
-        },
-
-        align: (context) => {
-
-          return context.datasetIndex === 0
-          ? "top"
-          : "bottom";
-
-        },
-
-        anchor: (context) => {
-
-          return context.datasetIndex === 0
-          ? "end"
-          : "start";
-
-        },
-
-        offset: () => {
-
-          return 8;
-
-        }
-
-      },
-
-      tooltip: {
-
-        titleFont: {
-          family: "'Segoe UI', sans-serif",
-          size: 12,
-          weight: "700"
-        },
-
-        bodyFont: {
-          family: "'Segoe UI', sans-serif",
-          size: 12,
-          weight: "600"
-        },
-
-        callbacks: {
-
-          label: (context) => {
-
-            return `${context.dataset.label}: ${percentual(context.raw || 0)}`;
-
-          }
-
-        }
-
-      }
-
-    },
-
-    scales: {
-
-      x: {
-
-        grid: {
-          color: "rgba(0,0,0,.08)"
-        },
-
-        ticks: {
-          color: "#333",
-          maxRotation: 65,
-          minRotation: 55,
-          autoSkip: false,
-          font: {
-            family: "'Segoe UI', sans-serif",
-            size: 10,
-            weight: "600"
-          }
-        }
-
-      },
-
-      y: {
-
-        beginAtZero: true,
-        max: maximoY,
-
-        grid: {
-          color: "rgba(0,0,0,.10)"
-        },
-
-        ticks: {
-
-          color: "#333",
-
-          font: {
-            family: "'Segoe UI', sans-serif",
-            size: 11,
-            weight: "700"
-          },
-
-          callback: (value) => `${value}%`
-
-        }
-
-      }
-
-    }
-
-  };
-
-}
-
-/* =====================================================
    GRÁFICOS
 ===================================================== */
 
 function criarGraficos(
   planejadoLista,
-  realizadoLista,
-  obraSelecionada
+  realizadoLista
 ) {
 
   const ctxFisico =
@@ -2748,19 +3062,6 @@ function criarGraficos(
     graficoFinanceiro.destroy();
   }
 
-  if (!planejadoLista.length) {
-    return;
-  }
-
-  const valorBaseFinanceiro =
-  Number(
-    obraSelecionada?.investimento ||
-    planejadoLista[
-      planejadoLista.length - 1
-    ]?.financeiroAcumuladoCalculado ||
-    0
-  );
-
   const labels =
   planejadoLista.map(
     item => item.semana
@@ -2776,23 +3077,32 @@ function criarGraficos(
   );
 
   const financeiroPlanejadoPercentual =
-  planejadoLista.map((item) => {
+  planejadoLista.map(
+    item =>
+    Number(
+      item.financeiroAcumuladoPercentualCalculado ||
+      0
+    )
+  );
 
-    return financeiroParaPercentual(
-      item.financeiroAcumuladoCalculado,
-      valorBaseFinanceiro
+  const realizadoPorSemana =
+  new Map();
+
+  realizadoLista.forEach((item) => {
+
+    realizadoPorSemana.set(
+      chaveSemana(item.semana),
+      item
     );
 
   });
 
   const fisicoRealizado =
-  planejadoLista.map((itemPlanejado) => {
+  planejadoLista.map((item) => {
 
     const realizado =
-    realizadoLista.find(
-      itemRealizado =>
-      chaveSemana(itemRealizado.semana) ===
-      chaveSemana(itemPlanejado.semana)
+    realizadoPorSemana.get(
+      chaveSemana(item.semana)
     );
 
     return realizado
@@ -2805,39 +3115,27 @@ function criarGraficos(
   });
 
   const financeiroRealizadoPercentual =
-  planejadoLista.map((itemPlanejado) => {
+  planejadoLista.map((item) => {
 
     const realizado =
-    realizadoLista.find(
-      itemRealizado =>
-      chaveSemana(itemRealizado.semana) ===
-      chaveSemana(itemPlanejado.semana)
+    realizadoPorSemana.get(
+      chaveSemana(item.semana)
     );
 
-    if (!realizado) {
+    if (
+      !realizado ||
+      realizado.financeiroAcumuladoPercentualCalculado === null ||
+      realizado.financeiroAcumuladoPercentualCalculado === undefined
+    ) {
       return null;
     }
 
-    return financeiroParaPercentual(
-      realizado.financeiroAcumuladoCalculado,
-      valorBaseFinanceiro
+    return Number(
+      realizado.financeiroAcumuladoPercentualCalculado ||
+      0
     );
 
   });
-
-  const maxFisico =
-  Math.max(
-    100,
-    ...fisicoPlanejado,
-    ...fisicoRealizado.filter(valor => valor !== null)
-  );
-
-  const maxFinanceiro =
-  Math.max(
-    100,
-    ...financeiroPlanejadoPercentual,
-    ...financeiroRealizadoPercentual.filter(valor => valor !== null)
-  );
 
   graficoFisico =
   new ChartJS(ctxFisico, {
@@ -2855,17 +3153,8 @@ function criarGraficos(
           data: fisicoPlanejado,
           borderColor: "#8BC34A",
           backgroundColor: "#8BC34A",
-          tension: 0.35,
-          borderWidth: 3,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBorderWidth: 1.5,
-
-          datalabels: {
-            align: "top",
-            anchor: "end",
-            offset: 8
-          }
+          tension: 0.4,
+          pointRadius: 5
         },
 
         {
@@ -2873,26 +3162,16 @@ function criarGraficos(
           data: fisicoRealizado,
           borderColor: "#007E7A",
           backgroundColor: "#007E7A",
-          tension: 0.35,
-          borderWidth: 3,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBorderWidth: 1.5,
-
-          datalabels: {
-            align: "bottom",
-            anchor: "start",
-            offset: 8
-          }
+          tension: 0.4,
+          pointRadius: 5,
+          spanGaps: false
         }
 
       ]
 
     },
 
-    options: opcoesBaseGrafico(
-      Math.ceil(maxFisico / 10) * 10
-    )
+    options: criarOpcoesGraficoPercentual()
 
   });
 
@@ -2912,17 +3191,8 @@ function criarGraficos(
           data: financeiroPlanejadoPercentual,
           borderColor: "#8BC34A",
           backgroundColor: "#8BC34A",
-          tension: 0.35,
-          borderWidth: 3,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBorderWidth: 1.5,
-
-          datalabels: {
-            align: "top",
-            anchor: "end",
-            offset: 8
-          }
+          tension: 0.4,
+          pointRadius: 5
         },
 
         {
@@ -2930,47 +3200,123 @@ function criarGraficos(
           data: financeiroRealizadoPercentual,
           borderColor: "#007E7A",
           backgroundColor: "#007E7A",
-          tension: 0.35,
-          borderWidth: 3,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBorderWidth: 1.5,
-
-          datalabels: {
-            align: "bottom",
-            anchor: "start",
-            offset: 8
-          }
+          tension: 0.4,
+          pointRadius: 5,
+          spanGaps: false
         }
 
       ]
 
     },
 
-    options: opcoesBaseGrafico(
-      Math.ceil(maxFinanceiro / 10) * 10
-    )
+    options: criarOpcoesGraficoPercentual()
 
   });
 
 }
 
 /* =====================================================
-   EXPORTAR PDF
+   OPÇÕES DO GRÁFICO EM PERCENTUAL
 ===================================================== */
 
-function aguardar(ms) {
+function criarOpcoesGraficoPercentual() {
 
-  return new Promise((resolve) => {
+  return {
 
-    setTimeout(
-      resolve,
-      ms
-    );
+    responsive: true,
+    maintainAspectRatio: false,
 
-  });
+    interaction: {
+      mode: "index",
+      intersect: false
+    },
+
+    plugins: {
+
+      legend: {
+
+        labels: {
+          font: {
+            size: 11,
+            weight: "700"
+          }
+        }
+
+      },
+
+      datalabels: {
+
+        align: "top",
+        anchor: "end",
+
+        formatter: (value) => {
+
+          if (
+            value === null ||
+            value === undefined
+          ) {
+            return "";
+          }
+
+          return percentual(value);
+
+        },
+
+        font: {
+          size: 10,
+          weight: "bold"
+        }
+
+      },
+
+      tooltip: {
+
+        callbacks: {
+
+          label: (context) => {
+
+            if (
+              context.raw === null ||
+              context.raw === undefined
+            ) {
+              return "";
+            }
+
+            return `${context.dataset.label}: ${percentual(context.raw || 0)}`;
+
+          }
+
+        }
+
+      }
+
+    },
+
+    scales: {
+
+      y: {
+
+        beginAtZero: true,
+        suggestedMax: 100,
+        max: 110,
+
+        ticks: {
+
+          callback: (value) => `${value}%`
+
+        }
+
+      }
+
+    }
+
+  };
 
 }
+
+/* =====================================================
+   EXPORTAR PDF POR BLOCOS
+===================================================== */
 
 function configurarExportarPDF() {
 
@@ -2981,12 +3327,6 @@ function configurarExportarPDF() {
   btnExportarPDF.addEventListener(
     "click",
     async () => {
-
-      const textoOriginal =
-      btnExportarPDF.innerHTML;
-
-      const scrollAtual =
-      window.scrollY;
 
       try {
 
@@ -3013,69 +3353,18 @@ function configurarExportarPDF() {
           "exportando-pdf"
         );
 
-        window.scrollTo(
-          0,
-          0
+        await new Promise((resolve) =>
+          setTimeout(resolve, 250)
         );
 
         redimensionarGraficos();
 
-        await aguardar(
-          600
+        await new Promise((resolve) =>
+          setTimeout(resolve, 500)
         );
 
         const { jsPDF } =
         window.jspdf;
-
-        const elemento =
-        document.querySelector(".main");
-
-        if (!elemento) {
-
-          alert(
-            "Área principal não encontrada para exportação."
-          );
-
-          return;
-
-        }
-
-        const larguraElemento =
-        Math.max(
-          elemento.scrollWidth,
-          elemento.offsetWidth,
-          elemento.clientWidth
-        );
-
-        const alturaElemento =
-        Math.max(
-          elemento.scrollHeight,
-          elemento.offsetHeight,
-          elemento.clientHeight
-        );
-
-        const canvas =
-        await html2canvas(
-          elemento,
-          {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: "#ffffff",
-            width: larguraElemento,
-            height: alturaElemento,
-            windowWidth: larguraElemento,
-            windowHeight: alturaElemento,
-            scrollX: 0,
-            scrollY: 0
-          }
-        );
-
-        const imgData =
-        canvas.toDataURL(
-          "image/png",
-          1.0
-        );
 
         const pdf =
         new jsPDF(
@@ -3084,70 +3373,109 @@ function configurarExportarPDF() {
           "a4"
         );
 
-        const paginaLargura =
+        const larguraPagina =
         pdf.internal.pageSize.getWidth();
 
-        const paginaAltura =
+        const alturaPagina =
         pdf.internal.pageSize.getHeight();
 
         const margem =
         8;
 
         const larguraUtil =
-        paginaLargura - margem * 2;
+        larguraPagina - margem * 2;
 
         const alturaUtil =
-        paginaAltura - margem * 2;
-
-        const imgLargura =
-        larguraUtil;
-
-        const imgAltura =
-        (
-          canvas.height *
-          imgLargura
-        ) /
-        canvas.width;
-
-        let alturaRestante =
-        imgAltura;
+        alturaPagina - margem * 2;
 
         let posicaoY =
         margem;
 
-        pdf.addImage(
-          imgData,
-          "PNG",
-          margem,
-          posicaoY,
-          imgLargura,
-          imgAltura
-        );
+        let primeiraPagina =
+        true;
 
-        alturaRestante -=
-        alturaUtil;
+        const blocos =
+        obterBlocosParaPDF();
 
-        while (alturaRestante > 0.5) {
+        for (const bloco of blocos) {
 
-          pdf.addPage();
+          if (
+            !bloco ||
+            bloco.offsetParent === null
+          ) {
+            continue;
+          }
 
-          posicaoY =
-          margem - (
-            imgAltura -
-            alturaRestante
+          const canvas =
+          await window.html2canvas(
+            bloco,
+            {
+              scale: 2,
+              useCORS: true,
+              backgroundColor: "#ffffff",
+              logging: false
+            }
           );
+
+          const imgData =
+          canvas.toDataURL(
+            "image/png"
+          );
+
+          let imgWidth =
+          larguraUtil;
+
+          let imgHeight =
+          (
+            canvas.height *
+            imgWidth
+          ) /
+          canvas.width;
+
+          if (imgHeight > alturaUtil) {
+
+            const fator =
+            alturaUtil / imgHeight;
+
+            imgHeight =
+            alturaUtil;
+
+            imgWidth =
+            imgWidth * fator;
+
+          }
+
+          if (
+            !primeiraPagina &&
+            posicaoY + imgHeight > alturaPagina - margem
+          ) {
+
+            pdf.addPage();
+
+            posicaoY =
+            margem;
+
+          }
+
+          const posicaoX =
+          margem + (
+            larguraUtil - imgWidth
+          ) / 2;
 
           pdf.addImage(
             imgData,
             "PNG",
-            margem,
+            posicaoX,
             posicaoY,
-            imgLargura,
-            imgAltura
+            imgWidth,
+            imgHeight
           );
 
-          alturaRestante -=
-          alturaUtil;
+          posicaoY +=
+          imgHeight + 5;
+
+          primeiraPagina =
+          false;
 
         }
 
@@ -3176,12 +3504,7 @@ function configurarExportarPDF() {
         false;
 
         btnExportarPDF.innerHTML =
-        textoOriginal;
-
-        window.scrollTo(
-          0,
-          scrollAtual
-        );
+        `<i class="fa-solid fa-file-pdf"></i> Exportar PDF`;
 
         redimensionarGraficos();
 
@@ -3189,6 +3512,57 @@ function configurarExportarPDF() {
 
     }
   );
+
+}
+
+function obterBlocosParaPDF() {
+
+  const blocos = [];
+
+  const topbar =
+  document.querySelector(".topbar");
+
+  const filtros =
+  document.querySelector(".main > .card");
+
+  const resumoTopo =
+  document.querySelector(".resumo-topo");
+
+  const resumoTabela =
+  document.querySelector(".main > .card:nth-of-type(2)");
+
+  if (topbar) {
+    blocos.push(topbar);
+  }
+
+  if (filtros) {
+    blocos.push(filtros);
+  }
+
+  if (resumoTopo) {
+    blocos.push(resumoTopo);
+  }
+
+  if (resumoTabela) {
+    blocos.push(resumoTabela);
+  }
+
+  if (
+    detalhamentoPlanejamento &&
+    detalhamentoPlanejamento.style.display !== "none"
+  ) {
+
+    detalhamentoPlanejamento
+      .querySelectorAll(":scope > .card, :scope .chart-card")
+      .forEach((bloco) => {
+
+        blocos.push(bloco);
+
+      });
+
+  }
+
+  return blocos;
 
 }
 
@@ -3202,7 +3576,6 @@ function configurarEventosFiltros() {
     "change",
     () => {
 
-      limparDetalhamento();
       carregarLocalidades();
       carregarFiltroObras();
       renderTabela();
@@ -3214,7 +3587,6 @@ function configurarEventosFiltros() {
     "change",
     () => {
 
-      limparDetalhamento();
       carregarFiltroObras();
       renderTabela();
 
@@ -3223,25 +3595,20 @@ function configurarEventosFiltros() {
 
   filtroObra?.addEventListener(
     "change",
-    () => {
-
-      limparDetalhamento();
-      renderTabela();
-
-    }
+    renderTabela
   );
 
   filtroStatus?.addEventListener(
     "change",
-    () => {
-
-      limparDetalhamento();
-      renderTabela();
-
-    }
+    renderTabela
   );
 
 }
+
+window.addEventListener(
+  "resize",
+  redimensionarGraficos
+);
 
 /* =====================================================
    INIT

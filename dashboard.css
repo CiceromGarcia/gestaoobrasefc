@@ -1,7 +1,13 @@
 /* =====================================================
    DASHBOARD - PAINEL EXECUTIVO DE OBRAS
    Arquivo: dashboard.css
-   Versão: v011
+   Versão: v012
+
+   Correções:
+   - Fonte da impressão/PDF ajustada para 11px.
+   - Layout de exportação ajustado para não cortar tabela/gráficos.
+   - Cards, tabelas e gráficos com quebra protegida.
+   - Área exportada ocupando 100% da largura sem sidebar.
 ===================================================== */
 
 *{
@@ -708,11 +714,12 @@ tbody input:focus{
 }
 
 /* =========================================
-   EXPORTAÇÃO PDF
+   EXPORTAÇÃO PDF - AJUSTADO PARA NÃO CORTAR
 ========================================= */
 
 body.exportando-pdf{
   background:#fff !important;
+  overflow:visible !important;
 }
 
 body.exportando-pdf .sidebar{
@@ -722,44 +729,138 @@ body.exportando-pdf .sidebar{
 body.exportando-pdf .main{
   margin-left:0 !important;
   width:100% !important;
-  padding:12px !important;
+  max-width:none !important;
+  padding:10px !important;
+  overflow:visible !important;
+  background:#fff !important;
 }
 
 body.exportando-pdf .top-buttons{
   display:none !important;
 }
 
+body.exportando-pdf .topbar{
+  margin-bottom:14px !important;
+  break-inside:avoid !important;
+  page-break-inside:avoid !important;
+}
+
+body.exportando-pdf .topbar h1{
+  font-size:26px !important;
+}
+
+body.exportando-pdf .topbar p{
+  font-size:13px !important;
+}
+
+body.exportando-pdf .topbar .usuario-logado-info,
+body.exportando-pdf .topbar .sg-usuario-logado-info,
+body.exportando-pdf .topbar .usuario-logado-info span,
+body.exportando-pdf .topbar .sg-usuario-logado-info span,
+body.exportando-pdf .topbar .usuario-logado-info strong,
+body.exportando-pdf .topbar .sg-usuario-logado-info strong{
+  font-size:12px !important;
+}
+
 body.exportando-pdf .card{
   box-shadow:none !important;
   border:1px solid #e5e7eb !important;
-  page-break-inside:avoid;
-  break-inside:avoid;
+  page-break-inside:avoid !important;
+  break-inside:avoid !important;
+  overflow:visible !important;
+  margin-bottom:12px !important;
+}
+
+body.exportando-pdf .resumo-topo{
+  page-break-inside:avoid !important;
+  break-inside:avoid !important;
+  margin-bottom:12px !important;
+}
+
+body.exportando-pdf .kpi-grid-top{
+  grid-template-columns:repeat(4, minmax(0,1fr)) !important;
+  gap:10px !important;
+}
+
+body.exportando-pdf .kpi{
+  min-height:74px !important;
+  padding:12px 14px !important;
+  page-break-inside:avoid !important;
+  break-inside:avoid !important;
+}
+
+body.exportando-pdf .kpi span{
+  font-size:11px !important;
+}
+
+body.exportando-pdf .kpi h2{
+  font-size:26px !important;
 }
 
 body.exportando-pdf .table-scroll{
   overflow:visible !important;
+  max-height:none !important;
+  border-radius:8px !important;
 }
 
 body.exportando-pdf table{
+  width:100% !important;
   min-width:100% !important;
+  table-layout:auto !important;
+  border-collapse:collapse !important;
 }
 
-body.exportando-pdf th,
+body.exportando-pdf th{
+  font-size:11px !important;
+  padding:7px 6px !important;
+  line-height:1.25 !important;
+  white-space:normal !important;
+  font-weight:800 !important;
+}
+
 body.exportando-pdf td{
-  font-size:8px !important;
-  padding:5px !important;
+  font-size:11px !important;
+  padding:7px 6px !important;
+  line-height:1.25 !important;
+  white-space:normal !important;
+  font-weight:600 !important;
+}
+
+body.exportando-pdf .section-title{
+  font-size:15px !important;
+  margin-bottom:10px !important;
+  page-break-after:avoid !important;
+  break-after:avoid !important;
 }
 
 body.exportando-pdf .chart-card,
 body.exportando-pdf .chart-card-full{
-  height:420px !important;
-  page-break-inside:avoid;
-  break-inside:avoid;
+  height:360px !important;
+  min-height:360px !important;
+  overflow:visible !important;
+  page-break-inside:avoid !important;
+  break-inside:avoid !important;
+  margin-bottom:12px !important;
 }
 
 body.exportando-pdf .chart-card canvas,
 body.exportando-pdf .chart-card-full canvas{
-  height:350px !important;
+  height:295px !important;
+  max-height:295px !important;
+  width:100% !important;
+}
+
+body.exportando-pdf .charts-bottom,
+body.exportando-pdf .charts-stack{
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:12px !important;
+  page-break-inside:auto !important;
+  break-inside:auto !important;
+}
+
+body.exportando-pdf #detalhamentoPlanejamento{
+  overflow:visible !important;
 }
 
 /* =========================================
@@ -916,6 +1017,94 @@ body.exportando-pdf .chart-card-full canvas{
   .chart-card canvas,
   .chart-card-full canvas{
     height:285px !important;
+  }
+
+}
+
+/* =========================================
+   IMPRESSÃO DO NAVEGADOR
+========================================= */
+
+@page{
+  size:A4 landscape;
+  margin:6mm;
+}
+
+@media print{
+
+  *{
+    -webkit-print-color-adjust:exact !important;
+    print-color-adjust:exact !important;
+  }
+
+  html,
+  body{
+    width:100% !important;
+    background:#fff !important;
+    overflow:visible !important;
+  }
+
+  .sidebar,
+  .top-buttons,
+  .btn,
+  button{
+    display:none !important;
+  }
+
+  .main{
+    margin-left:0 !important;
+    width:100% !important;
+    max-width:none !important;
+    padding:0 !important;
+    overflow:visible !important;
+  }
+
+  .topbar,
+  .card,
+  .resumo-topo,
+  .kpi,
+  .chart-card,
+  .chart-card-full{
+    box-shadow:none !important;
+    page-break-inside:avoid !important;
+    break-inside:avoid !important;
+  }
+
+  .card{
+    border:1px solid #e5e7eb !important;
+    margin-bottom:10px !important;
+  }
+
+  .table-scroll{
+    overflow:visible !important;
+    max-height:none !important;
+  }
+
+  table{
+    min-width:100% !important;
+    width:100% !important;
+    table-layout:auto !important;
+  }
+
+  th,
+  td{
+    font-size:11px !important;
+    padding:7px 6px !important;
+    line-height:1.25 !important;
+    white-space:normal !important;
+  }
+
+  .chart-card,
+  .chart-card-full{
+    height:360px !important;
+    min-height:360px !important;
+    overflow:visible !important;
+  }
+
+  .chart-card canvas,
+  .chart-card-full canvas{
+    height:295px !important;
+    max-height:295px !important;
   }
 
 }
