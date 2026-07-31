@@ -428,8 +428,8 @@ body.usuario-admin .menu a[data-admin-only]{
   background:#fff;
   border:1px solid #e7e7e7;
   border-radius:14px;
-  padding:14px 16px;
-  min-height:82px;
+  padding:10px 16px;
+  min-height:58px;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -457,7 +457,7 @@ body.usuario-admin .menu a[data-admin-only]{
   font-size:10px;
   color:#777;
   font-weight:700;
-  margin-bottom:8px;
+  margin-bottom:4px;
   white-space:nowrap;
   text-transform:uppercase;
   letter-spacing:.3px;
@@ -465,7 +465,7 @@ body.usuario-admin .menu a[data-admin-only]{
 
 .kpi h2{
   color:#007E7A;
-  font-size:26px;
+  font-size:22px;
   line-height:1;
   font-weight:800;
 }

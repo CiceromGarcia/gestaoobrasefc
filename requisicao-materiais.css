@@ -69,24 +69,20 @@ body.modal-aberto{
 ===================================================== */
 
 .app-header{
-  background:linear-gradient(
-    90deg,
-    var(--verde-escuro),
-    var(--verde)
-  );
+  background:linear-gradient(135deg,#0f2a2e 0%,#0a1f22 100%);
 
   color:#fff;
 
-  padding:13px 18px;
-  border-radius:var(--radius);
+  padding:24px 28px;
+  border-radius:16px;
 
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:16px;
 
-  box-shadow:var(--shadow);
-  margin-bottom:10px;
+  box-shadow:0 6px 18px rgba(15,42,46,.22);
+  margin-bottom:14px;
 }
 
 .header-left{
@@ -112,7 +108,7 @@ body.modal-aberto{
 }
 
 .header-left h1{
-  font-size:20px;
+  font-size:24px;
   font-weight:900;
   line-height:1.2;
   letter-spacing:.2px;
@@ -125,6 +121,76 @@ body.modal-aberto{
   font-size:12px;
   font-weight:500;
   opacity:.92;
+}
+
+.app-header .usuario-logado-info,
+.app-header .sg-usuario-logado-info{
+  width:auto !important;
+  max-width:100% !important;
+  margin-top:6px !important;
+  padding:0 !important;
+
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  flex-wrap:wrap !important;
+  gap:6px !important;
+
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+
+  color:rgba(255,255,255,.68) !important;
+  font-size:12px !important;
+  font-weight:600 !important;
+  line-height:1.25 !important;
+}
+
+.app-header .usuario-logado-info span,
+.app-header .sg-usuario-logado-info span{
+  margin-top:0 !important;
+  padding:0 !important;
+
+  display:inline-flex !important;
+  align-items:center !important;
+  gap:4px !important;
+
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+
+  color:rgba(255,255,255,.68) !important;
+  opacity:1 !important;
+
+  font-size:12px !important;
+  font-weight:600 !important;
+  line-height:1.25 !important;
+}
+
+.app-header .usuario-logado-info strong,
+.app-header .sg-usuario-logado-info strong{
+  color:#5eeade !important;
+  font-size:12px !important;
+  font-weight:800 !important;
+  line-height:1.25 !important;
+
+  max-width:380px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.app-header .usuario-label{
+  color:rgba(255,255,255,.55) !important;
+  font-weight:700 !important;
+}
+
+.app-header .usuario-logado-separador,
+.app-header .sg-usuario-logado-separador{
+  color:rgba(255,255,255,.35) !important;
+  font-weight:700 !important;
 }
 
 .header-actions{

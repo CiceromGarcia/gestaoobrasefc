@@ -1333,6 +1333,8 @@ function registroPertenceAObra(
     obra.idProjeto,
     obra.idObra,
     obra.obraId,
+    obra.codigoObra,
+    obra.codigo,
     obra.nomeProjeto
   ]
     .filter(Boolean)
@@ -1344,6 +1346,8 @@ function registroPertenceAObra(
     registro.idProjeto,
     registro.projetoId,
     registro.obraDocId,
+    registro.codigoObra,
+    registro.codigo,
     registro.obra,
     registro.obraNome,
     registro.nomeObra,
@@ -1902,6 +1906,20 @@ async function carregarObrasFirebase() {
 
         obraId:
         dados.obraId || "",
+
+        /*
+          CORREÇÃO: "codigoObra"/"codigo" (ex.: "OBR-0004") não eram
+          copiados pra cá. Quando idProjeto/idObra também estavam
+          preenchidos com outro valor, o código da obra ficava de
+          fora das chaves de casamento em registroPertenceAObra(),
+          e um lançamento de Curva S salvo referenciando a obra pelo
+          código deixava de ser encontrado — a obra aparecia como
+          "sem avanço" mesmo tendo avanço real lançado.
+        */
+        codigoObra:
+        dados.codigoObra ||
+        dados.codigo ||
+        "",
 
         nomeProjeto:
         nomeProjeto,
@@ -2962,6 +2980,21 @@ function renderPlanejamento(
     )
     : null;
 
+    /*
+      Valor em R$ do financeiro executado acumulado (não o percentual).
+      Usado só na tabela — o gráfico da Curva S continua em % via
+      financeiroExecutadoPercentual, sem alteração.
+    */
+    const financeiroExecutadoValor =
+    realizado &&
+    realizado.financeiroAcumuladoValorCalculado !== null &&
+    realizado.financeiroAcumuladoValorCalculado !== undefined
+    ? Number(
+      realizado.financeiroAcumuladoValorCalculado ||
+      0
+    )
+    : null;
+
     const classeFisico =
     fisicoRealizado !== null &&
     fisicoRealizado < fisicoPlanejado
@@ -3012,8 +3045,8 @@ function renderPlanejamento(
 
     tr.appendChild(
       criarCelulaHTMLSeguro(
-        financeiroExecutadoPercentual !== null
-        ? percentual(financeiroExecutadoPercentual)
+        financeiroExecutadoValor !== null
+        ? moedaCompleta(financeiroExecutadoValor)
         : "-",
         classeFinanceiro
       )

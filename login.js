@@ -132,11 +132,11 @@ window.location.pathname
 const PAGINA_LOGIN =
 `./${ARQUIVO_LOGIN_ATUAL}`;
 
-const EMAILS_ADMIN_GERAL = [
-  "cicero.garcia@vale.com",
-  "c0706341@vale.com",
-  "ciceromgarcia@gmail.com"
-];
+/*
+  SEGURANÇA: lista fixa de e-mails admin removida (ficava exposta
+  via "Ver código-fonte"). Perfil salvo no Firestore é a única
+  fonte de verdade.
+*/
 
 /* =====================================================
    CONTROLES
@@ -271,18 +271,11 @@ function usuarioEhAdministrador(dadosUsuario) {
     dadosUsuario?.perfil
   );
 
-  const email =
-  emailNormalizado(
-    dadosUsuario?.email ||
-    dadosUsuario?.emailAuth
-  );
-
   return (
     perfil === "administrador" ||
     perfil === "admin" ||
     perfil === "adm" ||
-    perfil === "administrator" ||
-    EMAILS_ADMIN_GERAL.includes(email)
+    perfil === "administrator"
   );
 
 }

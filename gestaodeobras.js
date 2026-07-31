@@ -411,11 +411,11 @@ function extrairDatasPeriodo(periodo) {
    PERMISSÕES E USUÁRIO LOGADO
 ========================= */
 
-const EMAILS_ADMIN_GERAL = new Set([
-  "cicero.garcia@vale.com",
-  "c0706341@vale.com",
-  "ciceromgarcia@gmail.com"
-]);
+/*
+  SEGURANÇA: lista fixa de e-mails admin removida (ficava exposta
+  via "Ver código-fonte"). Perfil salvo no Firestore é a única
+  fonte de verdade.
+*/
 
 function normalizarEmail(valor) {
   return String(valor || "")
@@ -671,15 +671,6 @@ function obterPerfilEfetivoGestao(usuario) {
 
   if (perfilBanco) {
     return perfilBanco;
-  }
-
-  const email = obterEmailUsuario(usuario);
-
-  if (
-    EMAILS_ADMIN_GERAL.has(email) &&
-    usuario?.adminRebaixado !== true
-  ) {
-    return "administrador";
   }
 
   return "usuario";
@@ -963,7 +954,31 @@ function calcularStatus(obra, custoExecucao, fisicoRealAcum) {
     0
   );
 
-  if (fisico >= 100) {
+  const statusInformadoBruto =
+    obra.status ||
+    obra.statusObra ||
+    obra.statusNovo ||
+    obra.fase ||
+    "";
+
+  const statusInformado = statusInformadoBruto
+    ? normalizarStatus(statusInformadoBruto)
+    : "";
+
+  /*
+    CORREÇÃO: antes, esta função checava o avanço físico (fisico > 0)
+    ANTES do status manual — então uma obra marcada manualmente como
+    "Paralisada" continuava aparecendo como "Em andamento" se tivesse
+    algum avanço físico já lançado antes da paralisação. Isso divergia
+    do dashboard.js, que sempre respeita o status manual "Paralisada"
+    em primeiro lugar. Agora a ordem de prioridade é a mesma nos dois
+    arquivos: status manual > avanço físico > custo sem avanço.
+  */
+  if (statusInformado === "Paralisada") {
+    return "Paralisada";
+  }
+
+  if (statusInformado === "Concluído" || fisico >= 100) {
     return "Concluído";
   }
 
@@ -975,15 +990,8 @@ function calcularStatus(obra, custoExecucao, fisicoRealAcum) {
     return "Paralisada";
   }
 
-  const statusInformado =
-    obra.status ||
-    obra.statusObra ||
-    obra.statusNovo ||
-    obra.fase ||
-    "";
-
   if (statusInformado) {
-    return normalizarStatus(statusInformado);
+    return statusInformado;
   }
 
   return "Planejado";
@@ -1089,6 +1097,40 @@ function montarMapaDatas(snapshotCurva) {
 }
 
 function obterOrdemRegistro(item) {
+  /*
+    CORREÇÃO: esta função decidia "qual semana é a mais recente"
+    usando datas de AUDITORIA (dataAtualizacao/atualizadoEm/criadoEm)
+    — ou seja, a data da última EDIÇÃO do documento, não a semana em
+    si. Isso quebra quando alguém edita um registro antigo por outro
+    motivo (ex.: corrigir o status de uma anomalia semanas depois):
+    o registro antigo passa a "parecer" mais recente que semanas
+    seguintes de verdade, e o sistema exibe dados de avanço físico e
+    financeiro desatualizados/errados.
+
+    Agora a ordem é decidida primeiro pelo número da semana (ex.:
+    "SEM 4" → 4), depois pela data de início do período (ex.:
+    "13/06/2026 a 18/06/2026"), e só em último caso (registros muito
+    antigos sem nenhum desses campos) pelas datas de auditoria.
+  */
+
+  const semanaNumero = Number(
+    String(item.semana || "")
+      .replace(/[^\d]/g, "")
+  );
+
+  if (Number.isFinite(semanaNumero) && semanaNumero > 0) {
+    return semanaNumero;
+  }
+
+  const inicioPeriodo = String(item.periodo || "")
+    .split(/\s+a\s+/i)[0];
+
+  const tempoPeriodo = dataParaTempo(inicioPeriodo);
+
+  if (tempoPeriodo !== null) {
+    return tempoPeriodo;
+  }
+
   const datas = [
     item.dataAtualizacao,
     item.atualizadoEm,
@@ -1106,12 +1148,7 @@ function obterOrdemRegistro(item) {
     }
   }
 
-  const semana = Number(
-    String(item.semana || "")
-      .replace(/[^\d]/g, "")
-  );
-
-  return Number.isFinite(semana) ? semana : -1;
+  return -1;
 }
 
 function obterValorCampo(item, campos) {
@@ -3126,7 +3163,9 @@ function exportarPDF() {
   );
 }
 
-window.exportarPDF = exportarPDF;
+document
+  .getElementById("btnExportarPdfGestao")
+  ?.addEventListener("click", exportarPDF);
 
 /* =========================
    EVENTOS

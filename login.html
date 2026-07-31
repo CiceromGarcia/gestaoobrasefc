@@ -3,10 +3,12 @@
 
 <head>
 
-  <meta
-    http-equiv="Content-Security-Policy"
-    content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com; script-src 'self' https://www.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https:; font-src 'self' https://cdnjs.cloudflare.com data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
-  >
+  <!--
+    A Content-Security-Policy agora é enviada como HEADER HTTP pelo
+    Firebase Hosting (ver firebase.json), não mais por <meta> aqui,
+    para evitar políticas diferentes (e possivelmente mais fracas)
+    em cada página.
+  -->
 
   <meta charset="UTF-8">
 
@@ -47,48 +49,26 @@
   <main class="login-page">
 
     <!-- =====================================
-         PAINEL ESQUERDO
-    ====================================== -->
-
-    <section class="brand-panel">
-
-      <div class="brand-content">
-
-        <div class="logo-box">
-
-          <img
-            src="./logo-vale.png"
-            alt="Logo"
-            class="logo-vale"
-          >
-
-        </div>
-
-        <h1>
-          Sistema de Obras
-        </h1>
-
-        <p>
-          Gestão, planejamento e acompanhamento de obras
-        </p>
-
-        <div class="brand-line"></div>
-
-        <span>
-          Ambiente seguro de acesso
-        </span>
-
-      </div>
-
-    </section>
-
-    <!-- =====================================
-         PAINEL DIREITO
+         CARD DE ACESSO (centralizado)
     ====================================== -->
 
     <section class="auth-panel">
 
       <div class="auth-card">
+
+        <div class="auth-brand">
+
+          <img
+            src="./logo_servicos.png"
+            alt="Logo"
+            class="auth-brand-logo"
+          >
+
+          <span class="auth-brand-nome">
+            Sistema de Gerenciamento de Obras
+          </span>
+
+        </div>
 
         <div class="auth-header">
 
@@ -125,6 +105,12 @@
         </div>
 
         <!-- =====================================
+             FORMULÁRIOS (empilhados, mesma altura)
+        ====================================== -->
+
+        <div class="form-stack">
+
+        <!-- =====================================
              FORMULÁRIO DE LOGIN
         ====================================== -->
 
@@ -134,50 +120,62 @@
           autocomplete="on"
         >
 
-          <label for="loginEmail">
-            E-mail
-          </label>
+          <div class="login-linha-dupla">
 
-          <div class="input-group">
+            <div class="campo-login">
 
-            <i class="fa-solid fa-envelope"></i>
+              <label for="loginEmail">
+                E-mail
+              </label>
 
-            <input
-              type="email"
-              id="loginEmail"
-              name="loginEmail"
-              placeholder="Digite seu e-mail"
-              autocomplete="username"
-              required
-            >
+              <div class="input-group">
 
-          </div>
+                <i class="fa-solid fa-envelope"></i>
 
-          <label for="loginSenha">
-            Senha
-          </label>
+                <input
+                  type="email"
+                  id="loginEmail"
+                  name="loginEmail"
+                  placeholder="Digite seu e-mail"
+                  autocomplete="username"
+                  required
+                >
 
-          <div class="input-group">
+              </div>
 
-            <i class="fa-solid fa-lock"></i>
+            </div>
 
-            <input
-              type="password"
-              id="loginSenha"
-              name="loginSenha"
-              placeholder="Digite sua senha"
-              autocomplete="current-password"
-              required
-            >
+            <div class="campo-login">
 
-            <button
-              type="button"
-              class="eye-btn"
-              data-target="loginSenha"
-              aria-label="Mostrar ou ocultar senha"
-            >
-              <i class="fa-solid fa-eye"></i>
-            </button>
+              <label for="loginSenha">
+                Senha
+              </label>
+
+              <div class="input-group">
+
+                <i class="fa-solid fa-lock"></i>
+
+                <input
+                  type="password"
+                  id="loginSenha"
+                  name="loginSenha"
+                  placeholder="Digite sua senha"
+                  autocomplete="current-password"
+                  required
+                >
+
+                <button
+                  type="button"
+                  class="eye-btn"
+                  data-target="loginSenha"
+                  aria-label="Mostrar ou ocultar senha"
+                >
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+
+              </div>
+
+            </div>
 
           </div>
 
@@ -210,99 +208,123 @@
           autocomplete="on"
         >
 
-          <label for="cadastroNome">
-            Nome completo
-          </label>
+          <div class="login-linha-dupla">
 
-          <div class="input-group">
+            <div class="campo-login">
 
-            <i class="fa-solid fa-user"></i>
+              <label for="cadastroNome">
+                Nome completo
+              </label>
 
-            <input
-              type="text"
-              id="cadastroNome"
-              name="cadastroNome"
-              placeholder="Digite seu nome"
-              autocomplete="name"
-              required
-            >
+              <div class="input-group">
 
-          </div>
+                <i class="fa-solid fa-user"></i>
 
-          <label for="cadastroEmail">
-            E-mail
-          </label>
+                <input
+                  type="text"
+                  id="cadastroNome"
+                  name="cadastroNome"
+                  placeholder="Digite seu nome"
+                  autocomplete="name"
+                  required
+                >
 
-          <div class="input-group">
+              </div>
 
-            <i class="fa-solid fa-envelope"></i>
+            </div>
 
-            <input
-              type="email"
-              id="cadastroEmail"
-              name="cadastroEmail"
-              placeholder="Digite seu e-mail"
-              autocomplete="email"
-              required
-            >
+            <div class="campo-login">
 
-          </div>
+              <label for="cadastroEmail">
+                E-mail
+              </label>
 
-          <label for="cadastroSenha">
-            Senha
-          </label>
+              <div class="input-group">
 
-          <div class="input-group">
+                <i class="fa-solid fa-envelope"></i>
 
-            <i class="fa-solid fa-lock"></i>
+                <input
+                  type="email"
+                  id="cadastroEmail"
+                  name="cadastroEmail"
+                  placeholder="Digite seu e-mail"
+                  autocomplete="email"
+                  required
+                >
 
-            <input
-              type="password"
-              id="cadastroSenha"
-              name="cadastroSenha"
-              placeholder="Crie uma senha"
-              autocomplete="new-password"
-              minlength="6"
-              required
-            >
+              </div>
 
-            <button
-              type="button"
-              class="eye-btn"
-              data-target="cadastroSenha"
-              aria-label="Mostrar ou ocultar senha"
-            >
-              <i class="fa-solid fa-eye"></i>
-            </button>
+            </div>
 
           </div>
 
-          <label for="cadastroSenhaConfirmar">
-            Confirmar senha
-          </label>
+          <div class="login-linha-dupla">
 
-          <div class="input-group">
+            <div class="campo-login">
 
-            <i class="fa-solid fa-lock"></i>
+              <label for="cadastroSenha">
+                Senha
+              </label>
 
-            <input
-              type="password"
-              id="cadastroSenhaConfirmar"
-              name="cadastroSenhaConfirmar"
-              placeholder="Confirme sua senha"
-              autocomplete="new-password"
-              minlength="6"
-              required
-            >
+              <div class="input-group">
 
-            <button
-              type="button"
-              class="eye-btn"
-              data-target="cadastroSenhaConfirmar"
-              aria-label="Mostrar ou ocultar senha"
-            >
-              <i class="fa-solid fa-eye"></i>
-            </button>
+                <i class="fa-solid fa-lock"></i>
+
+                <input
+                  type="password"
+                  id="cadastroSenha"
+                  name="cadastroSenha"
+                  placeholder="Crie uma senha"
+                  autocomplete="new-password"
+                  minlength="6"
+                  required
+                >
+
+                <button
+                  type="button"
+                  class="eye-btn"
+                  data-target="cadastroSenha"
+                  aria-label="Mostrar ou ocultar senha"
+                >
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+
+              </div>
+
+            </div>
+
+            <div class="campo-login">
+
+              <label for="cadastroSenhaConfirmar">
+                Confirmar senha
+              </label>
+
+              <div class="input-group">
+
+                <i class="fa-solid fa-lock"></i>
+
+                <input
+                  type="password"
+                  id="cadastroSenhaConfirmar"
+                  name="cadastroSenhaConfirmar"
+                  placeholder="Confirme sua senha"
+                  autocomplete="new-password"
+                  minlength="6"
+                  required
+                >
+
+                <button
+                  type="button"
+                  class="eye-btn"
+                  data-target="cadastroSenhaConfirmar"
+                  aria-label="Mostrar ou ocultar senha"
+                >
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+
+              </div>
+
+            </div>
 
           </div>
 
@@ -374,6 +396,8 @@
           </button>
 
         </form>
+
+        </div>
 
         <div
           class="message"

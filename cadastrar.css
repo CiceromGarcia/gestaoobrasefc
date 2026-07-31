@@ -1,7 +1,7 @@
 /* =====================================================
    CADASTRO DE OBRAS
    Arquivo: cadastrar.css
-   Versão: v003
+   Versão: v004 — layout profissional
 ===================================================== */
 
 /* =========================================
@@ -12,7 +12,7 @@
   margin:0;
   padding:0;
   box-sizing:border-box;
-  font-family:'Segoe UI',sans-serif;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
 }
 
 /* =========================================
@@ -20,11 +20,12 @@
 ========================================= */
 
 body{
-  background:#f4f5f7;
-  padding:22px;
-  color:#333;
+  background:#eef1f4;
+  padding:28px;
+  color:#1f2937;
   overflow-y:auto;
   overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
 }
 
 /* =========================================
@@ -66,7 +67,11 @@ body{
 .page-header{
   width:100%;
   max-width:1450px;
-  margin:0 auto 20px auto;
+  margin:0 auto 24px auto;
+  padding:24px 28px;
+  border-radius:16px;
+  background:linear-gradient(135deg,#0f2a2e 0%,#0a1f22 100%);
+  box-shadow:0 6px 18px rgba(15,42,46,.22);
 
   display:flex;
   justify-content:space-between;
@@ -84,16 +89,26 @@ body{
 }
 
 .page-header h1{
-  font-size:26px;
-  color:#222;
-  font-weight:700;
+  font-size:28px;
+  color:#fff;
+  font-weight:800;
+  letter-spacing:-.3px;
   line-height:1.2;
 }
 
 .page-header p{
-  color:#666;
-  margin-top:4px;
-  font-size:13px;
+  color:rgba(255,255,255,.68);
+  margin-top:5px;
+  font-size:13.5px;
+}
+
+.page-header-logo{
+  height:44px;
+  width:auto;
+  max-width:170px;
+  object-fit:contain;
+  flex-shrink:0;
+  align-self:center;
 }
 
 /* =========================================
@@ -118,7 +133,7 @@ body{
   background:transparent !important;
   box-shadow:none !important;
 
-  color:#64748b !important;
+  color:rgba(255,255,255,.68) !important;
   font-size:12px !important;
   font-weight:600 !important;
   line-height:1.25 !important;
@@ -138,7 +153,7 @@ body{
   background:transparent !important;
   box-shadow:none !important;
 
-  color:#64748b !important;
+  color:rgba(255,255,255,.68) !important;
   opacity:1 !important;
 
   font-size:12px !important;
@@ -148,7 +163,7 @@ body{
 
 .page-header .usuario-logado-info strong,
 .page-header .sg-usuario-logado-info strong{
-  color:#007E7A !important;
+  color:#5eeade !important;
   font-size:12px !important;
   font-weight:800 !important;
   line-height:1.25 !important;
@@ -160,13 +175,13 @@ body{
 }
 
 .page-header .usuario-label{
-  color:#64748b !important;
+  color:rgba(255,255,255,.55) !important;
   font-weight:700 !important;
 }
 
 .page-header .usuario-logado-separador,
 .page-header .sg-usuario-logado-separador{
-  color:#94a3b8 !important;
+  color:rgba(255,255,255,.35) !important;
   font-weight:700 !important;
 }
 
@@ -185,35 +200,58 @@ body{
 }
 
 /* =========================================
-   CARD
+   FORM (wrapper transparente — cada seção
+   agora é o próprio card)
 ========================================= */
 
-.card{
-  background:#fff;
-  border-radius:20px;
-  padding:16px;
-  box-shadow:0 4px 12px rgba(0,0,0,.05);
-  margin-bottom:14px;
+.form-cadastro{
+  width:100%;
+  max-width:1450px;
+  margin:0 auto;
 }
 
 /* =========================================
-   SECTION
+   SECTION (agora é um card individual)
 ========================================= */
 
 .section{
-  margin-bottom:18px;
+  background:#fff;
+  border-radius:14px;
+  border-left:5px solid #007E7A;
+  padding:22px 24px;
+  margin-bottom:16px;
+  box-shadow:0 2px 10px rgba(15,42,46,.06);
 }
 
 .section-title{
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:10px;
 
   font-size:16px;
   font-weight:800;
+  color:#0f2a2e;
+
+  margin-bottom:16px;
+  padding-bottom:14px;
+  border-bottom:1px solid #eef1f3;
+}
+
+.section-numero{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+
+  width:26px;
+  height:26px;
+  border-radius:50%;
+
+  background:#e6f4f3;
   color:#007E7A;
 
-  margin-bottom:12px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.2px;
 }
 
 /* =========================================
@@ -223,7 +261,11 @@ body{
 .form-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:14px;
+  gap:16px 18px;
+}
+
+.form-grid-6{
+  grid-template-columns:repeat(6,1fr);
 }
 
 /* =========================================
@@ -238,8 +280,10 @@ body{
 .form-group label{
   font-size:11px;
   font-weight:700;
-  color:#374151;
-  margin-bottom:4px;
+  color:#5b6b70;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+  margin-bottom:6px;
 }
 
 /* =========================================
@@ -250,10 +294,10 @@ body{
 .form-group select,
 .form-group textarea{
   width:100%;
-  border:1px solid #dcdcdc;
+  border:1px solid #d7dde3;
   border-radius:10px;
   padding:8px 12px;
-  font-size:12px;
+  font-size:13px;
   background:#fff;
   color:#111827;
   transition:.2s;
@@ -261,17 +305,17 @@ body{
 
 .form-group input,
 .form-group select{
-  height:36px;
+  height:40px;
 }
 
 .form-group textarea{
-  min-height:90px;
+  min-height:100px;
   resize:none;
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder{
-  font-size:12px;
+  font-size:12.5px;
   color:#9ca3af;
 }
 
@@ -280,12 +324,13 @@ body{
 .form-group textarea:focus{
   outline:none;
   border-color:#007E7A;
-  box-shadow:0 0 0 3px rgba(0,126,122,.10);
+  box-shadow:0 0 0 3px rgba(0,126,122,.12);
 }
 
 input[readonly],
 input[disabled]{
-  background:#f9fafb;
+  background:#f8fafa;
+  color:#6b7c80;
 }
 
 /* =========================================
@@ -293,9 +338,10 @@ input[disabled]{
 ========================================= */
 
 #investimento{
-  background:#f4f5f7;
+  background:#f3f8f8;
   color:#007E7A;
   font-weight:800;
+  border-color:#cfe6e5;
 }
 
 /* =========================================
@@ -304,27 +350,31 @@ input[disabled]{
 
 .gut-badge{
   width:100%;
-  height:58px;
-  border-radius:14px;
+  height:40px;
+  border-radius:10px;
   background:#007E7A;
 
   display:flex;
   align-items:center;
   justify-content:center;
-  flex-direction:column;
+  gap:8px;
 
   color:#fff;
-  box-shadow:0 4px 10px rgba(0,126,122,.15);
+  box-shadow:0 3px 8px rgba(0,126,122,.2);
 }
 
 #gutScore{
-  font-size:22px;
+  font-size:18px;
   font-weight:800;
+  line-height:1;
 }
 
 #gutNivel{
   font-size:11px;
-  margin-top:2px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.3px;
+  opacity:.9;
 }
 
 /* =========================================
@@ -333,40 +383,56 @@ input[disabled]{
 
 .botoes-container{
   display:flex;
-  gap:10px;
-  margin-top:18px;
+  justify-content:flex-end;
+  gap:12px;
+  margin-top:22px;
   flex-wrap:wrap;
 }
 
 .btn,
 .btn-voltar{
-  height:36px;
-  padding:0 18px;
+  height:42px;
+  padding:0 22px;
   border:none;
   border-radius:10px;
   cursor:pointer;
-  font-size:11px;
+  font-size:12.5px;
   font-weight:700;
+  letter-spacing:.2px;
   transition:.2s;
 }
 
 .btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+
   background:#007E7A;
   color:#fff;
+  box-shadow:0 3px 10px rgba(0,126,122,.25);
+}
+
+.btn-icone{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:11px;
 }
 
 .btn:hover{
   background:#006864;
+  box-shadow:0 4px 12px rgba(0,126,122,.32);
 }
 
 .btn-voltar{
-  background:#f3f4f6;
-  color:#374151;
-  border:1px solid #dcdcdc;
+  background:#fff;
+  color:#4b5a5e;
+  border:1px solid #d7dde3;
 }
 
 .btn-voltar:hover{
-  background:#e5e7eb;
+  background:#f3f5f6;
+  border-color:#c3cbd1;
 }
 
 /* =========================================
@@ -419,6 +485,10 @@ input[disabled]{
     padding:12px;
   }
 
+  .page-header{
+    padding:18px 20px;
+  }
+
   .page-header h1{
     font-size:22px;
   }
@@ -427,8 +497,8 @@ input[disabled]{
     font-size:13px;
   }
 
-  .card{
-    padding:14px;
+  .section{
+    padding:16px;
   }
 
   .form-grid{

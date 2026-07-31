@@ -476,6 +476,20 @@ async function carregarObras() {
     obrasCadastradas = [];
     planejamentosExistentes = [];
 
+    /*
+      RESTRIÇÃO DE ESCOPO: um usuário com perfil "planejador" só pode
+      planejar obras da própria Regional. Administrador continua
+      vendo obras de todas as Regionais normalmente.
+    */
+    const perfilUsuarioLogado =
+      normalizarTexto(usuarioLogadoGlobal?.perfil);
+
+    const usuarioEhAdministradorGeral =
+      perfilUsuarioLogado === "administrador";
+
+    const regionalDoUsuario =
+      usuarioLogadoGlobal?.regional || "";
+
     const obrasSnapshot =
       await getDocs(
         collection(
@@ -514,6 +528,14 @@ async function carregarObras() {
         "";
 
       if (!nomeObra) {
+        return;
+      }
+
+      if (
+        !usuarioEhAdministradorGeral &&
+        regionalDoUsuario &&
+        (item.regional || "") !== regionalDoUsuario
+      ) {
         return;
       }
 
@@ -986,8 +1008,9 @@ function gerarPlanejamento() {
   atualizarTabela();
 }
 
-window.gerarPlanejamento =
-  gerarPlanejamento;
+document
+  .getElementById("btnGerarPlanejamento")
+  ?.addEventListener("click", gerarPlanejamento);
 
 /* =========================
    EVENTOS INPUTS
@@ -1571,8 +1594,9 @@ async function salvarPlanejamento() {
   }
 }
 
-window.salvarPlanejamento =
-  salvarPlanejamento;
+document
+  .getElementById("btnSalvarPlanejamento")
+  ?.addEventListener("click", salvarPlanejamento);
 
 /* =========================
    DESTRUIR GRÁFICOS

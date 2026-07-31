@@ -1,7 +1,15 @@
 /* =====================================================
    ATUALIZAR CURVA S - PROTEGIDO COM AUTH GUARD
    Arquivo: atualizar-curva-s.js
-   Versão: v002
+   Versão: v003
+
+   Correções:
+   - Cria permissão específica para lançar Curva S.
+   - Campo de permissão: podeLancarCurvaS: true
+   - Usuário comum autorizado pode lançar realizado da Curva S.
+   - Usuário comum NÃO altera status da obra.
+   - Administrador, gestor, planejador, engenharia e editor mantêm acesso total.
+   - Firestore continua protegido por regras.
 ===================================================== */
 
 import {
@@ -27,11 +35,20 @@ import {
    CONFIGURAÇÕES
 ========================================= */
 
-const EMAILS_ADMIN_GERAL = [
-  "cicero.garcia@vale.com",
-  "c0706341@vale.com",
-  "ciceromgarcia@gmail.com"
-];
+/*
+  SEGURANÇA: lista fixa de e-mails admin removida (ficava exposta
+  via "Ver código-fonte"). Perfil salvo no Firestore é a única
+  fonte de verdade.
+*/
+
+const COLECAO_OBRAS =
+"obras";
+
+const COLECAO_PLANEJAMENTO =
+"planejamentoCurvaS";
+
+const COLECAO_REALIZADO =
+"realizadoCurvaS";
 
 /* =========================================
    USUÁRIO LOGADO
@@ -57,6 +74,12 @@ document.getElementById("valorObra");
 
 const valorExecutado =
 document.getElementById("valorExecutado");
+
+const barraProgressoExecutado =
+document.getElementById("barraProgressoExecutado");
+
+const barraProgressoExecutadoTexto =
+document.getElementById("barraProgressoExecutadoTexto");
 
 const tabelaSemanas =
 document.getElementById("tabelaSemanas");
@@ -130,10 +153,27 @@ const statusObraLabel =
 document.getElementById("statusObraLabel");
 
 /* =========================================
+   ELEMENTOS DO TOPO
+========================================= */
+
+const usuarioEmailTopo =
+document.getElementById("usuarioEmailTopo");
+
+const usuarioPerfilTopo =
+document.getElementById("usuarioPerfilTopo");
+
+const usuarioLogadoInfo =
+document.getElementById("usuarioLogadoInfo");
+
+/* =========================================
    VARIÁVEIS
 ========================================= */
 
 let obras = [];
+
+let planejamentosObra = [];
+
+let realizadosObra = [];
 
 let obraSelecionada = null;
 
@@ -144,7 +184,52 @@ let modoEdicao = false;
 let realizadoEmEdicaoId = null;
 
 /* =========================================
-   NORMALIZAR TEXTO
+   INICIALIZAÇÃO
+========================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  iniciarTela
+);
+
+async function iniciarTela() {
+
+  try {
+
+    usuarioLogadoGlobal =
+    await protegerPagina();
+
+    atualizarCabecalhoUsuario();
+
+    configurarEventos();
+
+    configurarMascaraFinanceiro();
+
+    configurarStatusObra();
+
+    atualizarEstadoAnomalia();
+
+    aplicarPermissoesNaTela();
+
+    await carregarObras();
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao iniciar atualização da Curva S:",
+      error
+    );
+
+    alert(
+      "Erro ao iniciar a tela. Faça login novamente."
+    );
+
+  }
+
+}
+
+/* =========================================
+   NORMALIZAÇÃO
 ========================================= */
 
 function normalizarTexto(valor) {
@@ -165,8 +250,16 @@ function emailNormalizado(valor) {
 
 }
 
+function textoLimpo(valor) {
+
+  return String(valor || "")
+    .trim()
+    .replace(/\s+/g, " ");
+
+}
+
 /* =========================================
-   PERFIL DO USUÁRIO
+   PERFIL E PERMISSÕES
 ========================================= */
 
 function usuarioEhAdministrador(usuario) {
@@ -176,23 +269,43 @@ function usuarioEhAdministrador(usuario) {
     usuario?.perfil
   );
 
-  const email =
-  emailNormalizado(
-    usuario?.email ||
-    usuario?.emailAuth
-  );
-
   return (
     perfil === "administrador" ||
     perfil === "admin" ||
     perfil === "adm" ||
     perfil === "administrator" ||
-    EMAILS_ADMIN_GERAL.includes(email)
+    usuario?.admin === true ||
+    usuario?.isAdmin === true
   );
 
 }
 
-function usuarioPodeEditarObras(usuario) {
+function usuarioPodeLancarCurvaS(usuario) {
+
+  if (usuarioEhAdministrador(usuario)) {
+    return true;
+  }
+
+  const perfil =
+  normalizarTexto(
+    usuario?.perfil
+  );
+
+  return (
+    [
+      "gestor",
+      "planejador",
+      "engenharia",
+      "editor"
+    ].includes(perfil) ||
+    usuario?.podeLancarCurvaS === true ||
+    usuario?.permissaoCurvaS === true ||
+    usuario?.podeAtualizarCurvaS === true
+  );
+
+}
+
+function usuarioPodeEditarStatusObra(usuario) {
 
   if (usuarioEhAdministrador(usuario)) {
     return true;
@@ -212,61 +325,794 @@ function usuarioPodeEditarObras(usuario) {
 
 }
 
+function usuarioPodeCorrigirRealizado(usuario) {
+
+  return usuarioEhAdministrador(usuario);
+
+}
+
+function usuarioPodeEditarObras(usuario) {
+
+  return usuarioPodeEditarStatusObra(usuario);
+
+}
+
+function obterRegionalUsuario() {
+
+  return (
+    usuarioLogadoGlobal?.regional ||
+    usuarioLogadoGlobal?.regionalUsuario ||
+    ""
+  );
+
+}
+
+function usuarioTemEscopoNaRegional(regional) {
+
+  if (usuarioEhAdministrador(usuarioLogadoGlobal)) {
+    return true;
+  }
+
+  const regionalUsuario =
+  normalizarTexto(
+    obterRegionalUsuario()
+  );
+
+  const regionalRegistro =
+  normalizarTexto(
+    regional
+  );
+
+  if (!regionalUsuario) {
+    return true;
+  }
+
+  return regionalUsuario === regionalRegistro;
+
+}
+
+/* =========================================
+   CABEÇALHO DO USUÁRIO
+========================================= */
+
+function atualizarCabecalhoUsuario() {
+
+  const email =
+  usuarioLogadoGlobal?.email ||
+  usuarioLogadoGlobal?.emailAuth ||
+  "";
+
+  const perfil =
+  usuarioLogadoGlobal?.perfil ||
+  "";
+
+  if (usuarioEmailTopo) {
+    usuarioEmailTopo.textContent =
+    email || "Não informado";
+  }
+
+  if (usuarioPerfilTopo) {
+
+    const permissao =
+    usuarioPodeLancarCurvaS(usuarioLogadoGlobal)
+    ? " • Pode lançar Curva S"
+    : "";
+
+    usuarioPerfilTopo.textContent =
+    `${perfil || "Não informado"}${permissao}`;
+
+  }
+
+  if (usuarioLogadoInfo) {
+
+    usuarioLogadoInfo.classList.toggle(
+      "perfil-administrador",
+      usuarioEhAdministrador(usuarioLogadoGlobal)
+    );
+
+    usuarioLogadoInfo.classList.toggle(
+      "perfil-sem-permissao",
+      !usuarioPodeLancarCurvaS(usuarioLogadoGlobal)
+    );
+
+  }
+
+}
+
+/* =========================================
+   APLICAR PERMISSÕES NA TELA
+========================================= */
+
 function aplicarPermissoesNaTela() {
 
-  const podeEditar =
-  usuarioPodeEditarObras(
+  const podeLancarCurvaS =
+  usuarioPodeLancarCurvaS(
+    usuarioLogadoGlobal
+  );
+
+  const podeEditarStatusObra =
+  usuarioPodeEditarStatusObra(
     usuarioLogadoGlobal
   );
 
   if (btnSalvar) {
-    btnSalvar.disabled =
-    !podeEditar;
 
-    if (!podeEditar) {
+    btnSalvar.disabled =
+    !podeLancarCurvaS;
+
+    if (!podeLancarCurvaS) {
+
       btnSalvar.textContent =
       "Sem permissão para salvar";
+
+    } else if (modoEdicao) {
+
+      btnSalvar.textContent =
+      "Salvar Correção";
+
+    } else {
+
+      btnSalvar.textContent =
+      "Salvar Atualização";
+
     }
-  }
 
-  if (btnSalvarStatusObra) {
-    btnSalvarStatusObra.disabled =
-    !podeEditar;
-  }
-
-  if (btnReativarObra) {
-    btnReativarObra.disabled =
-    !podeEditar;
   }
 
   [
-    statusObra,
-    motivoParalisacao,
     inputFisicoReal,
     inputFinanceiroReal,
     inputCentroCustoApropriacao,
-    selectTemAnomalia,
-    selectTipoAnomalia,
-    selectCriticidadeAnomalia,
-    selectImpactoAnomalia,
-    selectStatusAnomalia,
-    inputPrazoTratativaAnomalia,
-    inputDescricaoAnomalia,
-    inputAcaoCorretivaAnomalia,
-    inputResponsavelAnomalia
+    selectTemAnomalia
   ]
     .filter(Boolean)
     .forEach((campo) => {
 
       campo.disabled =
-      !podeEditar;
+      !podeLancarCurvaS;
 
     });
+
+  if (btnSalvarStatusObra) {
+    btnSalvarStatusObra.disabled =
+    !podeEditarStatusObra;
+  }
+
+  if (btnReativarObra) {
+    btnReativarObra.disabled =
+    !podeEditarStatusObra;
+  }
+
+  if (statusObra) {
+    statusObra.disabled =
+    !podeEditarStatusObra;
+  }
+
+  if (motivoParalisacao) {
+
+    const deveHabilitar =
+    podeEditarStatusObra &&
+    statusObra?.value === "Paralisada";
+
+    motivoParalisacao.disabled =
+    !deveHabilitar;
+
+  }
+
+  atualizarEstadoAnomalia();
 
 }
 
 /* =========================================
-   VERIFICAR STATUS
+   EVENTOS
+========================================= */
+
+function configurarEventos() {
+
+  filtroRegional?.addEventListener(
+    "change",
+    () => {
+
+      filtroLocalidade.value =
+      "";
+
+      filtroObra.value =
+      "";
+
+      obraSelecionada =
+      null;
+
+      carregarLocalidades();
+
+      carregarObrasSelect();
+
+      limparTela();
+
+    }
+  );
+
+  filtroLocalidade?.addEventListener(
+    "change",
+    () => {
+
+      filtroObra.value =
+      "";
+
+      obraSelecionada =
+      null;
+
+      carregarObrasSelect();
+
+      limparTela();
+
+    }
+  );
+
+  filtroObra?.addEventListener(
+    "change",
+    selecionarObra
+  );
+
+  btnSalvar?.addEventListener(
+    "click",
+    salvarAtualizacaoRealizado
+  );
+
+  selectTemAnomalia?.addEventListener(
+    "change",
+    atualizarEstadoAnomalia
+  );
+
+}
+
+/* =========================================
+   STATUS - ALTERAR SELECT
+========================================= */
+
+function configurarStatusObra() {
+
+  statusObra?.addEventListener(
+    "change",
+    () => {
+
+      if (!motivoParalisacao) {
+        return;
+      }
+
+      if (statusObra.value === "Paralisada") {
+
+        motivoParalisacao.disabled =
+        !usuarioPodeEditarStatusObra(usuarioLogadoGlobal);
+
+        if (!motivoParalisacao.disabled) {
+          motivoParalisacao.focus();
+        }
+
+      } else {
+
+        motivoParalisacao.disabled =
+        true;
+
+        motivoParalisacao.value =
+        "";
+
+      }
+
+    }
+  );
+
+  btnSalvarStatusObra?.addEventListener(
+    "click",
+    salvarStatusObra
+  );
+
+  btnReativarObra?.addEventListener(
+    "click",
+    reativarObra
+  );
+
+}
+
+/* =========================================
+   CARREGAR OBRAS
+========================================= */
+
+/* =========================================
+   STATUS REAL DA OBRA (mesma regra do dashboard.js / gestaodeobras.js)
+========================================= */
+
+function obterOrdemRealizado(item) {
+  const semanaNumero = Number(
+    String(item.semana || "")
+      .replace(/[^\d]/g, "")
+  );
+
+  if (Number.isFinite(semanaNumero) && semanaNumero > 0) {
+    return semanaNumero;
+  }
+
+  const inicioPeriodo = String(item.periodo || "")
+    .split(/\s+a\s+/i)[0];
+
+  const partes = inicioPeriodo.split("/");
+
+  if (partes.length === 3) {
+    const data = new Date(
+      Number(partes[2]),
+      Number(partes[1]) - 1,
+      Number(partes[0])
+    );
+
+    if (!Number.isNaN(data.getTime())) {
+      return data.getTime();
+    }
+  }
+
+  const datas = [
+    item.dataAtualizacao,
+    item.atualizadoEm,
+    item.criadoEm
+  ];
+
+  for (const data of datas) {
+    if (data?.toDate) {
+      return data.toDate().getTime();
+    }
+  }
+
+  return -1;
+}
+
+function construirMapaUltimoRealizado(snapshotRealizado) {
+  const mapaPorId = new Map();
+  const mapaPorNome = new Map();
+
+  snapshotRealizado.forEach((documento) => {
+    const item = documento.data();
+
+    const chaveNome = normalizarTexto(
+      item.obra ||
+      item.obraNome ||
+      item.nomeObra ||
+      ""
+    );
+
+    const registro = {
+      ordem: obterOrdemRealizado(item),
+      fisicoRealAcum: Number(
+        item.fisicoRealAcum ??
+        item.fisicoReal ??
+        0
+      ),
+      financeiroRealAcum: converterMoeda(
+        item.financeiroRealAcum ??
+        item.financeiroReal ??
+        0
+      )
+    };
+
+    if (item.obraId) {
+      const existenteId = mapaPorId.get(item.obraId);
+
+      if (!existenteId || registro.ordem > existenteId.ordem) {
+        mapaPorId.set(item.obraId, registro);
+      }
+    }
+
+    if (chaveNome) {
+      const existenteNome = mapaPorNome.get(chaveNome);
+
+      if (!existenteNome || registro.ordem > existenteNome.ordem) {
+        mapaPorNome.set(chaveNome, registro);
+      }
+    }
+  });
+
+  return { mapaPorId, mapaPorNome };
+}
+
+function calcularStatusRealObra(obra, ultimoRealizado) {
+  const statusManual = normalizarTexto(
+    obra.status ||
+    obra.fase ||
+    ""
+  );
+
+  const fisico = Number(
+    ultimoRealizado?.fisicoRealAcum ?? 0
+  );
+
+  const financeiro = Number(
+    ultimoRealizado?.financeiroRealAcum ?? 0
+  );
+
+  if (statusManual.includes("paralis")) {
+    return "Paralisada";
+  }
+
+  if (statusManual.includes("concl") || fisico >= 100) {
+    return "Concluído";
+  }
+
+  if (fisico > 0 && fisico < 100) {
+    return "Em andamento";
+  }
+
+  if (financeiro > 0 && fisico === 0) {
+    return "Paralisada";
+  }
+
+  if (statusManual.includes("andamento") || statusManual.includes("execu")) {
+    return "Em andamento";
+  }
+
+  return "Planejado";
+}
+
+async function carregarObras() {
+
+  try {
+
+    const snapshot =
+    await getDocs(
+      collection(
+        db,
+        COLECAO_OBRAS
+      )
+    );
+
+    /*
+      Carrega o realizado (Curva S) de todas as obras de uma vez, pra
+      calcular o status real de cada uma (igual ao dashboard.js e ao
+      gestaodeobras.js) e poder filtrar o dropdown só pelas que estão
+      "Em andamento" de verdade — não pelo status manual sozinho.
+    */
+    const snapshotRealizado =
+    await getDocs(
+      collection(
+        db,
+        COLECAO_REALIZADO
+      )
+    );
+
+    const mapasRealizado =
+    construirMapaUltimoRealizado(snapshotRealizado);
+
+    obras =
+    [];
+
+    snapshot.forEach((docRef) => {
+
+      const dados =
+      docRef.data();
+
+      const obra =
+      normalizarObra({
+        id: docRef.id,
+        ...dados
+      });
+
+      const ultimoRealizado =
+      mapasRealizado.mapaPorId.get(obra.id) ||
+      mapasRealizado.mapaPorNome.get(
+        normalizarTexto(obra.nome)
+      ) ||
+      null;
+
+      obra.statusCalculado =
+      calcularStatusRealObra(
+        obra,
+        ultimoRealizado
+      );
+
+      if (
+        usuarioTemEscopoNaRegional(
+          obra.regional
+        )
+      ) {
+
+        obras.push(obra);
+
+      }
+
+    });
+
+    obras.sort(
+      (a, b) => {
+
+        return String(a.nome || "")
+          .localeCompare(
+            String(b.nome || ""),
+            "pt-BR"
+          );
+
+      }
+    );
+
+    carregarRegionais();
+
+    carregarLocalidades();
+
+    carregarObrasSelect();
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao carregar obras:",
+      error
+    );
+
+    alert(
+      "Erro ao carregar obras. Verifique suas permissões no Firestore."
+    );
+
+  }
+
+}
+
+function normalizarObra(obra) {
+
+  /*
+    CORREÇÃO: faltava "nomeProjeto" nesta lista — é o campo que o
+    resto do sistema usa (cadastro, dashboard, gestão de obras). Sem
+    ele, o nome ficava vazio pra quase toda obra, e o dropdown caía
+    no fallback (o ID bruto do documento no Firestore).
+  */
+  const nome =
+  obra.nomeProjeto ||
+  obra.nome ||
+  obra.nomeObra ||
+  obra.obra ||
+  obra.titulo ||
+  obra.descricao ||
+  "";
+
+  const regional =
+  obra.regional ||
+  obra.regiao ||
+  obra.regionalObra ||
+  "";
+
+  const localidade =
+  obra.localidade ||
+  obra.cidade ||
+  obra.site ||
+  "";
+
+  const valor =
+  obra.valorOrcado ||
+  obra.valorTotal ||
+  obra.valorObra ||
+  obra.orcamento ||
+  obra.custoOrcado ||
+  obra.custoTotal ||
+  0;
+
+  return {
+    ...obra,
+
+    nome,
+    obraNome: nome,
+    obra: nome,
+
+    regional,
+    localidade,
+
+    valorOrcado:
+    converterMoeda(valor),
+
+    status:
+    obra.status ||
+    obra.fase ||
+    "Em andamento",
+
+    fase:
+    obra.fase ||
+    obra.status ||
+    "Em andamento",
+
+    motivoParalisacao:
+    obra.motivoParalisacao ||
+    ""
+  };
+
+}
+
+function carregarRegionais() {
+
+  if (!filtroRegional) {
+    return;
+  }
+
+  const regionalUsuario =
+  obterRegionalUsuario();
+
+  const regionais =
+  Array.from(
+    new Set(
+      obras
+        .map((obra) => obra.regional)
+        .filter(Boolean)
+    )
+  ).sort(
+    (a, b) => a.localeCompare(b, "pt-BR")
+  );
+
+  filtroRegional.innerHTML =
+  `<option value="">Regional</option>`;
+
+  regionais.forEach((regional) => {
+
+    const option =
+    document.createElement("option");
+
+    option.value =
+    regional;
+
+    option.textContent =
+    regional;
+
+    filtroRegional.appendChild(option);
+
+  });
+
+  if (
+    !usuarioEhAdministrador(usuarioLogadoGlobal) &&
+    regionalUsuario
+  ) {
+
+    filtroRegional.value =
+    regionalUsuario;
+
+    filtroRegional.disabled =
+    true;
+
+  }
+
+}
+
+function carregarLocalidades() {
+
+  if (!filtroLocalidade) {
+    return;
+  }
+
+  const regionalSelecionada =
+  filtroRegional?.value || "";
+
+  const localidades =
+  Array.from(
+    new Set(
+      obras
+        .filter((obra) => {
+
+          return (
+            (
+              !regionalSelecionada ||
+              obra.regional === regionalSelecionada
+            ) &&
+            obra.statusCalculado === "Em andamento"
+          );
+
+        })
+        .map((obra) => obra.localidade)
+        .filter(Boolean)
+    )
+  ).sort(
+    (a, b) => a.localeCompare(b, "pt-BR")
+  );
+
+  filtroLocalidade.innerHTML =
+  `<option value="">Localidade</option>`;
+
+  localidades.forEach((localidade) => {
+
+    const option =
+    document.createElement("option");
+
+    option.value =
+    localidade;
+
+    option.textContent =
+    localidade;
+
+    filtroLocalidade.appendChild(option);
+
+  });
+
+}
+
+function carregarObrasSelect() {
+
+  if (!filtroObra) {
+    return;
+  }
+
+  const regionalSelecionada =
+  filtroRegional?.value || "";
+
+  const localidadeSelecionada =
+  filtroLocalidade?.value || "";
+
+  const obrasFiltradas =
+  obras.filter((obra) => {
+
+    const passaRegional =
+    !regionalSelecionada ||
+    obra.regional === regionalSelecionada;
+
+    const passaLocalidade =
+    !localidadeSelecionada ||
+    obra.localidade === localidadeSelecionada;
+
+    const passaStatus =
+    obra.statusCalculado === "Em andamento";
+
+    return (
+      passaRegional &&
+      passaLocalidade &&
+      passaStatus
+    );
+
+  });
+
+  filtroObra.innerHTML =
+  `<option value="">Obra</option>`;
+
+  obrasFiltradas.forEach((obra) => {
+
+    const option =
+    document.createElement("option");
+
+    option.value =
+    obra.id;
+
+    option.textContent =
+    obra.nome || obra.id;
+
+    filtroObra.appendChild(option);
+
+  });
+
+}
+
+/* =========================================
+   SELECIONAR OBRA
+========================================= */
+
+async function selecionarObra() {
+
+  const idObra =
+  filtroObra?.value || "";
+
+  obraSelecionada =
+  obras.find((obra) => obra.id === idObra) ||
+  null;
+
+  limparCamposAtualizacao();
+
+  if (!obraSelecionada) {
+
+    limparTela();
+    return;
+
+  }
+
+  if (valorObra) {
+    valorObra.value =
+    formatarMoeda(
+      obraSelecionada.valorOrcado
+    );
+  }
+
+  aplicarStatusVisualObra();
+
+  await carregarPlanejamentoERealizado();
+
+}
+
+/* =========================================
+   STATUS VISUAL DA OBRA
 ========================================= */
 
 function obraEstaParalisada(obra) {
@@ -285,35 +1131,11 @@ function obraEstaParalisada(obra) {
 
 }
 
-/* =========================================
-   APLICAR STATUS VISUAL
-========================================= */
-
 function aplicarStatusVisualObra() {
 
   if (!obraSelecionada) {
 
-    if (statusObra) {
-      statusObra.value = "";
-    }
-
-    if (motivoParalisacao) {
-
-      motivoParalisacao.value = "";
-
-      motivoParalisacao.disabled = true;
-
-    }
-
-    if (statusObraLabel) {
-
-      statusObraLabel.textContent =
-      "Nenhuma obra selecionada";
-
-    }
-
-    aplicarPermissoesNaTela();
-
+    limparStatusObra();
     return;
 
   }
@@ -338,7 +1160,10 @@ function aplicarStatusVisualObra() {
     obraSelecionada.motivoParalisacao || "";
 
     motivoParalisacao.disabled =
-    !paralisada;
+    !(
+      paralisada &&
+      usuarioPodeEditarStatusObra(usuarioLogadoGlobal)
+    );
 
   }
 
@@ -356,1196 +1181,940 @@ function aplicarStatusVisualObra() {
 }
 
 /* =========================================
-   CONVERTER MOEDA
+   CARREGAR PLANEJAMENTO E REALIZADO
 ========================================= */
 
-function converterMoeda(valor) {
+async function carregarPlanejamentoERealizado() {
 
-  if (
-    valor === null ||
-    valor === undefined ||
-    valor === ""
-  ) {
-    return 0;
-  }
-
-  if (typeof valor === "number") {
-    return valor;
-  }
-
-  let texto =
-  String(valor)
-    .replace("R$", "")
-    .replace(/\s/g, "")
-    .trim();
-
-  if (!texto) {
-    return 0;
-  }
-
-  if (texto.includes(",")) {
-
-    texto =
-    texto
-      .replace(/\./g, "")
-      .replace(",", ".");
-
-    return Number(texto) || 0;
-
-  }
-
-  texto =
-  texto.replace(/[^\d.-]/g, "");
-
-  return Number(texto) || 0;
-
-}
-
-/* =========================================
-   FORMATAR MOEDA
-========================================= */
-
-function formatarMoeda(valor) {
-
-  const numero =
-  converterMoeda(
-    valor
-  );
-
-  return numero.toLocaleString(
-    "pt-BR",
-    {
-      style: "currency",
-      currency: "BRL",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }
-  );
-
-}
-
-/* =========================================
-   CONVERTER PERCENTUAL
-========================================= */
-
-function converterPercentual(valor) {
-
-  if (
-    valor === null ||
-    valor === undefined ||
-    valor === ""
-  ) {
-    return 0;
-  }
-
-  if (typeof valor === "number") {
-    return valor;
-  }
-
-  let texto =
-  String(valor)
-    .replace("%", "")
-    .replace(/\s/g, "")
-    .trim();
-
-  if (texto.includes(",")) {
-
-    texto =
-    texto
-      .replace(/\./g, "")
-      .replace(",", ".");
-
-  }
-
-  texto =
-  texto.replace(/[^\d.-]/g, "");
-
-  return Number(texto) || 0;
-
-}
-
-/* =========================================
-   FORMATAR PERCENTUAL
-========================================= */
-
-function formatarPercentual(valor) {
-
-  if (
-    valor === null ||
-    valor === undefined ||
-    valor === ""
-  ) {
-    return "-";
-  }
-
-  const numero =
-  converterPercentual(
-    valor
-  );
-
-  return numero.toLocaleString(
-    "pt-BR",
-    {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }
-  ) + "%";
-
-}
-
-/* =========================================
-   MÁSCARA DE MOEDA
-========================================= */
-
-function aplicarMascaraMoeda(valor) {
-
-  let somenteNumeros =
-  String(valor || "")
-    .replace(/\D/g, "");
-
-  if (!somenteNumeros) {
-    return "";
-  }
-
-  return (
-    Number(
-      somenteNumeros
-    ) / 100
-  ).toLocaleString(
-    "pt-BR",
-    {
-      style: "currency",
-      currency: "BRL"
-    }
-  );
-
-}
-
-/* =========================================
-   NÚMERO DA SEMANA
-========================================= */
-
-function obterNumeroSemana(semana) {
-
-  const numero =
-  String(semana || "")
-    .match(/\d+/);
-
-  return numero
-  ? Number(numero[0])
-  : 0;
-
-}
-
-/* =========================================
-   DATA
-========================================= */
-
-function obterData(valor) {
-
-  if (!valor) {
-    return null;
-  }
-
-  if (valor?.toDate) {
-    return valor.toDate();
-  }
-
-  if (valor?.seconds) {
-    return new Date(
-      valor.seconds * 1000
-    );
-  }
-
-  const data =
-  new Date(valor);
-
-  return isNaN(data.getTime())
-  ? null
-  : data;
-
-}
-
-function formatarDataAtualizacao(realizado) {
-
-  const data =
-  obterData(
-    realizado?.atualizadoEm ||
-    realizado?.criadoEm ||
-    realizado?.dataAtualizacao
-  );
-
-  if (!data) {
-    return "-";
-  }
-
-  return data.toLocaleDateString(
-    "pt-BR"
-  ) + " " + data.toLocaleTimeString(
-    "pt-BR",
-    {
-      hour: "2-digit",
-      minute: "2-digit"
-    }
-  );
-
-}
-
-function formatarDataSimples(valor) {
-
-  if (!valor) {
-    return "";
-  }
-
-  if (
-    typeof valor === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(valor)
-  ) {
-
-    const partes =
-    valor.split("-");
-
-    return `${partes[2]}/${partes[1]}/${partes[0]}`;
-
-  }
-
-  const data =
-  obterData(valor);
-
-  if (!data) {
-    return "";
-  }
-
-  return data.toLocaleDateString(
-    "pt-BR"
-  );
-
-}
-
-function normalizarDataParaInput(valor) {
-
-  if (!valor) {
-    return "";
-  }
-
-  if (
-    typeof valor === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(valor)
-  ) {
-    return valor;
-  }
-
-  const data =
-  obterData(valor);
-
-  if (!data) {
-    return "";
-  }
-
-  const ano =
-  data.getFullYear();
-
-  const mes =
-  String(data.getMonth() + 1)
-    .padStart(2, "0");
-
-  const dia =
-  String(data.getDate())
-    .padStart(2, "0");
-
-  return `${ano}-${mes}-${dia}`;
-
-}
-
-/* =========================================
-   VALORES DA OBRA
-========================================= */
-
-function obterValorOrcadoObra(obra) {
-
-  return converterMoeda(
-    obra?.valorObraNumero ??
-    obra?.investimentoNumero ??
-    obra?.valorObra ??
-    obra?.valorOrcado ??
-    obra?.valorTotal ??
-    obra?.investimento ??
-    obra?.orcado ??
-    obra?.valor ??
-    0
-  );
-
-}
-
-function obterValorPlanejadoFisico(item) {
-
-  if (item.fisicoAcum !== undefined) {
-    return item.fisicoAcum;
-  }
-
-  if (item.fisicoAcumulado !== undefined) {
-    return item.fisicoAcumulado;
-  }
-
-  if (item.fisicoPlanejado !== undefined) {
-    return item.fisicoPlanejado;
-  }
-
-  return item.fisico || 0;
-
-}
-
-function obterValorPlanejadoFinanceiro(item) {
-
-  if (item.financeiroAcum !== undefined) {
-    return item.financeiroAcum;
-  }
-
-  if (item.financeiroAcumulado !== undefined) {
-    return item.financeiroAcumulado;
-  }
-
-  if (item.financeiroPlanejado !== undefined) {
-    return item.financeiroPlanejado;
-  }
-
-  return item.financeiro || 0;
-
-}
-
-/* =========================================
-   VALORES REALIZADOS
-========================================= */
-
-function obterFisicoRealizado(item) {
-
-  return converterPercentual(
-    item?.fisicoRealAcum ??
-    item?.fisicoReal ??
-    item?.fisicoAcum ??
-    item?.fisico ??
-    0
-  );
-
-}
-
-function obterFinanceiroRealizado(item) {
-
-  return converterMoeda(
-    item?.financeiroRealAcum ??
-    item?.financeiroReal ??
-    item?.financeiroAcum ??
-    item?.financeiro ??
-    0
-  );
-
-}
-
-function obterCentroCustoApropriacao(item) {
-
-  return (
-    item?.centroCustoApropriacao ||
-    item?.centroCusto ||
-    item?.centroCustoReal ||
-    "-"
-  );
-
-}
-
-/* =========================================
-   ANOMALIAS
-========================================= */
-
-function obterCamposAnomalia() {
-
-  return [
-    selectTipoAnomalia,
-    selectCriticidadeAnomalia,
-    selectImpactoAnomalia,
-    selectStatusAnomalia,
-    inputPrazoTratativaAnomalia,
-    inputDescricaoAnomalia,
-    inputAcaoCorretivaAnomalia,
-    inputResponsavelAnomalia
-  ].filter(Boolean);
-
-}
-
-function limparDetalhesAnomalia() {
-
-  if (selectTipoAnomalia) {
-    selectTipoAnomalia.value = "";
-  }
-
-  if (selectCriticidadeAnomalia) {
-    selectCriticidadeAnomalia.value = "";
-  }
-
-  if (selectImpactoAnomalia) {
-    selectImpactoAnomalia.value = "";
-  }
-
-  if (selectStatusAnomalia) {
-    selectStatusAnomalia.value = "";
-  }
-
-  if (inputPrazoTratativaAnomalia) {
-    inputPrazoTratativaAnomalia.value = "";
-  }
-
-  if (inputDescricaoAnomalia) {
-    inputDescricaoAnomalia.value = "";
-  }
-
-  if (inputAcaoCorretivaAnomalia) {
-    inputAcaoCorretivaAnomalia.value = "";
-  }
-
-  if (inputResponsavelAnomalia) {
-    inputResponsavelAnomalia.value = "";
-  }
-
-  if (inputAnomalias) {
-    inputAnomalias.value = "";
-  }
-
-}
-
-function definirCamposAnomaliaHabilitados(habilitar) {
-
-  const podeEditar =
-  usuarioPodeEditarObras(
-    usuarioLogadoGlobal
-  );
-
-  obterCamposAnomalia()
-    .forEach((campo) => {
-
-      campo.disabled =
-      !habilitar || !podeEditar;
-
-    });
-
-}
-
-function montarDescricaoAnomalia() {
-
-  const houveAnomalia =
-  selectTemAnomalia?.value === "Sim";
-
-  if (!houveAnomalia) {
-    return "";
-  }
-
-  const tipo =
-  selectTipoAnomalia?.value || "";
-
-  const criticidade =
-  selectCriticidadeAnomalia?.value || "";
-
-  const impacto =
-  selectImpactoAnomalia?.value || "";
-
-  const status =
-  selectStatusAnomalia?.value || "";
-
-  const prazo =
-  inputPrazoTratativaAnomalia?.value || "";
-
-  const descricao =
-  inputDescricaoAnomalia?.value.trim() || "";
-
-  const acao =
-  inputAcaoCorretivaAnomalia?.value.trim() || "";
-
-  const responsavel =
-  inputResponsavelAnomalia?.value.trim() || "";
-
-  const partes = [];
-
-  if (tipo) {
-    partes.push(`Tipo: ${tipo}`);
-  }
-
-  if (criticidade) {
-    partes.push(`Criticidade: ${criticidade}`);
-  }
-
-  if (impacto) {
-    partes.push(`Impacto: ${impacto}`);
-  }
-
-  if (status) {
-    partes.push(`Status: ${status}`);
-  }
-
-  if (prazo) {
-    partes.push(`Prazo: ${formatarDataSimples(prazo)}`);
-  }
-
-  if (responsavel) {
-    partes.push(`Responsável: ${responsavel}`);
-  }
-
-  if (descricao) {
-    partes.push(`Descrição: ${descricao}`);
-  }
-
-  if (acao) {
-    partes.push(`Ação: ${acao}`);
-  }
-
-  return partes.join(" | ");
-
-}
-
-function atualizarCampoAnomaliasConsolidado() {
-
-  if (!inputAnomalias) {
+  if (!obraSelecionada) {
     return;
   }
 
-  inputAnomalias.value =
-  montarDescricaoAnomalia();
+  try {
 
-}
+    planejamentosObra =
+    await buscarPlanejamentoDaObra(
+      obraSelecionada
+    );
 
-function atualizarEstadoAnomalia() {
+    realizadosObra =
+    await buscarRealizadosDaObra(
+      obraSelecionada
+    );
 
-  const houveAnomalia =
-  selectTemAnomalia?.value === "Sim";
+    atualizarValorExecutado();
 
-  if (!houveAnomalia) {
-    limparDetalhesAnomalia();
+    renderizarTabelaSemanas();
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao carregar planejamento:",
+      error
+    );
+
+    alert(
+      "Erro ao carregar planejamento da obra."
+    );
+
   }
 
-  definirCamposAnomaliaHabilitados(
-    houveAnomalia
-  );
-
-  atualizarCampoAnomaliasConsolidado();
-
 }
 
-function obterDadosAnomaliaParaSalvar() {
+async function buscarPlanejamentoDaObra(obra) {
 
-  const houveAnomalia =
-  selectTemAnomalia?.value === "Sim";
+  const resultados = [];
 
-  if (!houveAnomalia) {
+  const consultas = [
+    query(
+      collection(db, COLECAO_PLANEJAMENTO),
+      where("obraId", "==", obra.id)
+    )
+  ];
 
-    return {
-      houveAnomalia: false,
-      temAnomalia: "Não",
-      tipoAnomalia: "",
-      criticidadeAnomalia: "",
-      impactoAnomalia: "",
-      statusAnomalia: "",
-      prazoTratativaAnomalia: "",
-      descricaoAnomalia: "",
-      acaoCorretivaAnomalia: "",
-      responsavelAnomalia: "",
-      anomalias: "",
-      anomalia: {
-        houve: false,
-        tipo: "",
-        criticidade: "",
-        impacto: "",
-        status: "",
-        prazoTratativa: "",
-        descricao: "",
-        acaoCorretiva: "",
-        responsavel: ""
+  if (obra.nome) {
+
+    consultas.push(
+      query(
+        collection(db, COLECAO_PLANEJAMENTO),
+        where("obra", "==", obra.nome)
+      )
+    );
+
+    consultas.push(
+      query(
+        collection(db, COLECAO_PLANEJAMENTO),
+        where("obraNome", "==", obra.nome)
+      )
+    );
+
+  }
+
+  for (const consulta of consultas) {
+
+    const snapshot =
+    await getDocs(consulta);
+
+    snapshot.forEach((docRef) => {
+
+      if (
+        !resultados.some(
+          (item) => item.id === docRef.id
+        )
+      ) {
+
+        resultados.push({
+          id: docRef.id,
+          ...docRef.data()
+        });
+
       }
-    };
-
-  }
-
-  const tipoAnomalia =
-  selectTipoAnomalia?.value || "";
-
-  const criticidadeAnomalia =
-  selectCriticidadeAnomalia?.value || "";
-
-  const impactoAnomalia =
-  selectImpactoAnomalia?.value || "";
-
-  const statusAnomalia =
-  selectStatusAnomalia?.value || "";
-
-  const prazoTratativaAnomalia =
-  inputPrazoTratativaAnomalia?.value || "";
-
-  const descricaoAnomalia =
-  inputDescricaoAnomalia?.value.trim() || "";
-
-  const acaoCorretivaAnomalia =
-  inputAcaoCorretivaAnomalia?.value.trim() || "";
-
-  const responsavelAnomalia =
-  inputResponsavelAnomalia?.value.trim() || "";
-
-  const anomalias =
-  montarDescricaoAnomalia();
-
-  return {
-    houveAnomalia: true,
-    temAnomalia: "Sim",
-    tipoAnomalia,
-    criticidadeAnomalia,
-    impactoAnomalia,
-    statusAnomalia,
-    prazoTratativaAnomalia,
-    descricaoAnomalia,
-    acaoCorretivaAnomalia,
-    responsavelAnomalia,
-    anomalias,
-    anomalia: {
-      houve: true,
-      tipo: tipoAnomalia,
-      criticidade: criticidadeAnomalia,
-      impacto: impactoAnomalia,
-      status: statusAnomalia,
-      prazoTratativa: prazoTratativaAnomalia,
-      descricao: descricaoAnomalia,
-      acaoCorretiva: acaoCorretivaAnomalia,
-      responsavel: responsavelAnomalia
-    }
-  };
-
-}
-
-function validarDadosAnomalia(dadosAnomalia) {
-
-  if (!dadosAnomalia.houveAnomalia) {
-    return true;
-  }
-
-  if (!dadosAnomalia.tipoAnomalia) {
-
-    alert(
-      "Selecione o tipo da anomalia."
-    );
-
-    selectTipoAnomalia?.focus();
-
-    return false;
-
-  }
-
-  if (!dadosAnomalia.criticidadeAnomalia) {
-
-    alert(
-      "Selecione a criticidade da anomalia."
-    );
-
-    selectCriticidadeAnomalia?.focus();
-
-    return false;
-
-  }
-
-  if (!dadosAnomalia.impactoAnomalia) {
-
-    alert(
-      "Selecione o impacto principal da anomalia."
-    );
-
-    selectImpactoAnomalia?.focus();
-
-    return false;
-
-  }
-
-  if (!dadosAnomalia.statusAnomalia) {
-
-    alert(
-      "Selecione o status da anomalia."
-    );
-
-    selectStatusAnomalia?.focus();
-
-    return false;
-
-  }
-
-  if (!dadosAnomalia.descricaoAnomalia) {
-
-    alert(
-      "Descreva a anomalia encontrada na semana."
-    );
-
-    inputDescricaoAnomalia?.focus();
-
-    return false;
-
-  }
-
-  return true;
-
-}
-
-function realizadoPossuiAnomalia(realizado) {
-
-  return (
-    realizado?.houveAnomalia === true ||
-    realizado?.temAnomalia === "Sim" ||
-    Boolean(realizado?.tipoAnomalia) ||
-    Boolean(realizado?.descricaoAnomalia) ||
-    Boolean(realizado?.anomalias && String(realizado.anomalias).trim() !== "")
-  );
-
-}
-
-function obterResumoAnomalia(realizado) {
-
-  if (!realizadoPossuiAnomalia(realizado)) {
-    return "-";
-  }
-
-  const tipo =
-  realizado?.tipoAnomalia ||
-  realizado?.anomalia?.tipo ||
-  "";
-
-  const descricao =
-  realizado?.descricaoAnomalia ||
-  realizado?.anomalia?.descricao ||
-  realizado?.anomalias ||
-  "";
-
-  if (tipo && descricao) {
-    return `${tipo} - ${descricao}`;
-  }
-
-  return tipo || descricao || "-";
-
-}
-
-function obterCriticidadeAnomalia(realizado) {
-
-  if (!realizadoPossuiAnomalia(realizado)) {
-    return "-";
-  }
-
-  return (
-    realizado?.criticidadeAnomalia ||
-    realizado?.anomalia?.criticidade ||
-    "-"
-  );
-
-}
-
-function obterClasseCriticidadeAnomalia(realizado) {
-
-  const criticidade =
-  normalizarTexto(
-    obterCriticidadeAnomalia(realizado)
-  );
-
-  if (
-    criticidade === "alta" ||
-    criticidade === "critica" ||
-    criticidade === "crítica"
-  ) {
-    return "texto-vermelho";
-  }
-
-  return "";
-
-}
-
-function preencherCamposAnomalia(realizado) {
-
-  const possuiAnomalia =
-  realizadoPossuiAnomalia(
-    realizado
-  );
-
-  if (selectTemAnomalia) {
-
-    selectTemAnomalia.value =
-    possuiAnomalia
-    ? "Sim"
-    : "Não";
-
-  }
-
-  if (!possuiAnomalia) {
-
-    limparDetalhesAnomalia();
-
-    definirCamposAnomaliaHabilitados(false);
-
-    return;
-
-  }
-
-  if (selectTipoAnomalia) {
-
-    selectTipoAnomalia.value =
-    realizado?.tipoAnomalia ||
-    realizado?.anomalia?.tipo ||
-    "";
-
-  }
-
-  if (selectCriticidadeAnomalia) {
-
-    selectCriticidadeAnomalia.value =
-    realizado?.criticidadeAnomalia ||
-    realizado?.anomalia?.criticidade ||
-    "";
-
-  }
-
-  if (selectImpactoAnomalia) {
-
-    selectImpactoAnomalia.value =
-    realizado?.impactoAnomalia ||
-    realizado?.anomalia?.impacto ||
-    "";
-
-  }
-
-  if (selectStatusAnomalia) {
-
-    selectStatusAnomalia.value =
-    realizado?.statusAnomalia ||
-    realizado?.anomalia?.status ||
-    "";
-
-  }
-
-  if (inputPrazoTratativaAnomalia) {
-
-    inputPrazoTratativaAnomalia.value =
-    normalizarDataParaInput(
-      realizado?.prazoTratativaAnomalia ||
-      realizado?.anomalia?.prazoTratativa ||
-      ""
-    );
-
-  }
-
-  if (inputDescricaoAnomalia) {
-
-    inputDescricaoAnomalia.value =
-    realizado?.descricaoAnomalia ||
-    realizado?.anomalia?.descricao ||
-    realizado?.anomalias ||
-    "";
-
-  }
-
-  if (inputAcaoCorretivaAnomalia) {
-
-    inputAcaoCorretivaAnomalia.value =
-    realizado?.acaoCorretivaAnomalia ||
-    realizado?.anomalia?.acaoCorretiva ||
-    "";
-
-  }
-
-  if (inputResponsavelAnomalia) {
-
-    inputResponsavelAnomalia.value =
-    realizado?.responsavelAnomalia ||
-    realizado?.anomalia?.responsavel ||
-    "";
-
-  }
-
-  definirCamposAnomaliaHabilitados(true);
-
-  atualizarCampoAnomaliasConsolidado();
-
-}
-
-function configurarAnomalias() {
-
-  selectTemAnomalia?.addEventListener(
-    "change",
-    atualizarEstadoAnomalia
-  );
-
-  [
-    selectTipoAnomalia,
-    selectCriticidadeAnomalia,
-    selectImpactoAnomalia,
-    selectStatusAnomalia,
-    inputPrazoTratativaAnomalia,
-    inputDescricaoAnomalia,
-    inputAcaoCorretivaAnomalia,
-    inputResponsavelAnomalia
-  ]
-    .filter(Boolean)
-    .forEach((campo) => {
-
-      campo.addEventListener(
-        "input",
-        atualizarCampoAnomaliasConsolidado
-      );
-
-      campo.addEventListener(
-        "change",
-        atualizarCampoAnomaliasConsolidado
-      );
 
     });
 
-  atualizarEstadoAnomalia();
+  }
+
+  return resultados
+    .filter((item) => item.ativo !== false)
+    .sort(ordenarPorSemana);
+
+}
+
+async function buscarRealizadosDaObra(obra) {
+
+  const resultados = [];
+
+  const consultas = [
+    query(
+      collection(db, COLECAO_REALIZADO),
+      where("obraId", "==", obra.id)
+    )
+  ];
+
+  if (obra.nome) {
+
+    consultas.push(
+      query(
+        collection(db, COLECAO_REALIZADO),
+        where("obra", "==", obra.nome)
+      )
+    );
+
+    consultas.push(
+      query(
+        collection(db, COLECAO_REALIZADO),
+        where("obraNome", "==", obra.nome)
+      )
+    );
+
+  }
+
+  for (const consulta of consultas) {
+
+    const snapshot =
+    await getDocs(consulta);
+
+    snapshot.forEach((docRef) => {
+
+      if (
+        !resultados.some(
+          (item) => item.id === docRef.id
+        )
+      ) {
+
+        resultados.push({
+          id: docRef.id,
+          ...docRef.data()
+        });
+
+      }
+
+    });
+
+  }
+
+  return resultados.sort(
+    ordenarPorSemana
+  );
+
+}
+
+function ordenarPorSemana(a, b) {
+
+  const semanaA =
+  Number(
+    a.semanaNumero ||
+    obterNumeroSemana(a.semana)
+  );
+
+  const semanaB =
+  Number(
+    b.semanaNumero ||
+    obterNumeroSemana(b.semana)
+  );
+
+  return semanaA - semanaB;
+
+}
+
+function encontrarRealizadoDaSemana(planejado) {
+
+  const semanaNumero =
+  Number(
+    planejado.semanaNumero ||
+    obterNumeroSemana(planejado.semana)
+  );
+
+  const semanaTexto =
+  normalizarTexto(
+    planejado.semana
+  );
+
+  return realizadosObra.find((realizado) => {
+
+    const semanaNumeroReal =
+    Number(
+      realizado.semanaNumero ||
+      obterNumeroSemana(realizado.semana)
+    );
+
+    const semanaTextoReal =
+    normalizarTexto(
+      realizado.semana
+    );
+
+    return (
+      (
+        semanaNumero &&
+        semanaNumeroReal &&
+        semanaNumero === semanaNumeroReal
+      )
+      ||
+      (
+        semanaTexto &&
+        semanaTextoReal &&
+        semanaTexto === semanaTextoReal
+      )
+    );
+
+  }) || null;
 
 }
 
 /* =========================================
-   HELPERS DE SELECT
+   RENDERIZAR TABELA
 ========================================= */
 
-function limparSelect(select, textoPadrao) {
-
-  if (!select) {
-    return;
-  }
-
-  select.innerHTML = "";
-
-  const option =
-  document.createElement("option");
-
-  option.value = "";
-
-  option.textContent =
-  textoPadrao;
-
-  select.appendChild(option);
-
-}
-
-function adicionarOption(select, valor, texto) {
-
-  if (!select) {
-    return;
-  }
-
-  const option =
-  document.createElement("option");
-
-  option.value =
-  valor;
-
-  option.textContent =
-  texto;
-
-  select.appendChild(option);
-
-}
-
-/* =========================================
-   HELPERS DE TABELA
-========================================= */
-
-function criarCelulaTexto(texto, classe = "") {
-
-  const td =
-  document.createElement("td");
-
-  if (classe) {
-    td.className = classe;
-  }
-
-  td.textContent =
-  texto || "-";
-
-  return td;
-
-}
-
-function mostrarMensagemTabela(mensagem) {
+function renderizarTabelaSemanas() {
 
   if (!tabelaSemanas) {
     return;
   }
 
-  tabelaSemanas.innerHTML = "";
+  tabelaSemanas.innerHTML =
+  "";
 
-  const tr =
-  document.createElement("tr");
+  if (!obraSelecionada) {
+
+    tabelaSemanas.innerHTML =
+    `
+      <tr>
+        <td colspan="9">
+          Selecione uma obra para carregar o planejamento.
+        </td>
+      </tr>
+    `;
+
+    return;
+
+  }
+
+  if (!planejamentosObra.length) {
+
+    tabelaSemanas.innerHTML =
+    `
+      <tr>
+        <td colspan="9">
+          Nenhum planejamento encontrado para esta obra.
+        </td>
+      </tr>
+    `;
+
+    return;
+
+  }
+
+  planejamentosObra.forEach((planejado) => {
+
+    const realizado =
+    encontrarRealizadoDaSemana(
+      planejado
+    );
+
+    const fisicoPlanejadoRaw =
+    planejado.fisicoAcum ??
+    planejado.fisico ??
+    planejado.fisicoPlanejado ??
+    0;
+
+    const financeiroPlanejadoRaw =
+    planejado.financeiroAcum ??
+    planejado.financeiro ??
+    planejado.financeiroPlanejado ??
+    0;
+
+    const centroCusto =
+    realizado
+    ? (
+        realizado.centroCustoApropriacao ||
+        realizado.centroCusto ||
+        "-"
+      )
+    : "-";
+
+    const classeFisico =
+    realizado &&
+    obterFisicoRealizado(realizado) < converterPercentual(fisicoPlanejadoRaw)
+    ? "texto-vermelho"
+    : "";
+
+    const classeFinanceiro =
+    realizado &&
+    obterFinanceiroRealizado(realizado) < converterMoeda(financeiroPlanejadoRaw)
+    ? "texto-vermelho"
+    : "";
+
+    const possuiAnomalia =
+    realizado
+    ? realizadoPossuiAnomalia(realizado)
+    : false;
+
+    const classeAnomalia =
+    possuiAnomalia
+    ? "texto-vermelho"
+    : "";
+
+    const tr =
+    document.createElement("tr");
+
+    tr.appendChild(
+      criarCelulaTexto(
+        planejado.semana || "-"
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        planejado.periodo || "-"
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        formatarPercentual(
+          fisicoPlanejadoRaw
+        )
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        formatarMoeda(
+          financeiroPlanejadoRaw
+        )
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        realizado
+        ? formatarPercentual(
+            obterFisicoRealizado(realizado)
+          )
+        : "-",
+        classeFisico
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        realizado
+        ? formatarMoeda(
+            obterFinanceiroRealizado(realizado)
+          )
+        : "-",
+        classeFinanceiro
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        centroCusto
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        realizado
+        ? obterResumoAnomalia(realizado)
+        : "-",
+        classeAnomalia
+      )
+    );
+
+    tr.appendChild(
+      criarCelulaTexto(
+        realizado
+        ? formatarDataAtualizacao(realizado)
+        : "-"
+      )
+    );
+
+    if (realizado) {
+
+      tr.classList.add(
+        "linha-bloqueada"
+      );
+
+      tr.title =
+      usuarioPodeCorrigirRealizado(usuarioLogadoGlobal)
+      ? "Duplo clique para corrigir esta atualização."
+      : "Semana já atualizada. Correção permitida apenas para administrador.";
+
+      tr.addEventListener(
+        "dblclick",
+        () => {
+
+          prepararCorrecaoRealizado(
+            tr,
+            planejado,
+            realizado
+          );
+
+        }
+      );
+
+    } else {
+
+      tr.addEventListener(
+        "click",
+        () => {
+
+          selecionarSemanaPendente(
+            tr,
+            planejado
+          );
+
+        }
+      );
+
+    }
+
+    tabelaSemanas.appendChild(
+      tr
+    );
+
+  });
+
+}
+
+function criarCelulaTexto(valor, classe = "") {
 
   const td =
   document.createElement("td");
 
-  td.colSpan =
-  10;
-
   td.textContent =
-  mensagem;
+  valor ?? "-";
 
-  tr.appendChild(td);
+  if (classe) {
 
-  tabelaSemanas.appendChild(tr);
+    td.classList.add(
+      classe
+    );
+
+  }
+
+  return td;
 
 }
 
 /* =========================================
-   LIMPAR CAMPOS
+   SELECIONAR SEMANA PENDENTE
 ========================================= */
 
-function limparCamposAtualizacao() {
+function selecionarSemanaPendente(tr, item) {
+
+  if (!usuarioPodeLancarCurvaS(usuarioLogadoGlobal)) {
+
+    alert(
+      "Você não tem permissão para lançar atualização da Curva S."
+    );
+
+    return;
+
+  }
+
+  if (!obraSelecionada) {
+
+    alert(
+      "Selecione uma obra."
+    );
+
+    return;
+
+  }
+
+  document
+    .querySelectorAll("#tabelaSemanas tr")
+    .forEach((linha) => {
+
+      linha.classList.remove(
+        "selecionada"
+      );
+
+    });
+
+  tr.classList.add(
+    "selecionada"
+  );
+
+  modoEdicao =
+  false;
+
+  realizadoEmEdicaoId =
+  null;
+
+  semanaSelecionada =
+  item;
+
+  limparCamposFormularioSemana();
+
+  if (semanaSelecionadaLabel) {
+
+    semanaSelecionadaLabel.textContent =
+    item.semana ||
+    "Semana selecionada";
+
+  }
+
+  if (btnSalvar) {
+
+    btnSalvar.textContent =
+    "Salvar Atualização";
+
+  }
+
+  aplicarPermissoesNaTela();
+
+}
+
+/* =========================================
+   PREPARAR CORREÇÃO
+========================================= */
+
+function prepararCorrecaoRealizado(tr, item, realizado) {
+
+  if (!usuarioPodeCorrigirRealizado(usuarioLogadoGlobal)) {
+
+    alert(
+      "Você não tem permissão para corrigir semanas já atualizadas."
+    );
+
+    return;
+
+  }
+
+  document
+    .querySelectorAll("#tabelaSemanas tr")
+    .forEach((linha) => {
+
+      linha.classList.remove(
+        "selecionada"
+      );
+
+    });
+
+  tr.classList.add(
+    "selecionada"
+  );
+
+  modoEdicao =
+  true;
+
+  realizadoEmEdicaoId =
+  realizado.id;
+
+  semanaSelecionada =
+  item;
+
+  if (semanaSelecionadaLabel) {
+
+    semanaSelecionadaLabel.textContent =
+    `${item.semana || "Semana"} - Correção`;
+
+  }
 
   if (inputFisicoReal) {
-    inputFisicoReal.value = "";
+
+    inputFisicoReal.value =
+    obterFisicoRealizado(
+      realizado
+    );
+
   }
 
   if (inputFinanceiroReal) {
-    inputFinanceiroReal.value = "";
+
+    inputFinanceiroReal.value =
+    formatarMoeda(
+      obterFinanceiroRealizado(
+        realizado
+      )
+    );
+
   }
 
   if (inputCentroCustoApropriacao) {
-    inputCentroCustoApropriacao.value = "";
+
+    inputCentroCustoApropriacao.value =
+    realizado.centroCustoApropriacao ||
+    realizado.centroCusto ||
+    "";
+
   }
 
-  if (selectTemAnomalia) {
-    selectTemAnomalia.value = "Não";
-  }
-
-  limparDetalhesAnomalia();
-
-  atualizarEstadoAnomalia();
-
-  semanaSelecionada = null;
-
-  modoEdicao = false;
-
-  realizadoEmEdicaoId = null;
+  preencherCamposAnomalia(
+    realizado
+  );
 
   if (btnSalvar) {
     btnSalvar.textContent =
-    usuarioPodeEditarObras(usuarioLogadoGlobal)
-    ? "Salvar Atualização"
-    : "Sem permissão para salvar";
-  }
-
-  if (semanaSelecionadaLabel) {
-    semanaSelecionadaLabel.textContent =
-    "Nenhuma semana selecionada";
+    "Salvar Correção";
   }
 
   aplicarPermissoesNaTela();
-
-}
-
-function limparStatusObra() {
-
-  if (statusObra) {
-    statusObra.value = "";
-  }
-
-  if (motivoParalisacao) {
-
-    motivoParalisacao.value = "";
-
-    motivoParalisacao.disabled = true;
-
-  }
-
-  if (statusObraLabel) {
-    statusObraLabel.textContent =
-    "Nenhuma obra selecionada";
-  }
-
-  aplicarPermissoesNaTela();
-
-}
-
-function limparTela() {
-
-  if (tabelaSemanas) {
-    tabelaSemanas.innerHTML = "";
-  }
-
-  if (valorObra) {
-    valorObra.value = "";
-  }
-
-  if (valorExecutado) {
-    valorExecutado.value = "";
-  }
-
-  limparCamposAtualizacao();
-
-  limparStatusObra();
 
 }
 
 /* =========================================
-   MÁSCARA DO FINANCEIRO REAL
+   SALVAR ATUALIZAÇÃO
 ========================================= */
 
-function configurarMascaraFinanceiro() {
+async function salvarAtualizacaoRealizado() {
 
-  inputFinanceiroReal?.addEventListener(
-    "input",
-    (e) => {
+  if (!usuarioLogadoGlobal) {
 
-      e.target.value =
-      aplicarMascaraMoeda(
-        e.target.value
+    alert(
+      "Usuário não autenticado. Faça login novamente."
+    );
+
+    return;
+
+  }
+
+  if (!usuarioPodeLancarCurvaS(usuarioLogadoGlobal)) {
+
+    alert(
+      "Você não tem permissão para salvar atualização da Curva S."
+    );
+
+    return;
+
+  }
+
+  if (
+    modoEdicao &&
+    !usuarioPodeCorrigirRealizado(usuarioLogadoGlobal)
+  ) {
+
+    alert(
+      "A correção de semanas já atualizadas é permitida apenas para administrador."
+    );
+
+    return;
+
+  }
+
+  if (!obraSelecionada) {
+
+    alert(
+      "Selecione uma obra."
+    );
+
+    return;
+
+  }
+
+  if (!semanaSelecionada) {
+
+    alert(
+      "Selecione uma semana pendente para atualizar."
+    );
+
+    return;
+
+  }
+
+  const fisicoReal =
+  converterPercentual(
+    inputFisicoReal?.value
+  );
+
+  const financeiroReal =
+  converterMoeda(
+    inputFinanceiroReal?.value
+  );
+
+  const centroCustoApropriacao =
+  textoLimpo(
+    inputCentroCustoApropriacao?.value
+  );
+
+  if (
+    fisicoReal < 0 ||
+    fisicoReal > 100
+  ) {
+
+    alert(
+      "Informe o físico realizado entre 0 e 100%."
+    );
+
+    inputFisicoReal?.focus();
+
+    return;
+
+  }
+
+  if (financeiroReal < 0) {
+
+    alert(
+      "Informe um financeiro realizado válido."
+    );
+
+    inputFinanceiroReal?.focus();
+
+    return;
+
+  }
+
+  if (!centroCustoApropriacao) {
+
+    alert(
+      "Informe o centro de custo de apropriação."
+    );
+
+    inputCentroCustoApropriacao?.focus();
+
+    return;
+
+  }
+
+  if (
+    selectTemAnomalia?.value === "Sim" &&
+    !validarCamposAnomalia()
+  ) {
+    return;
+  }
+
+  try {
+
+    if (btnSalvar) {
+      btnSalvar.disabled =
+      true;
+      btnSalvar.textContent =
+      "Salvando...";
+    }
+
+    const dadosAtualizacao =
+    montarDadosRealizado({
+      fisicoReal,
+      financeiroReal,
+      centroCustoApropriacao
+    });
+
+    if (
+      modoEdicao &&
+      realizadoEmEdicaoId
+    ) {
+
+      await updateDoc(
+        doc(
+          db,
+          COLECAO_REALIZADO,
+          realizadoEmEdicaoId
+        ),
+        {
+          ...dadosAtualizacao,
+
+          corrigidoPorUid:
+          usuarioLogadoGlobal?.uid || "",
+
+          corrigidoPorEmail:
+          usuarioLogadoGlobal?.email ||
+          usuarioLogadoGlobal?.emailAuth ||
+          "",
+
+          corrigidoPorNome:
+          usuarioLogadoGlobal?.nome || "",
+
+          corrigidoEm:
+          serverTimestamp(),
+
+          atualizadoEm:
+          serverTimestamp()
+        }
+      );
+
+      alert(
+        "Correção salva com sucesso!"
+      );
+
+    } else {
+
+      await addDoc(
+        collection(
+          db,
+          COLECAO_REALIZADO
+        ),
+        {
+          ...dadosAtualizacao,
+
+          criadoPorUid:
+          usuarioLogadoGlobal?.uid || "",
+
+          criadoPorEmail:
+          usuarioLogadoGlobal?.email ||
+          usuarioLogadoGlobal?.emailAuth ||
+          "",
+
+          criadoPorNome:
+          usuarioLogadoGlobal?.nome || "",
+
+          criadoEm:
+          serverTimestamp(),
+
+          atualizadoEm:
+          serverTimestamp()
+        }
+      );
+
+      alert(
+        "Atualização salva com sucesso!"
       );
 
     }
+
+    await carregarPlanejamentoERealizado();
+
+    limparCamposAtualizacao();
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao salvar atualização:",
+      error
+    );
+
+    alert(
+      "Erro ao salvar atualização. Verifique se o usuário possui o campo podeLancarCurvaS: true e se as regras do Firestore foram publicadas."
+    );
+
+  } finally {
+
+    aplicarPermissoesNaTela();
+
+  }
+
+}
+
+function montarDadosRealizado({
+  fisicoReal,
+  financeiroReal,
+  centroCustoApropriacao
+}) {
+
+  const semanaNumero =
+  Number(
+    semanaSelecionada.semanaNumero ||
+    obterNumeroSemana(
+      semanaSelecionada.semana
+    )
   );
+
+  const fisicoPlanejado =
+  converterPercentual(
+    semanaSelecionada.fisicoAcum ??
+    semanaSelecionada.fisico ??
+    semanaSelecionada.fisicoPlanejado ??
+    0
+  );
+
+  const financeiroPlanejado =
+  converterMoeda(
+    semanaSelecionada.financeiroAcum ??
+    semanaSelecionada.financeiro ??
+    semanaSelecionada.financeiroPlanejado ??
+    0
+  );
+
+  const dadosAnomalia =
+  obterDadosAnomalia();
+
+  return {
+    obraId:
+    obraSelecionada.id,
+
+    obra:
+    obraSelecionada.nome,
+
+    obraNome:
+    obraSelecionada.nome,
+
+    regional:
+    obraSelecionada.regional,
+
+    localidade:
+    obraSelecionada.localidade,
+
+    semana:
+    semanaSelecionada.semana || "",
+
+    semanaNumero,
+
+    periodo:
+    semanaSelecionada.periodo || "",
+
+    fisicoPlanejado,
+
+    financeiroPlanejado,
+
+    fisicoReal,
+
+    financeiroReal,
+
+    centroCustoApropriacao,
+
+    centroCusto:
+    centroCustoApropriacao,
+
+    ...dadosAnomalia,
+
+    atualizadoPorUid:
+    usuarioLogadoGlobal?.uid || "",
+
+    atualizadoPorEmail:
+    usuarioLogadoGlobal?.email ||
+    usuarioLogadoGlobal?.emailAuth ||
+    "",
+
+    atualizadoPorNome:
+    usuarioLogadoGlobal?.nome || ""
+  };
 
 }
 
 /* =========================================
-   STATUS - ALTERAR SELECT
-========================================= */
-
-function configurarStatusObra() {
-
-  statusObra?.addEventListener(
-    "change",
-    () => {
-
-      if (!motivoParalisacao) {
-        return;
-      }
-
-      if (statusObra.value === "Paralisada") {
-
-        motivoParalisacao.disabled =
-        !usuarioPodeEditarObras(usuarioLogadoGlobal)
-        ? true
-        : false;
-
-        motivoParalisacao.focus();
-
-      } else {
-
-        motivoParalisacao.disabled = true;
-
-        motivoParalisacao.value = "";
-
-      }
-
-    }
-  );
-
-  btnSalvarStatusObra?.addEventListener(
-    "click",
-    salvarStatusObra
-  );
-
-  btnReativarObra?.addEventListener(
-    "click",
-    reativarObra
-  );
-
-}
-
-/* =========================================
-   SALVAR STATUS DA OBRA
+   STATUS DA OBRA
 ========================================= */
 
 async function salvarStatusObra() {
@@ -1560,7 +2129,7 @@ async function salvarStatusObra() {
 
   }
 
-  if (!usuarioPodeEditarObras(usuarioLogadoGlobal)) {
+  if (!usuarioPodeEditarStatusObra(usuarioLogadoGlobal)) {
 
     alert(
       "Você não tem permissão para alterar o status da obra."
@@ -1608,7 +2177,6 @@ async function salvarStatusObra() {
   try {
 
     const dadosAtualizacao = {
-
       status:
       statusObra.value,
 
@@ -1633,7 +2201,6 @@ async function salvarStatusObra() {
 
       atualizadoEm:
       serverTimestamp()
-
     };
 
     if (statusObra.value === "Paralisada") {
@@ -1646,20 +2213,16 @@ async function salvarStatusObra() {
     await updateDoc(
       doc(
         db,
-        "obras",
+        COLECAO_OBRAS,
         obraSelecionada.id
       ),
       dadosAtualizacao
     );
 
-    obraSelecionada.status =
-    dadosAtualizacao.status;
-
-    obraSelecionada.fase =
-    dadosAtualizacao.fase;
-
-    obraSelecionada.motivoParalisacao =
-    dadosAtualizacao.motivoParalisacao;
+    obraSelecionada = {
+      ...obraSelecionada,
+      ...dadosAtualizacao
+    };
 
     alert(
       "Status da obra atualizado com sucesso!"
@@ -1684,10 +2247,6 @@ async function salvarStatusObra() {
 
 }
 
-/* =========================================
-   REATIVAR OBRA
-========================================= */
-
 async function reativarObra() {
 
   if (!usuarioLogadoGlobal) {
@@ -1700,7 +2259,7 @@ async function reativarObra() {
 
   }
 
-  if (!usuarioPodeEditarObras(usuarioLogadoGlobal)) {
+  if (!usuarioPodeEditarStatusObra(usuarioLogadoGlobal)) {
 
     alert(
       "Você não tem permissão para reativar obras."
@@ -1734,7 +2293,7 @@ async function reativarObra() {
     await updateDoc(
       doc(
         db,
-        "obras",
+        COLECAO_OBRAS,
         obraSelecionada.id
       ),
       {
@@ -1799,1429 +2358,836 @@ async function reativarObra() {
 }
 
 /* =========================================
-   CARREGAR OBRAS
+   ANOMALIAS
 ========================================= */
 
-async function carregarObras() {
+function obterCamposAnomalia() {
 
-  try {
+  return [
+    selectTipoAnomalia,
+    selectCriticidadeAnomalia,
+    selectImpactoAnomalia,
+    selectStatusAnomalia,
+    inputPrazoTratativaAnomalia,
+    inputDescricaoAnomalia,
+    inputAcaoCorretivaAnomalia,
+    inputResponsavelAnomalia
+  ].filter(Boolean);
 
-    const snapshot =
-    await getDocs(
-      collection(
-        db,
-        "obras"
-      )
-    );
+}
 
-    obras = [];
+function atualizarEstadoAnomalia() {
 
-    snapshot.forEach((docRef) => {
+  const houveAnomalia =
+  selectTemAnomalia?.value === "Sim";
 
-      obras.push({
-        id: docRef.id,
-        ...docRef.data()
-      });
+  definirCamposAnomaliaHabilitados(
+    houveAnomalia
+  );
 
-    });
+  if (
+    !houveAnomalia &&
+    !modoEdicao
+  ) {
 
-    carregarRegionais();
-
-  } catch (error) {
-
-    console.error(
-      "Erro ao carregar obras:",
-      error
-    );
-
-    alert(
-      "Erro ao carregar obras. Verifique suas permissões no Firestore."
-    );
+    limparCamposAnomalia();
 
   }
 
 }
 
-/* =========================================
-   CARREGAR REGIONAIS
-========================================= */
+function definirCamposAnomaliaHabilitados(habilitar) {
 
-function carregarRegionais() {
+  const podeLancarCurvaS =
+  usuarioPodeLancarCurvaS(
+    usuarioLogadoGlobal
+  );
 
-  const regionais =
+  obterCamposAnomalia()
+    .forEach((campo) => {
+
+      campo.disabled =
+      !habilitar ||
+      !podeLancarCurvaS;
+
+    });
+
+}
+
+function limparCamposAnomalia() {
+
   [
-    ...new Set(
-      obras.map(
-        obra => obra.regional
-      )
-    )
+    selectTipoAnomalia,
+    selectCriticidadeAnomalia,
+    selectImpactoAnomalia,
+    selectStatusAnomalia,
+    inputPrazoTratativaAnomalia,
+    inputDescricaoAnomalia,
+    inputAcaoCorretivaAnomalia,
+    inputResponsavelAnomalia
   ]
     .filter(Boolean)
-    .sort();
+    .forEach((campo) => {
 
-  limparSelect(
-    filtroRegional,
-    "Regional"
-  );
-
-  regionais.forEach((regional) => {
-
-    adicionarOption(
-      filtroRegional,
-      regional,
-      regional
-    );
-
-  });
-
-}
-
-/* =========================================
-   FILTRO REGIONAL
-========================================= */
-
-function configurarFiltroRegional() {
-
-  filtroRegional?.addEventListener(
-    "change",
-    () => {
-
-      limparSelect(
-        filtroLocalidade,
-        "Localidade"
-      );
-
-      limparSelect(
-        filtroObra,
-        "Obra"
-      );
-
-      obraSelecionada = null;
-
-      limparTela();
-
-      const localidades =
-      [
-        ...new Set(
-          obras
-            .filter(
-              obra =>
-              obra.regional === filtroRegional.value
-            )
-            .map(
-              obra => obra.localidade
-            )
-        )
-      ]
-        .filter(Boolean)
-        .sort();
-
-      localidades.forEach((localidade) => {
-
-        adicionarOption(
-          filtroLocalidade,
-          localidade,
-          localidade
-        );
-
-      });
-
-    }
-  );
-
-}
-
-/* =========================================
-   FILTRO LOCALIDADE
-========================================= */
-
-function configurarFiltroLocalidade() {
-
-  filtroLocalidade?.addEventListener(
-    "change",
-    () => {
-
-      limparSelect(
-        filtroObra,
-        "Obra"
-      );
-
-      obraSelecionada = null;
-
-      limparTela();
-
-      const obrasFiltradas =
-      obras
-        .filter(
-          obra =>
-          obra.regional === filtroRegional?.value &&
-          obra.localidade === filtroLocalidade?.value
-        )
-        .sort(
-          (a, b) =>
-          String(a.nomeProjeto || "")
-            .localeCompare(
-              String(b.nomeProjeto || ""),
-              "pt-BR"
-            )
-        );
-
-      obrasFiltradas.forEach((obra) => {
-
-        adicionarOption(
-          filtroObra,
-          obra.id,
-          obra.nomeProjeto || "-"
-        );
-
-      });
-
-    }
-  );
-
-}
-
-/* =========================================
-   FILTRO OBRA
-========================================= */
-
-function configurarFiltroObra() {
-
-  filtroObra?.addEventListener(
-    "change",
-    () => {
-
-      const obra =
-      obras.find(
-        item =>
-        item.id === filtroObra.value
-      );
-
-      if (!obra) {
-
-        obraSelecionada = null;
-
-        limparTela();
-
-        return;
-
-      }
-
-      obraSelecionada = obra;
-
-      if (valorObra) {
-
-        valorObra.value =
-        formatarMoeda(
-          obterValorOrcadoObra(
-            obraSelecionada
-          )
-        );
-
-      }
-
-      if (valorExecutado) {
-        valorExecutado.value =
-        formatarMoeda(0);
-      }
-
-      aplicarStatusVisualObra();
-
-      carregarPlanejamento();
-
-    }
-  );
-
-}
-
-/* =========================================
-   CONSULTAR PLANEJAMENTOS DA OBRA
-========================================= */
-
-async function buscarPlanejamentosDaObra() {
-
-  const lista = [];
-
-  const idsAdicionados =
-  new Set();
-
-  const consultas = [
-    query(
-      collection(db, "planejamentoCurvaS"),
-      where("obraId", "==", obraSelecionada.id)
-    ),
-    query(
-      collection(db, "planejamentoCurvaS"),
-      where("obra", "==", obraSelecionada.nomeProjeto)
-    ),
-    query(
-      collection(db, "planejamentoCurvaS"),
-      where("nomeObra", "==", obraSelecionada.nomeProjeto)
-    ),
-    query(
-      collection(db, "planejamentoCurvaS"),
-      where("obraNome", "==", obraSelecionada.nomeProjeto)
-    )
-  ];
-
-  for (const consulta of consultas) {
-
-    const snapshot =
-    await getDocs(consulta);
-
-    snapshot.forEach((docRef) => {
-
-      if (idsAdicionados.has(docRef.id)) {
-        return;
-      }
-
-      idsAdicionados.add(
-        docRef.id
-      );
-
-      lista.push({
-        id: docRef.id,
-        ...docRef.data()
-      });
+      campo.value =
+      "";
 
     });
 
+  if (inputAnomalias) {
+    inputAnomalias.value =
+    "";
   }
 
-  return lista;
-
 }
 
-/* =========================================
-   CONSULTAR REALIZADOS DA OBRA
-========================================= */
+function validarCamposAnomalia() {
 
-async function buscarRealizadosDaObra() {
-
-  const lista = [];
-
-  const idsAdicionados =
-  new Set();
-
-  const consultas = [
-    query(
-      collection(db, "realizadoCurvaS"),
-      where("obraId", "==", obraSelecionada.id)
-    ),
-    query(
-      collection(db, "realizadoCurvaS"),
-      where("obra", "==", obraSelecionada.nomeProjeto)
-    ),
-    query(
-      collection(db, "realizadoCurvaS"),
-      where("nomeObra", "==", obraSelecionada.nomeProjeto)
-    ),
-    query(
-      collection(db, "realizadoCurvaS"),
-      where("obraNome", "==", obraSelecionada.nomeProjeto)
-    )
-  ];
-
-  for (const consulta of consultas) {
-
-    const snapshot =
-    await getDocs(consulta);
-
-    snapshot.forEach((docRef) => {
-
-      if (idsAdicionados.has(docRef.id)) {
-        return;
-      }
-
-      idsAdicionados.add(
-        docRef.id
-      );
-
-      lista.push({
-        id: docRef.id,
-        ...docRef.data()
-      });
-
-    });
-
-  }
-
-  const realizados = {};
-
-  lista.forEach((dado) => {
-
-    const semana =
-    String(dado.semana || "")
-      .trim()
-      .toUpperCase();
-
-    if (!semana) {
-      return;
-    }
-
-    const existente =
-    realizados[semana];
-
-    if (!existente) {
-
-      realizados[semana] =
-      dado;
-
-      return;
-
-    }
-
-    const dataAtual =
-    obterData(
-      dado.atualizadoEm ||
-      dado.criadoEm
-    );
-
-    const dataExistente =
-    obterData(
-      existente.atualizadoEm ||
-      existente.criadoEm
-    );
-
-    if (
-      dataAtual &&
-      dataExistente &&
-      dataAtual > dataExistente
-    ) {
-
-      realizados[semana] =
-      dado;
-
-    }
-
-  });
-
-  return realizados;
-
-}
-
-/* =========================================
-   CARREGAR PLANEJAMENTO + REALIZADO
-========================================= */
-
-async function carregarPlanejamento() {
-
-  if (!tabelaSemanas) {
-    return;
-  }
-
-  tabelaSemanas.innerHTML = "";
-
-  limparCamposAtualizacao();
-
-  try {
-
-    const planejamentoLista =
-    await buscarPlanejamentosDaObra();
-
-    const realizados =
-    await buscarRealizadosDaObra();
-
-    const semanasMap =
-    new Map();
-
-    planejamentoLista.forEach((item) => {
-
-      const chaveSemana =
-      String(item.semana || "")
-        .trim()
-        .toUpperCase();
-
-      if (!chaveSemana) {
-        return;
-      }
-
-      if (!semanasMap.has(chaveSemana)) {
-
-        semanasMap.set(
-          chaveSemana,
-          item
-        );
-
-      }
-
-    });
-
-    const semanas =
-    Array.from(
-      semanasMap.values()
-    );
-
-    semanas.sort(
-      (a, b) =>
-      obterNumeroSemana(a.semana) -
-      obterNumeroSemana(b.semana)
-    );
-
-    if (semanas.length === 0) {
-
-      mostrarMensagemTabela(
-        "Nenhum planejamento encontrado para esta obra."
-      );
-
-      if (valorObra) {
-
-        valorObra.value =
-        formatarMoeda(
-          obterValorOrcadoObra(
-            obraSelecionada
-          )
-        );
-
-      }
-
-      if (valorExecutado) {
-        valorExecutado.value =
-        formatarMoeda(0);
-      }
-
-      return;
-
-    }
-
-    if (valorObra) {
-
-      valorObra.value =
-      formatarMoeda(
-        obterValorOrcadoObra(
-          obraSelecionada
-        )
-      );
-
-    }
-
-    const realizadosOrdenados =
-    Object.values(realizados)
-      .filter(
-        item =>
-        item &&
-        item.semana
-      )
-      .sort(
-        (a, b) =>
-        obterNumeroSemana(a.semana) -
-        obterNumeroSemana(b.semana)
-      );
-
-    const ultimoRealizado =
-    realizadosOrdenados[
-      realizadosOrdenados.length - 1
-    ];
-
-    if (valorExecutado) {
-
-      valorExecutado.value =
-      ultimoRealizado
-      ? formatarMoeda(
-        obterFinanceiroRealizado(
-          ultimoRealizado
-        )
-      )
-      : formatarMoeda(0);
-
-    }
-
-    semanas.forEach((item) => {
-
-      const chaveSemana =
-      String(item.semana || "")
-        .trim()
-        .toUpperCase();
-
-      const realizado =
-      realizados[chaveSemana];
-
-      const fisicoPlanejadoRaw =
-      obterValorPlanejadoFisico(
-        item
-      );
-
-      const financeiroPlanejadoRaw =
-      obterValorPlanejadoFinanceiro(
-        item
-      );
-
-      const fisicoPlanejado =
-      converterPercentual(
-        fisicoPlanejadoRaw
-      );
-
-      const financeiroPlanejado =
-      converterMoeda(
-        financeiroPlanejadoRaw
-      );
-
-      const fisicoRealizado =
-      realizado
-      ? obterFisicoRealizado(
-        realizado
-      )
-      : 0;
-
-      const financeiroRealizado =
-      realizado
-      ? obterFinanceiroRealizado(
-        realizado
-      )
-      : 0;
-
-      const centroCusto =
-      realizado
-      ? obterCentroCustoApropriacao(
-        realizado
-      )
-      : "-";
-
-      const classeFisico =
-      realizado &&
-      fisicoRealizado < fisicoPlanejado
-      ? "texto-vermelho"
-      : "";
-
-      const classeFinanceiro =
-      realizado &&
-      financeiroRealizado > financeiroPlanejado
-      ? "texto-vermelho"
-      : "";
-
-      const possuiAnomalia =
-      realizado
-      ? realizadoPossuiAnomalia(realizado)
-      : false;
-
-      const classeAnomalia =
-      possuiAnomalia
-      ? "texto-vermelho"
-      : "";
-
-      const classeCriticidade =
-      realizado
-      ? obterClasseCriticidadeAnomalia(realizado)
-      : "";
-
-      const tr =
-      document.createElement("tr");
-
-      tr.appendChild(
-        criarCelulaTexto(
-          item.semana || "-"
-        )
-      );
-
-      tr.appendChild(
-        criarCelulaTexto(
-          item.periodo || "-"
-        )
-      );
-
-      tr.appendChild(
-        criarCelulaTexto(
-          formatarPercentual(
-            fisicoPlanejadoRaw
-          )
-        )
-      );
-
-      tr.appendChild(
-        criarCelulaTexto(
-          formatarMoeda(
-            financeiroPlanejadoRaw
-          )
-        )
-      );
-
-      tr.appendChild(
-        criarCelulaTexto(
-          realizado
-          ? formatarPercentual(
-            obterFisicoRealizado(
-              realizado
-            )
-          )
-          : "-",
-          classeFisico
-        )
-      );
-
-      tr.appendChild(
-        criarCelulaTexto(
-          realizado
-          ? formatarMoeda(
-            obterFinanceiroRealizado(
-              realizado
-            )
-          )
-          : "-",
-          classeFinanceiro
-        )
-      );
-
-      tr.appendChild(
-        criarCelulaTexto(
-          centroCusto
-        )
-      );
-
-      tr.appendChild(
-        criarCelulaTexto(
-          realizado
-          ? obterResumoAnomalia(
-            realizado
-          )
-          : "-",
-          classeAnomalia
-        )
-      );
-
-      tr.appendChild(
-        criarCelulaTexto(
-          realizado
-          ? obterCriticidadeAnomalia(
-            realizado
-          )
-          : "-",
-          classeCriticidade
-        )
-      );
-
-      tr.appendChild(
-        criarCelulaTexto(
-          realizado
-          ? formatarDataAtualizacao(
-            realizado
-          )
-          : "-"
-        )
-      );
-
-      if (realizado) {
-
-        tr.classList.add(
-          "linha-bloqueada"
-        );
-
-        tr.title =
-        usuarioEhAdministrador(usuarioLogadoGlobal)
-        ? "Duplo clique para corrigir esta atualização."
-        : "Semana já atualizada. Correção permitida apenas para administrador.";
-
-        tr.addEventListener(
-          "dblclick",
-          () => {
-
-            prepararCorrecaoRealizado(
-              tr,
-              item,
-              realizado
-            );
-
-          }
-        );
-
-      } else {
-
-        tr.addEventListener(
-          "click",
-          () => {
-
-            selecionarSemanaPendente(
-              tr,
-              item
-            );
-
-          }
-        );
-
-      }
-
-      tabelaSemanas.appendChild(
-        tr
-      );
-
-    });
-
-  } catch (error) {
-
-    console.error(
-      "Erro ao carregar planejamento:",
-      error
-    );
+  if (!selectTipoAnomalia?.value) {
 
     alert(
-      "Erro ao carregar planejamento."
+      "Selecione o tipo da anomalia."
     );
 
+    selectTipoAnomalia?.focus();
+
+    return false;
+
   }
+
+  if (!selectCriticidadeAnomalia?.value) {
+
+    alert(
+      "Selecione a criticidade da anomalia."
+    );
+
+    selectCriticidadeAnomalia?.focus();
+
+    return false;
+
+  }
+
+  if (!inputDescricaoAnomalia?.value.trim()) {
+
+    alert(
+      "Descreva a anomalia."
+    );
+
+    inputDescricaoAnomalia?.focus();
+
+    return false;
+
+  }
+
+  return true;
 
 }
 
-/* =========================================
-   SELECIONAR SEMANA PENDENTE
-========================================= */
+function obterDadosAnomalia() {
 
-function selecionarSemanaPendente(tr, item) {
+  const houveAnomalia =
+  selectTemAnomalia?.value === "Sim";
 
-  if (!usuarioPodeEditarObras(usuarioLogadoGlobal)) {
-
-    alert(
-      "Você não tem permissão para lançar atualização da Curva S."
-    );
-
-    return;
-
-  }
-
-  document
-    .querySelectorAll("#tabelaSemanas tr")
-    .forEach((linha) => {
-
-      linha.classList.remove(
-        "selecionada"
-      );
-
-    });
-
-  tr.classList.add(
-    "selecionada"
+  const descricao =
+  textoLimpo(
+    inputDescricaoAnomalia?.value
   );
 
-  modoEdicao = false;
+  const acao =
+  textoLimpo(
+    inputAcaoCorretivaAnomalia?.value
+  );
 
-  realizadoEmEdicaoId = null;
+  const responsavel =
+  textoLimpo(
+    inputResponsavelAnomalia?.value
+  );
 
-  semanaSelecionada = {
-    semana: item.semana,
-    periodo: item.periodo
+  const anomaliasTexto =
+  houveAnomalia
+  ? descricao
+  : "";
+
+  if (inputAnomalias) {
+    inputAnomalias.value =
+    anomaliasTexto;
+  }
+
+  return {
+    temAnomalia:
+    houveAnomalia
+    ? "Sim"
+    : "Não",
+
+    possuiAnomalia:
+    houveAnomalia,
+
+    tipoAnomalia:
+    houveAnomalia
+    ? selectTipoAnomalia?.value || ""
+    : "",
+
+    criticidadeAnomalia:
+    houveAnomalia
+    ? selectCriticidadeAnomalia?.value || ""
+    : "",
+
+    impactoAnomalia:
+    houveAnomalia
+    ? selectImpactoAnomalia?.value || ""
+    : "",
+
+    statusAnomalia:
+    houveAnomalia
+    ? selectStatusAnomalia?.value || "Aberta"
+    : "",
+
+    prazoTratativaAnomalia:
+    houveAnomalia
+    ? inputPrazoTratativaAnomalia?.value || ""
+    : "",
+
+    descricaoAnomalia:
+    houveAnomalia
+    ? descricao
+    : "",
+
+    acaoCorretivaAnomalia:
+    houveAnomalia
+    ? acao
+    : "",
+
+    responsavelAnomalia:
+    houveAnomalia
+    ? responsavel
+    : "",
+
+    anomalias:
+    anomaliasTexto
   };
 
-  if (semanaSelecionadaLabel) {
-
-    semanaSelecionadaLabel.textContent =
-    `${item.semana} - ${item.periodo || ""}`;
-
-  }
-
-  if (btnSalvar) {
-    btnSalvar.textContent =
-    "Salvar Atualização";
-  }
-
-  if (inputFisicoReal) {
-    inputFisicoReal.value = "";
-  }
-
-  if (inputFinanceiroReal) {
-    inputFinanceiroReal.value = "";
-  }
-
-  if (inputCentroCustoApropriacao) {
-    inputCentroCustoApropriacao.value = "";
-  }
-
-  if (selectTemAnomalia) {
-    selectTemAnomalia.value = "Não";
-  }
-
-  limparDetalhesAnomalia();
-
-  atualizarEstadoAnomalia();
-
-  aplicarPermissoesNaTela();
-
-  inputFisicoReal?.focus();
-
 }
 
-/* =========================================
-   PREPARAR CORREÇÃO DE REALIZADO
-========================================= */
+function preencherCamposAnomalia(realizado) {
 
-function prepararCorrecaoRealizado(
-  tr,
-  item,
-  realizado
-) {
-
-  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
-
-    alert(
-      "Apenas administradores podem corrigir uma semana já atualizada."
-    );
-
-    return;
-
-  }
-
-  modoEdicao = true;
-
-  realizadoEmEdicaoId =
-  realizado.id;
-
-  semanaSelecionada = {
-    semana: item.semana,
-    periodo: item.periodo
-  };
-
-  if (inputFisicoReal) {
-
-    inputFisicoReal.value =
-    obterFisicoRealizado(
-      realizado
-    );
-
-  }
-
-  if (inputFinanceiroReal) {
-
-    inputFinanceiroReal.value =
-    formatarMoeda(
-      obterFinanceiroRealizado(
-        realizado
-      )
-    );
-
-  }
-
-  if (inputCentroCustoApropriacao) {
-
-    const centro =
-    obterCentroCustoApropriacao(
-      realizado
-    );
-
-    inputCentroCustoApropriacao.value =
-    centro === "-"
-    ? ""
-    : centro;
-
-  }
-
-  preencherCamposAnomalia(
+  const possui =
+  realizadoPossuiAnomalia(
     realizado
   );
 
-  if (semanaSelecionadaLabel) {
+  if (selectTemAnomalia) {
+    selectTemAnomalia.value =
+    possui
+    ? "Sim"
+    : "Não";
+  }
 
-    semanaSelecionadaLabel.textContent =
-    `Corrigindo ${item.semana} - ${item.periodo || ""}`;
+  if (selectTipoAnomalia) {
+    selectTipoAnomalia.value =
+    realizado.tipoAnomalia || "";
+  }
+
+  if (selectCriticidadeAnomalia) {
+    selectCriticidadeAnomalia.value =
+    realizado.criticidadeAnomalia || "";
+  }
+
+  if (selectImpactoAnomalia) {
+    selectImpactoAnomalia.value =
+    realizado.impactoAnomalia || "";
+  }
+
+  if (selectStatusAnomalia) {
+    selectStatusAnomalia.value =
+    realizado.statusAnomalia || "";
+  }
+
+  if (inputPrazoTratativaAnomalia) {
+    inputPrazoTratativaAnomalia.value =
+    normalizarDataParaInput(
+      realizado.prazoTratativaAnomalia
+    );
+  }
+
+  if (inputDescricaoAnomalia) {
+    inputDescricaoAnomalia.value =
+    realizado.descricaoAnomalia ||
+    realizado.anomalias ||
+    "";
+  }
+
+  if (inputAcaoCorretivaAnomalia) {
+    inputAcaoCorretivaAnomalia.value =
+    realizado.acaoCorretivaAnomalia || "";
+  }
+
+  if (inputResponsavelAnomalia) {
+    inputResponsavelAnomalia.value =
+    realizado.responsavelAnomalia || "";
+  }
+
+  atualizarEstadoAnomalia();
+
+}
+
+function realizadoPossuiAnomalia(realizado) {
+
+  return (
+    realizado?.possuiAnomalia === true ||
+    realizado?.temAnomalia === "Sim" ||
+    Boolean(realizado?.anomalias) ||
+    Boolean(realizado?.descricaoAnomalia)
+  );
+
+}
+
+function obterResumoAnomalia(realizado) {
+
+  if (!realizadoPossuiAnomalia(realizado)) {
+    return "Não";
+  }
+
+  return (
+    realizado.tipoAnomalia ||
+    realizado.descricaoAnomalia ||
+    realizado.anomalias ||
+    "Sim"
+  );
+
+}
+
+function obterCriticidadeAnomalia(realizado) {
+
+  return (
+    realizado?.criticidadeAnomalia ||
+    "-"
+  );
+
+}
+
+function obterClasseCriticidadeAnomalia(realizado) {
+
+  const criticidade =
+  normalizarTexto(
+    realizado?.criticidadeAnomalia
+  );
+
+  if (
+    criticidade === "alta" ||
+    criticidade === "critica"
+  ) {
+    return "texto-vermelho";
+  }
+
+  if (
+    criticidade === "baixa"
+  ) {
+    return "texto-verde";
+  }
+
+  return "";
+
+}
+
+/* =========================================
+   LIMPAR CAMPOS
+========================================= */
+
+function limparCamposFormularioSemana() {
+
+  if (inputFisicoReal) {
+    inputFisicoReal.value =
+    "";
+  }
+
+  if (inputFinanceiroReal) {
+    inputFinanceiroReal.value =
+    "";
+  }
+
+  if (inputCentroCustoApropriacao) {
+    inputCentroCustoApropriacao.value =
+    "";
+  }
+
+  if (selectTemAnomalia) {
+    selectTemAnomalia.value =
+    "Não";
+  }
+
+  limparCamposAnomalia();
+
+  atualizarEstadoAnomalia();
+
+}
+
+function limparCamposAtualizacao() {
+
+  limparCamposFormularioSemana();
+
+  semanaSelecionada =
+  null;
+
+  modoEdicao =
+  false;
+
+  realizadoEmEdicaoId =
+  null;
+
+  if (btnSalvar) {
+
+    btnSalvar.textContent =
+    usuarioPodeLancarCurvaS(usuarioLogadoGlobal)
+    ? "Salvar Atualização"
+    : "Sem permissão para salvar";
 
   }
 
-  document
-    .querySelectorAll("#tabelaSemanas tr")
-    .forEach((linha) => {
+  if (semanaSelecionadaLabel) {
 
-      linha.classList.remove(
-        "selecionada"
-      );
+    semanaSelecionadaLabel.textContent =
+    "Nenhuma semana selecionada";
 
-    });
-
-  tr.classList.add(
-    "selecionada"
-  );
-
-  if (btnSalvar) {
-    btnSalvar.textContent =
-    "Salvar Correção";
   }
 
   aplicarPermissoesNaTela();
 
-  inputFisicoReal?.focus();
-
 }
 
-/* =========================================
-   VERIFICAR SE JÁ EXISTE REALIZADO
-========================================= */
+function limparStatusObra() {
 
-async function buscarRealizadoExistente() {
+  if (statusObra) {
+    statusObra.value =
+    "";
+  }
 
-  const lista = [];
+  if (motivoParalisacao) {
 
-  const consultas = [
-    query(
-      collection(db, "realizadoCurvaS"),
-      where("obraId", "==", obraSelecionada.id),
-      where("semana", "==", semanaSelecionada.semana)
-    ),
-    query(
-      collection(db, "realizadoCurvaS"),
-      where("obra", "==", obraSelecionada.nomeProjeto),
-      where("semana", "==", semanaSelecionada.semana)
-    )
-  ];
+    motivoParalisacao.value =
+    "";
 
-  for (const consulta of consultas) {
-
-    const snapshot =
-    await getDocs(consulta);
-
-    snapshot.forEach((docRef) => {
-
-      lista.push({
-        id: docRef.id,
-        ...docRef.data()
-      });
-
-    });
+    motivoParalisacao.disabled =
+    true;
 
   }
 
-  return lista;
+  if (statusObraLabel) {
+
+    statusObraLabel.textContent =
+    "Nenhuma obra selecionada";
+
+  }
+
+  aplicarPermissoesNaTela();
+
+}
+
+function limparTela() {
+
+  planejamentosObra =
+  [];
+
+  realizadosObra =
+  [];
+
+  if (tabelaSemanas) {
+
+    tabelaSemanas.innerHTML =
+    `
+      <tr>
+        <td colspan="9">
+          Selecione uma obra para carregar o planejamento.
+        </td>
+      </tr>
+    `;
+
+  }
+
+  if (valorObra) {
+    valorObra.value =
+    "";
+  }
+
+  if (valorExecutado) {
+    valorExecutado.value =
+    "";
+  }
+
+  atualizarBarraProgressoExecutado(0, 0);
+
+  limparCamposAtualizacao();
+
+  limparStatusObra();
 
 }
 
 /* =========================================
-   SALVAR OU CORRIGIR REALIZADO
+   VALORES E FORMATADORES
 ========================================= */
 
-async function salvarAtualizacaoRealizado() {
+function atualizarValorExecutado() {
 
-  try {
+  /*
+    CORREÇÃO: este valor é ACUMULADO a cada semana (cada registro já
+    representa o total até aquela semana) — não é um valor "da
+    semana" que deva ser somado com os outros. Somar tudo (como
+    estava antes) multiplicava o valor real várias vezes. O certo é
+    pegar só o registro da semana mais recente (usando a mesma
+    ordenação por número de semana/período já usada no resto do
+    arquivo, não a ordem em que o Firestore devolveu os documentos).
+  */
 
-    if (!usuarioLogadoGlobal) {
+  const ultimoRealizado =
+  [...realizadosObra].sort(
+    (a, b) => obterOrdemRealizado(a) - obterOrdemRealizado(b)
+  ).pop();
 
-      alert(
-        "Usuário não autenticado. Faça login novamente."
-      );
+  const totalExecutado =
+  ultimoRealizado
+  ? converterMoeda(
+    ultimoRealizado.financeiroRealAcum ??
+    ultimoRealizado.financeiroReal ??
+    0
+  )
+  : 0;
 
-      return;
+  if (valorExecutado) {
 
-    }
-
-    if (!usuarioPodeEditarObras(usuarioLogadoGlobal)) {
-
-      alert(
-        "Você não tem permissão para salvar atualização da Curva S."
-      );
-
-      return;
-
-    }
-
-    if (!obraSelecionada) {
-
-      alert(
-        "Selecione uma obra."
-      );
-
-      return;
-
-    }
-
-    if (obraEstaParalisada(obraSelecionada)) {
-
-      alert(
-        "Esta obra está paralisada. Reative a obra antes de lançar novas atualizações."
-      );
-
-      return;
-
-    }
-
-    if (!semanaSelecionada) {
-
-      alert(
-        "Selecione uma semana pendente ou dê duplo clique em uma semana atualizada para corrigir."
-      );
-
-      return;
-
-    }
-
-    if (
-      inputFisicoReal?.value === "" ||
-      inputFinanceiroReal?.value === ""
-    ) {
-
-      alert(
-        "Preencha o físico realizado e o financeiro realizado."
-      );
-
-      return;
-
-    }
-
-    if (
-      !inputCentroCustoApropriacao ||
-      inputCentroCustoApropriacao.value.trim() === ""
-    ) {
-
-      alert(
-        "Informe o centro de custo de apropriação."
-      );
-
-      inputCentroCustoApropriacao?.focus();
-
-      return;
-
-    }
-
-    const fisicoReal =
-    converterPercentual(
-      inputFisicoReal.value
+    valorExecutado.value =
+    formatarMoeda(
+      totalExecutado
     );
 
-    const financeiroReal =
+  }
+
+  atualizarBarraProgressoExecutado(
+    totalExecutado,
     converterMoeda(
-      inputFinanceiroReal.value
-    );
-
-    if (
-      isNaN(fisicoReal) ||
-      fisicoReal < 0 ||
-      fisicoReal > 100
-    ) {
-
-      alert(
-        "O físico realizado deve estar entre 0 e 100%."
-      );
-
-      return;
-
-    }
-
-    if (
-      isNaN(financeiroReal) ||
-      financeiroReal < 0
-    ) {
-
-      alert(
-        "O financeiro realizado deve ser um valor válido."
-      );
-
-      return;
-
-    }
-
-    const centroCustoApropriacao =
-    inputCentroCustoApropriacao.value.trim();
-
-    const dadosAnomalia =
-    obterDadosAnomaliaParaSalvar();
-
-    const anomaliaValida =
-    validarDadosAnomalia(
-      dadosAnomalia
-    );
-
-    if (!anomaliaValida) {
-      return;
-    }
-
-    if (
-      modoEdicao &&
-      realizadoEmEdicaoId
-    ) {
-
-      if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
-
-        alert(
-          "Apenas administradores podem corrigir uma atualização."
-        );
-
-        return;
-
-      }
-
-      await updateDoc(
-        doc(
-          db,
-          "realizadoCurvaS",
-          realizadoEmEdicaoId
-        ),
-        {
-          fisicoReal,
-          fisicoRealAcum:
-          fisicoReal,
-
-          financeiroReal,
-          financeiroRealAcum:
-          financeiroReal,
-
-          centroCustoApropriacao,
-
-          centroCusto:
-          centroCustoApropriacao,
-
-          houveAnomalia:
-          dadosAnomalia.houveAnomalia,
-
-          temAnomalia:
-          dadosAnomalia.temAnomalia,
-
-          tipoAnomalia:
-          dadosAnomalia.tipoAnomalia,
-
-          criticidadeAnomalia:
-          dadosAnomalia.criticidadeAnomalia,
-
-          impactoAnomalia:
-          dadosAnomalia.impactoAnomalia,
-
-          statusAnomalia:
-          dadosAnomalia.statusAnomalia,
-
-          prazoTratativaAnomalia:
-          dadosAnomalia.prazoTratativaAnomalia,
-
-          descricaoAnomalia:
-          dadosAnomalia.descricaoAnomalia,
-
-          acaoCorretivaAnomalia:
-          dadosAnomalia.acaoCorretivaAnomalia,
-
-          responsavelAnomalia:
-          dadosAnomalia.responsavelAnomalia,
-
-          anomalias:
-          dadosAnomalia.anomalias,
-
-          anomalia:
-          dadosAnomalia.anomalia,
-
-          corrigidoPorUid:
-          usuarioLogadoGlobal?.uid || "",
-
-          corrigidoPorEmail:
-          usuarioLogadoGlobal?.email ||
-          usuarioLogadoGlobal?.emailAuth ||
-          "",
-
-          corrigidoPorNome:
-          usuarioLogadoGlobal?.nome || "",
-
-          corrigidoEm:
-          serverTimestamp(),
-
-          atualizadoEm:
-          serverTimestamp(),
-
-          dataAtualizacao:
-          serverTimestamp()
-        }
-      );
-
-      alert(
-        "Atualização corrigida com sucesso!"
-      );
-
-      limparCamposAtualizacao();
-
-      await carregarPlanejamento();
-
-      return;
-
-    }
-
-    const existe =
-    await buscarRealizadoExistente();
-
-    if (existe.length > 0) {
-
-      alert(
-        "Essa semana já foi atualizada. A correção é permitida apenas para administrador."
-      );
-
-      await carregarPlanejamento();
-
-      return;
-
-    }
-
-    await addDoc(
-      collection(
-        db,
-        "realizadoCurvaS"
-      ),
-      {
-        obraId:
-        obraSelecionada.id,
-
-        obra:
-        obraSelecionada.nomeProjeto,
-
-        obraNome:
-        obraSelecionada.nomeProjeto,
-
-        regional:
-        obraSelecionada.regional || "",
-
-        localidade:
-        obraSelecionada.localidade || "",
-
-        valorOrcado:
-        obterValorOrcadoObra(
-          obraSelecionada
-        ),
-
-        semana:
-        semanaSelecionada.semana,
-
-        periodo:
-        semanaSelecionada.periodo,
-
-        fisicoReal,
-
-        fisicoRealAcum:
-        fisicoReal,
-
-        financeiroReal,
-
-        financeiroRealAcum:
-        financeiroReal,
-
-        centroCustoApropriacao,
-
-        centroCusto:
-        centroCustoApropriacao,
-
-        houveAnomalia:
-        dadosAnomalia.houveAnomalia,
-
-        temAnomalia:
-        dadosAnomalia.temAnomalia,
-
-        tipoAnomalia:
-        dadosAnomalia.tipoAnomalia,
-
-        criticidadeAnomalia:
-        dadosAnomalia.criticidadeAnomalia,
-
-        impactoAnomalia:
-        dadosAnomalia.impactoAnomalia,
-
-        statusAnomalia:
-        dadosAnomalia.statusAnomalia,
-
-        prazoTratativaAnomalia:
-        dadosAnomalia.prazoTratativaAnomalia,
-
-        descricaoAnomalia:
-        dadosAnomalia.descricaoAnomalia,
-
-        acaoCorretivaAnomalia:
-        dadosAnomalia.acaoCorretivaAnomalia,
-
-        responsavelAnomalia:
-        dadosAnomalia.responsavelAnomalia,
-
-        anomalias:
-        dadosAnomalia.anomalias,
-
-        anomalia:
-        dadosAnomalia.anomalia,
-
-        criadoPorUid:
-        usuarioLogadoGlobal?.uid || "",
-
-        criadoPorEmail:
-        usuarioLogadoGlobal?.email ||
-        usuarioLogadoGlobal?.emailAuth ||
-        "",
-
-        criadoPorNome:
-        usuarioLogadoGlobal?.nome || "",
-
-        criadoEm:
-        serverTimestamp(),
-
-        atualizadoEm:
-        serverTimestamp(),
-
-        dataAtualizacao:
-        serverTimestamp()
-      }
-    );
-
-    alert(
-      "Atualização salva com sucesso!"
-    );
-
-    limparCamposAtualizacao();
-
-    await carregarPlanejamento();
-
-  } catch (error) {
-
-    console.error(
-      "Erro ao salvar atualização:",
-      error
-    );
-
-    alert(
-      "Erro ao salvar atualização. Verifique suas permissões no Firestore."
-    );
-
-  }
+      obraSelecionada?.valorOrcado
+    )
+  );
 
 }
 
-/* =========================================
-   EVENTOS
-========================================= */
+/*
+  Barra de progresso do Valor Executado em relação ao Valor Orçado.
+  A barra visual fica travada em 100% de largura (não estoura o
+  card), mas o texto ao lado mostra o percentual real — inclusive
+  acima de 100%, com a cor mudando pra vermelho como alerta.
+*/
+function atualizarBarraProgressoExecutado(totalExecutado, valorOrcadoObra) {
 
-function configurarEventos() {
+  if (!barraProgressoExecutado || !barraProgressoExecutadoTexto) {
+    return;
+  }
 
-  configurarMascaraFinanceiro();
+  if (!valorOrcadoObra || valorOrcadoObra <= 0) {
+    barraProgressoExecutado.style.width = "0%";
+    barraProgressoExecutado.classList.remove("progresso-alerta");
+    barraProgressoExecutadoTexto.textContent = "0%";
+    return;
+  }
 
-  configurarStatusObra();
+  const percentual =
+  (totalExecutado / valorOrcadoObra) * 100;
 
-  configurarAnomalias();
+  const percentualVisual =
+  Math.min(Math.max(percentual, 0), 100);
 
-  configurarFiltroRegional();
+  barraProgressoExecutado.style.width =
+  `${percentualVisual}%`;
 
-  configurarFiltroLocalidade();
+  barraProgressoExecutado.classList.toggle(
+    "progresso-alerta",
+    percentual > 100
+  );
 
-  configurarFiltroObra();
+  barraProgressoExecutadoTexto.textContent =
+  `${percentual.toFixed(2)}%`;
 
-  btnSalvar?.addEventListener(
-    "click",
-    salvarAtualizacaoRealizado
+}
+
+function obterFisicoRealizado(realizado) {
+
+  return converterPercentual(
+    realizado?.fisicoReal ??
+    realizado?.fisicoRealizado ??
+    0
+  );
+
+}
+
+function obterFinanceiroRealizado(realizado) {
+
+  return converterMoeda(
+    realizado?.financeiroReal ??
+    realizado?.financeiroRealizado ??
+    0
+  );
+
+}
+
+function converterMoeda(valor) {
+
+  if (
+    valor === null ||
+    valor === undefined ||
+    valor === ""
+  ) {
+    return 0;
+  }
+
+  if (typeof valor === "number") {
+    return valor;
+  }
+
+  let texto =
+  String(valor)
+    .replace("R$", "")
+    .replace(/\s/g, "")
+    .trim();
+
+  if (!texto) {
+    return 0;
+  }
+
+  if (texto.includes(",")) {
+
+    texto =
+    texto
+      .replace(/\./g, "")
+      .replace(",", ".");
+
+    return Number(texto) || 0;
+
+  }
+
+  texto =
+  texto.replace(/[^\d.-]/g, "");
+
+  return Number(texto) || 0;
+
+}
+
+function formatarMoeda(valor) {
+
+  const numero =
+  converterMoeda(
+    valor
+  );
+
+  return numero.toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }
+  );
+
+}
+
+function converterPercentual(valor) {
+
+  if (
+    valor === null ||
+    valor === undefined ||
+    valor === ""
+  ) {
+    return 0;
+  }
+
+  if (typeof valor === "number") {
+    return valor;
+  }
+
+  let texto =
+  String(valor)
+    .replace("%", "")
+    .replace(/\s/g, "")
+    .trim();
+
+  if (texto.includes(",")) {
+
+    texto =
+    texto
+      .replace(/\./g, "")
+      .replace(",", ".");
+
+  }
+
+  texto =
+  texto.replace(/[^\d.-]/g, "");
+
+  return Number(texto) || 0;
+
+}
+
+function formatarPercentual(valor) {
+
+  if (
+    valor === null ||
+    valor === undefined ||
+    valor === ""
+  ) {
+    return "-";
+  }
+
+  const numero =
+  converterPercentual(
+    valor
+  );
+
+  return numero.toLocaleString(
+    "pt-BR",
+    {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }
+  ) + "%";
+
+}
+
+function aplicarMascaraMoeda(valor) {
+
+  let somenteNumeros =
+  String(valor || "")
+    .replace(/\D/g, "");
+
+  if (!somenteNumeros) {
+    return "";
+  }
+
+  return (
+    Number(
+      somenteNumeros
+    ) / 100
+  ).toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL"
+    }
+  );
+
+}
+
+function configurarMascaraFinanceiro() {
+
+  inputFinanceiroReal?.addEventListener(
+    "input",
+    (e) => {
+
+      e.target.value =
+      aplicarMascaraMoeda(
+        e.target.value
+      );
+
+    }
   );
 
 }
 
 /* =========================================
-   INICIAR
+   DATAS
 ========================================= */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  async () => {
+function obterNumeroSemana(semana) {
 
-    try {
+  const numero =
+  String(semana || "")
+    .match(/\d+/);
 
-      usuarioLogadoGlobal =
-      await protegerPagina();
+  return numero
+  ? Number(numero[0])
+  : 0;
 
-      limparStatusObra();
+}
 
-      configurarEventos();
+function obterData(valor) {
 
-      aplicarPermissoesNaTela();
+  if (!valor) {
+    return null;
+  }
 
-      await carregarObras();
+  if (valor?.toDate) {
+    return valor.toDate();
+  }
 
-    } catch (error) {
+  if (valor?.seconds) {
 
-      console.error(
-        "Erro ao iniciar atualização da Curva S:",
-        error
-      );
-
-      alert(
-        "Erro ao iniciar a tela de atualização da Curva S."
-      );
-
-    }
+    return new Date(
+      valor.seconds * 1000
+    );
 
   }
-);
+
+  const data =
+  new Date(valor);
+
+  return isNaN(data.getTime())
+  ? null
+  : data;
+
+}
+
+function formatarDataAtualizacao(realizado) {
+
+  const data =
+  obterData(
+    realizado?.atualizadoEm ||
+    realizado?.criadoEm ||
+    realizado?.dataAtualizacao
+  );
+
+  if (!data) {
+    return "-";
+  }
+
+  return data.toLocaleDateString(
+    "pt-BR"
+  ) + " " + data.toLocaleTimeString(
+    "pt-BR",
+    {
+      hour: "2-digit",
+      minute: "2-digit"
+    }
+  );
+
+}
+
+function normalizarDataParaInput(valor) {
+
+  if (!valor) {
+    return "";
+  }
+
+  if (
+    typeof valor === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(valor)
+  ) {
+    return valor;
+  }
+
+  const data =
+  obterData(valor);
+
+  if (!data) {
+    return "";
+  }
+
+  const ano =
+  data.getFullYear();
+
+  const mes =
+  String(data.getMonth() + 1)
+    .padStart(2, "0");
+
+  const dia =
+  String(data.getDate())
+    .padStart(2, "0");
+
+  return `${ano}-${mes}-${dia}`;
+
+}

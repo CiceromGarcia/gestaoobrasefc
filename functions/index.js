@@ -1,6 +1,10 @@
 // index.js — Cloud Functions v2 (Node 20)
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
+
+// Compat v1: o trigger de Auth (auth.user().onCreate) ainda não tem
+// equivalente nativo no SDK v2, então usamos o pacote v1 só pra isso.
+const functionsV1 = require("firebase-functions");
 const { onDocumentWritten, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
@@ -16,11 +20,18 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
-const EMAILS_ADMIN_GERAL = new Set([
-  "cicero.garcia@vale.com",
-  "c0706341@vale.com",
-  "ciceromgarcia@gmail.com"
-]);
+/*
+  SEGURANÇA: a lista fixa de e-mails de administrador foi REMOVIDA.
+  Ela ficava exposta no código-fonte do cliente (authGuard.js) e
+  era redundante — o Firestore (usuariosSistema) já é a fonte da
+  verdade. Agora usamos CUSTOM CLAIMS sincronizadas automaticamente
+  a partir do Firestore (ver trigger `sincronizarClaimAdmin` abaixo).
+
+  Para promover o primeiro administrador do sistema: crie/edite o
+  documento em usuariosSistema/{uid} pelo Console do Firebase com
+  perfil = "administrador" e status = "ativo". A claim é aplicada
+  automaticamente pela função de sincronização.
+*/
 
 // ===== Config legacy =====
 const legacyCfg =
@@ -630,16 +641,36 @@ exports.backfillRollups = onRequest(
   {
     region: "us-central1",
     memory: "512MiB",
-    timeoutSeconds: 540
+    timeoutSeconds: 540,
+    enforceAppCheck: true
   },
   async (req, res) => {
     try {
-      const token = String(req.query.token || "");
-      const expected = String(appCfg.rollup_token || "TROQUE-ESTA-CHAVE");
+      // SEGURANÇA: não existe mais valor padrão ("TROQUE-ESTA-CHAVE").
+      // Se a chave não estiver configurada em functions:config, o
+      // endpoint falha fechado (nega o acesso) em vez de aceitar um
+      // token adivinhável/conhecido publicamente.
+      const expected = String(appCfg.rollup_token || "");
 
-      if (token !== expected) {
+      if (!expected) {
+        logger.error("backfillRollups: appCfg.rollup_token não configurado.");
+        return res.status(503).send("Endpoint não configurado.");
+      }
+
+      const token = String(req.query.token || "");
+
+      if (
+        token.length !== expected.length ||
+        !require("crypto").timingSafeEqual(
+          Buffer.from(token),
+          Buffer.from(expected)
+        )
+      ) {
         return res.status(401).send("unauthorized");
       }
+
+      // Além do token, exige também um admin autenticado.
+      await exigirAdminHttp(req);
 
       const projSnap = await db.collection("projetos").get();
 
@@ -683,7 +714,7 @@ exports.backfillRollups = onRequest(
         .send(`Backfill concluído. Obras: ${obras}, rollups atualizados: ${updated}`);
     } catch (e) {
       logger.error("Backfill erro:", e);
-      return res.status(500).send("erro");
+      return res.status(e.statusCode || 500).send(e.statusCode ? e.message : "erro");
     }
   }
 );
@@ -990,10 +1021,17 @@ exports.recomputeIndicators = onRequest(
   {
     region: "us-central1",
     memory: "512MiB",
-    timeoutSeconds: 300
+    timeoutSeconds: 300,
+    enforceAppCheck: true
   },
   async (req, res) => {
     try {
+      // SEGURANÇA: este endpoint era público (onRequest sem checagem
+      // nenhuma), permitindo que qualquer pessoa na internet disparasse
+      // recomputação em massa de TODOS os projetos (custo/DoS). Agora
+      // exige um usuário administrador autenticado.
+      await exigirAdminHttp(req);
+
       const projectId = req.query.projectId && String(req.query.projectId);
 
       if (projectId) {
@@ -1019,9 +1057,9 @@ exports.recomputeIndicators = onRequest(
     } catch (e) {
       logger.error("recomputeIndicators erro:", e);
 
-      return res.status(500).send({
+      return res.status(e.statusCode || 500).send({
         ok: false,
-        error: String(e)
+        error: e.statusCode ? e.message : String(e)
       });
     }
   }
@@ -1084,6 +1122,67 @@ function gerarChavesObra(dados = {}, entrada = {}) {
   ];
 }
 
+/* ===================================================================
+   SEGURANÇA — VALIDAÇÃO DE ADMIN PARA ENDPOINTS HTTP (onRequest)
+   Endpoints onRequest não recebem "request.auth" automaticamente como
+   os onCall. Por isso, endpoints administrativos (recompute/backfill)
+   agora exigem um ID Token do Firebase Auth no header Authorization,
+   validado e conferido contra o cadastro em usuariosSistema.
+=================================================================== */
+
+async function exigirAdminHttp(req) {
+  const authHeader = String(req.headers.authorization || "");
+  const match = authHeader.match(/^Bearer (.+)$/i);
+
+  if (!match) {
+    const erro = new Error("Token de autenticação ausente.");
+    erro.statusCode = 401;
+    throw erro;
+  }
+
+  let decoded;
+
+  try {
+    decoded = await admin.auth().verifyIdToken(match[1]);
+  } catch (e) {
+    const erro = new Error("Token de autenticação inválido.");
+    erro.statusCode = 401;
+    throw erro;
+  }
+
+  // Caminho rápido: claim já sincronizada no token (sem leitura no Firestore).
+  if (decoded.admin === true) {
+    return decoded;
+  }
+
+  // Fallback: claim pode ainda não ter propagado (ex.: usuário acabou de
+  // ser promovido e não atualizou o token). Confere direto no Firestore.
+  const usuarioSnap = await db
+    .collection("usuariosSistema")
+    .doc(decoded.uid)
+    .get();
+
+  if (!usuarioSnap.exists) {
+    const erro = new Error("Usuário não encontrado em usuariosSistema.");
+    erro.statusCode = 403;
+    throw erro;
+  }
+
+  const usuario = usuarioSnap.data() || {};
+  const perfil = canonical(usuario.perfil || usuario.role || usuario.tipo || "");
+  const status = canonical(usuario.status || "");
+  const ativo = status === "ativo";
+  const admin_ = perfil === "administrador" || perfil === "admin" || perfil === "adm";
+
+  if (!ativo || !admin_) {
+    const erro = new Error("Apenas administrador ativo pode executar esta operação.");
+    erro.statusCode = 403;
+    throw erro;
+  }
+
+  return decoded;
+}
+
 async function usuarioCallableEhAdmin(auth) {
   if (!auth?.uid) {
     throw new HttpsError(
@@ -1092,12 +1191,12 @@ async function usuarioCallableEhAdmin(auth) {
     );
   }
 
-  const email = String(auth.token?.email || "").trim().toLowerCase();
-
-  if (EMAILS_ADMIN_GERAL.has(email)) {
+  // Caminho rápido: claim já sincronizada no token (sem leitura no Firestore).
+  if (auth.token?.admin === true) {
     return true;
   }
 
+  // Fallback: claim pode ainda não ter propagado. Confere no Firestore.
   const usuarioSnap = await db
     .collection("usuariosSistema")
     .doc(auth.uid)
@@ -1409,11 +1508,118 @@ async function apagarEmLotes(refs) {
   return totalExcluido;
 }
 
+/* ===================================================================
+   7) SINCRONIZAÇÃO DE CUSTOM CLAIMS (admin) A PARTIR DO FIRESTORE
+   Sempre que usuariosSistema/{uid} é criado/alterado, este trigger
+   define (ou remove) a custom claim "admin" no token do usuário,
+   de acordo com perfil == "administrador" && status == "ativo".
+   Isso substitui a antiga lista fixa de e-mails: o Firestore continua
+   sendo a ÚNICA fonte da verdade, e a claim é só um "cache" no token
+   para checagens rápidas e sem leitura extra no banco.
+
+   IMPORTANTE: claims só valem no PRÓXIMO login/refresh do token do
+   usuário. Se você promover alguém a administrador, peça para a
+   pessoa sair e entrar novamente (ou o app pode forçar isso chamando
+   `getIdToken(true)` após detectar mudança de perfil).
+=================================================================== */
+
+exports.sincronizarClaimAdmin = onDocumentWritten(
+  {
+    document: "usuariosSistema/{uid}"
+  },
+  async (event) => {
+    const { uid } = event.params;
+    const after = event.data?.after?.exists ? event.data.after.data() : null;
+
+    if (!after) {
+      // Documento excluído: por segurança, remove a claim.
+      try {
+        await admin.auth().setCustomUserClaims(uid, { admin: false });
+      } catch (e) {
+        logger.warn(`[sincronizarClaimAdmin] usuário ${uid} não existe mais no Auth.`, e);
+      }
+      return;
+    }
+
+    const perfil = canonical(after.perfil || after.role || after.tipo || "");
+    const status = canonical(after.status || "");
+    const deveSerAdmin =
+      status === "ativo" &&
+      (perfil === "administrador" || perfil === "admin" || perfil === "adm");
+
+    try {
+      const usuarioAuth = await admin.auth().getUser(uid);
+      const jaEhAdmin = usuarioAuth.customClaims?.admin === true;
+
+      if (jaEhAdmin === deveSerAdmin) {
+        return; // nada mudou, evita escrita desnecessária
+      }
+
+      await admin.auth().setCustomUserClaims(uid, { admin: deveSerAdmin });
+
+      logger.info(
+        `[sincronizarClaimAdmin] uid=${uid} admin=${deveSerAdmin}`
+      );
+    } catch (e) {
+      logger.error(`[sincronizarClaimAdmin] falha ao sincronizar uid=${uid}`, e);
+    }
+  }
+);
+
+/* ===================================================================
+   8) REDE DE SEGURANÇA — CRIAR PERFIL AO CADASTRAR NO AUTH
+   Hoje o cadastro (login.js) já grava o documento em usuariosSistema
+   logo após criar a conta no Firebase Auth. Este trigger é só uma
+   rede de segurança para o caso raro de a conexão cair entre os dois
+   passos, deixando um login válido sem perfil correspondente.
+
+   IMPORTANTE (diferente da versão antiga que existia no index.js da
+   raiz do projeto): este trigger NÃO promove ninguém a administrador
+   por e-mail. Todo mundo entra como "usuario"/"pendente" — igual ao
+   fluxo normal do login.js — e só é promovido depois, manualmente,
+   por um administrador (ou por você, direto no Firestore, no caso
+   do primeiro admin do sistema).
+=================================================================== */
+
+exports.criarPerfilUsuarioSistema = functionsV1
+  .region("us-central1")
+  .auth.user()
+  .onCreate(async (userRecord) => {
+    try {
+      const usuarioRef = db.collection("usuariosSistema").doc(userRecord.uid);
+      const snap = await usuarioRef.get();
+
+      if (snap.exists) {
+        // Já foi criado pelo cliente (fluxo normal) — não sobrescreve.
+        return;
+      }
+
+      const email = String(userRecord.email || "").trim().toLowerCase();
+      const nome = userRecord.displayName || email || "Usuário";
+
+      await usuarioRef.set({
+        uid: userRecord.uid,
+        nome,
+        email,
+        perfil: "usuario",
+        status: "pendente",
+        criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+        atualizadoEm: admin.firestore.FieldValue.serverTimestamp(),
+        origem: "auth-onCreate-fallback"
+      });
+
+      logger.info(`[criarPerfilUsuarioSistema] perfil criado (fallback) para ${email}`);
+    } catch (e) {
+      logger.error("[criarPerfilUsuarioSistema] falha:", e);
+    }
+  });
+
 exports.excluirObraCompleta = onCall(
   {
     region: "us-central1",
     memory: "1GiB",
-    timeoutSeconds: 540
+    timeoutSeconds: 540,
+    enforceAppCheck: true
   },
   async (request) => {
     await usuarioCallableEhAdmin(request.auth);

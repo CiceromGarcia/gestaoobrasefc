@@ -14,112 +14,10 @@ body{
 .login-page{
   width:100%;
   min-height:100vh;
-  display:grid;
-  grid-template-columns:45% 55%;
-}
-
-/* ===============================
-   PAINEL ESQUERDO
-================================ */
-
-.brand-panel{
-  background:
-    linear-gradient(
-      135deg,
-      rgba(0,126,122,0.96),
-      rgba(10,187,152,0.92)
-    );
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:40px;
-  color:#fff;
-  position:relative;
-  overflow:hidden;
-}
-
-.brand-panel::before{
-  content:"";
-  position:absolute;
-  width:320px;
-  height:320px;
-  border-radius:50%;
-  background:rgba(255,255,255,0.08);
-  right:-100px;
-  top:-80px;
-}
-
-.brand-panel::after{
-  content:"";
-  position:absolute;
-  width:420px;
-  height:420px;
-  border-radius:50%;
-  background:rgba(255,255,255,0.06);
-  left:-160px;
-  bottom:-160px;
-}
-
-.brand-content{
-  width:100%;
-  max-width:420px;
-  position:relative;
-  z-index:1;
-}
-
-/* ===============================
-   LOGO VALE SEM RETÂNGULO
-================================ */
-
-.logo-box{
-  width:180px;
-  height:auto;
-  display:flex;
-  align-items:center;
-  justify-content:flex-start;
-  margin-bottom:28px;
-  padding:0;
-  background:transparent;
-  border:none;
-  box-shadow:none;
-  border-radius:0;
-}
-
-.logo-vale{
-  width:100%;
-  max-width:170px;
-  height:auto;
-  object-fit:contain;
-  display:block;
-}
-
-.brand-content h1{
-  font-size:38px;
-  line-height:1.1;
-  margin-bottom:14px;
-  font-weight:800;
-}
-
-.brand-content p{
-  font-size:17px;
-  line-height:1.5;
-  opacity:0.96;
-}
-
-.brand-line{
-  width:90px;
-  height:4px;
-  background:#fff;
-  border-radius:50px;
-  margin:28px 0;
-}
-
-.brand-content span{
-  font-size:14px;
-  background:rgba(255,255,255,0.16);
-  padding:10px 16px;
-  border-radius:50px;
-  display:inline-flex;
+  padding:24px;
 }
 
 /* ===============================
@@ -136,28 +34,58 @@ body{
 .auth-card,
 .dashboard-card{
   width:100%;
-  max-width:460px;
+  max-width:600px;
   background:#fff;
-  border-radius:24px;
-  padding:28px;
+  border-radius:22px;
+  padding:36px 46px;
   box-shadow:0 24px 60px rgba(0,0,0,0.10);
   border:1px solid #e5e7eb;
 }
 
+/* ===============================
+   MARCA (logo + nome do sistema)
+================================ */
+
+.auth-brand{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  margin-bottom:18px;
+  padding-bottom:16px;
+  border-bottom:1px solid #eef1f3;
+}
+
+.auth-brand-logo{
+  height:38px;
+  width:auto;
+  max-width:150px;
+  object-fit:contain;
+}
+
+.auth-brand-nome{
+  font-size:13px;
+  font-weight:800;
+  color:#007E7A;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+}
+
 .auth-header{
-  margin-bottom:22px;
+  margin-bottom:18px;
+  text-align:center;
 }
 
 .auth-header h2,
 .dashboard-header h2{
-  font-size:26px;
+  font-size:21px;
   color:#007E7A;
-  margin-bottom:6px;
+  margin-bottom:4px;
 }
 
 .auth-header p,
 .dashboard-header p{
-  font-size:14px;
+  font-size:12.5px;
   color:#6b7280;
 }
 
@@ -170,17 +98,17 @@ body{
   display:grid;
   grid-template-columns:1fr 1fr;
   background:#f1f5f4;
-  padding:5px;
-  border-radius:14px;
-  margin-bottom:22px;
+  padding:4px;
+  border-radius:12px;
+  margin-bottom:18px;
 }
 
 .tab-btn{
   border:none;
   background:transparent;
-  padding:11px;
-  border-radius:11px;
-  font-size:14px;
+  padding:9px;
+  border-radius:9px;
+  font-size:13px;
   font-weight:700;
   color:#50514F;
   cursor:pointer;
@@ -197,31 +125,51 @@ body{
    FORMULÁRIOS
 ================================ */
 
+.form-stack{
+  display:grid;
+}
+
 .form-area{
-  display:none;
+  grid-area:1 / 1;
+  visibility:hidden;
+  opacity:0;
+  pointer-events:none;
 }
 
 .form-area.active{
-  display:block;
+  visibility:visible;
+  opacity:1;
+  pointer-events:auto;
 }
 
 label{
   display:block;
-  font-size:13px;
+  font-size:12px;
   font-weight:700;
   color:#374151;
-  margin-bottom:7px;
+  margin-bottom:5px;
+}
+
+.login-linha-dupla{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0 14px;
+}
+
+.campo-login{
+  display:flex;
+  flex-direction:column;
 }
 
 .input-group{
-  height:48px;
+  height:42px;
   width:100%;
   border:1px solid #d9dee3;
-  border-radius:14px;
+  border-radius:12px;
   display:flex;
   align-items:center;
-  padding:0 14px;
-  margin-bottom:15px;
+  padding:0 12px;
+  margin-bottom:12px;
   background:#fff;
   transition:0.25s;
 }
@@ -233,8 +181,8 @@ label{
 
 .input-group i{
   color:#007E7A;
-  margin-right:10px;
-  font-size:15px;
+  margin-right:9px;
+  font-size:14px;
 }
 
 .input-group input{
@@ -243,7 +191,7 @@ label{
   border:none;
   outline:none;
   background:transparent;
-  font-size:14px;
+  font-size:13px;
   color:#333;
 }
 
@@ -274,10 +222,10 @@ label{
   border:none;
   background:transparent;
   color:#007E7A;
-  font-size:13px;
+  font-size:12.5px;
   font-weight:700;
   cursor:pointer;
-  margin-bottom:18px;
+  margin-bottom:14px;
   display:block;
 }
 
@@ -287,12 +235,12 @@ label{
 
 .main-btn{
   width:100%;
-  height:48px;
+  height:44px;
   border:none;
-  border-radius:14px;
+  border-radius:12px;
   background:#007E7A;
   color:#fff;
-  font-size:15px;
+  font-size:14px;
   font-weight:800;
   cursor:pointer;
   display:flex;
@@ -309,15 +257,15 @@ label{
 
 .secondary-btn{
   width:100%;
-  height:46px;
+  height:42px;
   border:1px solid #d9dee3;
-  border-radius:14px;
+  border-radius:12px;
   background:#fff;
   color:#50514F;
-  font-size:14px;
+  font-size:13px;
   font-weight:700;
   cursor:pointer;
-  margin-top:12px;
+  margin-top:10px;
   transition:0.25s;
 }
 
@@ -484,23 +432,12 @@ tbody tr:hover{
    RESPONSIVO
 ================================ */
 
-@media(max-width:900px){
-
-  .login-page{
-    grid-template-columns:1fr;
-  }
-
-  .brand-panel{
-    min-height:260px;
-  }
-
-  .brand-content h1{
-    font-size:30px;
-  }
-
-}
-
 @media(max-width:520px){
+
+  .login-linha-dupla{
+    grid-template-columns:1fr;
+    gap:0;
+  }
 
   .auth-panel{
     padding:20px;
@@ -520,19 +457,6 @@ tbody tr:hover{
   .logout-btn{
     width:100%;
     justify-content:center;
-  }
-
-  .brand-panel{
-    padding:28px;
-  }
-
-  .logo-box{
-    width:160px;
-    margin-bottom:24px;
-  }
-
-  .logo-vale{
-    max-width:150px;
   }
 
 }

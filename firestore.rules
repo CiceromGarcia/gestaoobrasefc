@@ -262,6 +262,22 @@ service cloud.firestore {
     }
 
     /* ==============================
+       VALIDAÇÃO DE OBRA / PROJETO
+       (antes só validava o PAPEL de quem cria, sem checar
+       o conteúdo do documento. Agora exige que o autor da
+       obra seja realmente quem está autenticado, evitando
+       que um payload malicioso "assine" como outro usuário.)
+    ============================== */
+
+    function criacaoValidaObra() {
+      return podeCriarObra()
+        && (
+          !request.resource.data.keys().hasAny(["criadoPorUid"])
+          || request.resource.data.criadoPorUid == request.auth.uid
+        );
+    }
+
+    /* ==============================
        USUÁRIOS DO SISTEMA
     ============================== */
 
@@ -359,7 +375,7 @@ service cloud.firestore {
     match /obras/{obraId} {
       allow read: if ehUsuarioSistema();
 
-      allow create: if podeCriarObra();
+      allow create: if criacaoValidaObra();
 
       allow update: if podeEditarObraProgramada();
 
@@ -373,7 +389,7 @@ service cloud.firestore {
     match /projetos/{projetoId} {
       allow read: if ehUsuarioSistema();
 
-      allow create: if podeCriarObra();
+      allow create: if criacaoValidaObra();
 
       allow update: if podeEditarObraProgramada();
 

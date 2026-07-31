@@ -179,6 +179,12 @@
 
     </div>
 
+    <img
+      src="./logo-vale.png"
+      alt="Logo Vale"
+      class="header-logo"
+    >
+
   </header>
 
   <!-- =====================================
@@ -191,83 +197,127 @@
          FILTROS
     ====================================== -->
 
-    <div class="card filtros">
+    <div class="card filtros card-dados-obra">
 
-      <div class="campo-filtro">
+      <div class="titulo-card">
 
-        <label for="filtroRegional">
-          Regional
-        </label>
+        <h3>
+          Dados da Obra
+        </h3>
 
-        <select id="filtroRegional">
+      </div>
 
-          <option value="">
+      <div class="filtros-linha">
+
+        <div class="campo-filtro">
+
+          <label for="filtroRegional">
             Regional
-          </option>
+          </label>
 
-        </select>
+          <select id="filtroRegional">
 
-      </div>
+            <option value="">
+              Regional
+            </option>
 
-      <div class="campo-filtro">
+          </select>
 
-        <label for="filtroLocalidade">
-          Localidade
-        </label>
+        </div>
 
-        <select id="filtroLocalidade">
+        <div class="campo-filtro">
 
-          <option value="">
+          <label for="filtroLocalidade">
             Localidade
-          </option>
+          </label>
 
-        </select>
+          <select id="filtroLocalidade">
 
-      </div>
+            <option value="">
+              Localidade
+            </option>
 
-      <div class="campo-filtro">
+          </select>
 
-        <label for="filtroObra">
-          Obra
-        </label>
+        </div>
 
-        <select id="filtroObra">
+        <div class="campo-filtro">
 
-          <option value="">
+          <label for="filtroObra">
             Obra
-          </option>
+          </label>
 
-        </select>
+          <select id="filtroObra">
 
-      </div>
+            <option value="">
+              Obra
+            </option>
 
-      <div class="campo-filtro">
+          </select>
 
-        <label for="valorObra">
-          Valor Orçado
-        </label>
-
-        <input
-          type="text"
-          id="valorObra"
-          placeholder="R$ 0,00"
-          readonly
-        >
+        </div>
 
       </div>
 
-      <div class="campo-filtro">
+      <div class="filtros-linha filtros-linha-valores">
 
-        <label for="valorExecutado">
-          Valor Executado
-        </label>
+        <div class="campo-filtro">
 
-        <input
-          type="text"
-          id="valorExecutado"
-          placeholder="R$ 0,00"
-          readonly
-        >
+          <label for="valorObra">
+            Valor Orçado
+          </label>
+
+          <input
+            type="text"
+            id="valorObra"
+            placeholder="R$ 0,00"
+            readonly
+          >
+
+        </div>
+
+        <div class="campo-filtro">
+
+          <label for="valorExecutado">
+            Valor Executado
+          </label>
+
+          <input
+            type="text"
+            id="valorExecutado"
+            placeholder="R$ 0,00"
+            readonly
+          >
+
+        </div>
+
+        <div class="campo-filtro campo-progresso-executado">
+
+          <label>
+            % do Orçado Executado
+          </label>
+
+          <div class="linha-barra-progresso-executado">
+
+            <div class="barra-progresso-executado">
+
+              <div
+                class="barra-progresso-executado-preenchimento"
+                id="barraProgressoExecutado"
+              ></div>
+
+            </div>
+
+            <span
+              class="barra-progresso-executado-texto"
+              id="barraProgressoExecutadoTexto"
+            >
+              0%
+            </span>
+
+          </div>
+
+        </div>
 
       </div>
 
@@ -416,10 +466,6 @@
               </th>
 
               <th>
-                Criticidade
-              </th>
-
-              <th>
                 Data Atualização
               </th>
 
@@ -431,7 +477,7 @@
 
             <tr>
 
-              <td colspan="10">
+              <td colspan="9">
                 Selecione uma obra para carregar o planejamento.
               </td>
 
@@ -806,7 +852,7 @@
 
   <script
     type="module"
-    src="./atualizar-curva-s.js?v=002"
+    src="./atualizar-curva-s.js?v=003"
   ></script>
 
 </body>

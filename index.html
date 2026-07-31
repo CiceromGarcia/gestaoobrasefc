@@ -3,10 +3,13 @@
 
 <head>
 
-  <meta
-    http-equiv="Content-Security-Policy"
-    content="default-src 'self'; connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com; script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
-  >
+  <!--
+    A Content-Security-Policy agora é enviada como HEADER HTTP pelo
+    Firebase Hosting (ver firebase.json), não mais por <meta> aqui.
+    Isso evita ter uma política diferente (e mais fraca) em cada
+    página — antes esta página permitia 'unsafe-inline'/'unsafe-eval'
+    em script-src, o que anula boa parte da proteção contra XSS.
+  -->
 
   <meta charset="UTF-8">
 
@@ -124,90 +127,7 @@
     Ative o JavaScript para continuar.
   </noscript>
 
-  <script type="module">
-
-    import {
-      protegerPagina
-    } from "./authGuard.js";
-
-    const PAGINA_DASHBOARD =
-    "./dashboard.html";
-
-    const tituloStatus =
-    document.getElementById("tituloStatus");
-
-    const textoStatus =
-    document.getElementById("textoStatus");
-
-    async function iniciar() {
-
-      try {
-
-        if (tituloStatus) {
-
-          tituloStatus.textContent =
-          "Verificando acesso...";
-
-        }
-
-        if (textoStatus) {
-
-          textoStatus.textContent =
-          "Validando usuário, status e permissões.";
-
-        }
-
-        await protegerPagina();
-
-        document.title =
-        "Abrindo dashboard...";
-
-        if (tituloStatus) {
-
-          tituloStatus.textContent =
-          "Acesso autorizado";
-
-        }
-
-        if (textoStatus) {
-
-          textoStatus.textContent =
-          "Abrindo o painel executivo.";
-
-        }
-
-        window.location.replace(
-          PAGINA_DASHBOARD
-        );
-
-      } catch (error) {
-
-        console.error(
-          "Erro ao verificar sessão:",
-          error
-        );
-
-        if (tituloStatus) {
-
-          tituloStatus.textContent =
-          "Falha ao verificar sessão";
-
-        }
-
-        if (textoStatus) {
-
-          textoStatus.textContent =
-          "Redirecionando para a tela de login.";
-
-        }
-
-      }
-
-    }
-
-    iniciar();
-
-  </script>
+  <script type="module" src="./verificar-sessao.js"></script>
 
 </body>
 

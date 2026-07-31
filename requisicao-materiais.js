@@ -59,11 +59,11 @@ let rmAprovacaoDetalhadaId = null;
 
 const COLECAO_RMS = "requisicoes_materiais";
 
-const EMAILS_ADMIN_GERAL = new Set([
-  "cicero.garcia@vale.com",
-  "c0706341@vale.com",
-  "ciceromgarcia@gmail.com"
-]);
+/*
+  SEGURANÇA: lista fixa de e-mails admin removida (ficava exposta
+  via "Ver código-fonte"). Perfil salvo no Firestore é a única
+  fonte de verdade.
+*/
 
 const CONTRATOS_VALIDOS = [
   "Manutenção Predial",
@@ -191,11 +191,9 @@ function obterRegionalUsuario() {
 }
 
 function usuarioEhAdminGeral() {
-  const email = obterEmailUsuario();
   const perfil = normalizarTexto(obterPerfilUsuario());
 
   return (
-    EMAILS_ADMIN_GERAL.has(email) ||
     perfil === "administrador" ||
     perfil === "admin" ||
     perfil === "adm" ||

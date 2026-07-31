@@ -92,7 +92,7 @@
 
         <button
           class="btn-pdf"
-          onclick="exportarPDF()"
+          id="btnExportarPdfGestao"
           type="button"
         >
 
@@ -111,6 +111,13 @@
     ====================================== -->
 
     <section class="topbar">
+
+      <div class="topbar-titulo">
+        <span class="titulo-numero">01</span>
+        Filtros
+      </div>
+
+      <div class="topbar-linha">
 
       <div class="filtros-container">
 
@@ -214,7 +221,7 @@
               Planejado
             </option>
 
-            <option value="Em andamento">
+            <option value="Em andamento" selected>
               Em andamento
             </option>
 
@@ -241,6 +248,8 @@
         <strong id="totalFiltrado">
           R$ 0,00
         </strong>
+
+      </div>
 
       </div>
 
@@ -397,6 +406,7 @@
         <div>
 
           <h2>
+            <span class="titulo-numero">02</span>
             Carteira de Obras
           </h2>
 

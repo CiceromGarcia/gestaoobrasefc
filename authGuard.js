@@ -42,11 +42,15 @@ const PAGINA_LOGIN =
 const PAGINA_DASHBOARD =
   "./dashboard.html";
 
-const EMAILS_ADMIN_GERAL = [
-  "cicero.garcia@vale.com",
-  "c0706341@vale.com",
-  "ciceromgarcia@gmail.com"
-];
+/*
+  SEGURANÇA: a lista fixa de e-mails de administrador foi REMOVIDA
+  deste arquivo. Ela ficava visível para qualquer pessoa que abrisse
+  "Ver código-fonte" no navegador (expondo, inclusive, um e-mail
+  pessoal). O perfil salvo no Firestore (usuariosSistema) já é a
+  única fonte de verdade — e agora também é replicado como custom
+  claim no token pelo backend (ver functions/index.js), então não
+  há mais necessidade de nenhum fallback por e-mail aqui no cliente.
+*/
 
 /* =====================================================
    UTILITÁRIOS
@@ -276,23 +280,6 @@ function normalizarPerfilSistema(perfil) {
   return perfilNormalizado || "";
 }
 
-function usuarioTemPerfilSalvo(usuario) {
-  return Boolean(
-    normalizarPerfilSistema(usuario?.perfil)
-  );
-}
-
-function usuarioEmailEhAdminInicial(usuario) {
-  const email =
-    obterEmailUsuario(usuario);
-
-  return (
-    EMAILS_ADMIN_GERAL.includes(email) &&
-    usuario?.adminRebaixado !== true &&
-    !usuarioTemPerfilSalvo(usuario)
-  );
-}
-
 export function obterPerfilEfetivo(usuario) {
   const perfilSalvo =
     normalizarPerfilSistema(
@@ -301,21 +288,15 @@ export function obterPerfilEfetivo(usuario) {
 
   /*
     REGRA DE SEGURANÇA:
-    Se existe perfil salvo no banco, o banco manda.
-    Então, se está salvo como "usuario", será usuário.
+    O perfil salvo no Firestore SEMPRE manda. Não existe mais
+    nenhum fallback por e-mail fixo no código do cliente — o
+    primeiro administrador deve ser definido diretamente no
+    Firestore (Console) com perfil = "administrador" e
+    status = "ativo". A partir daí, tudo é dirigido pelo banco.
   */
 
   if (perfilSalvo) {
     return perfilSalvo;
-  }
-
-  /*
-    A lista fixa só serve como contingência inicial,
-    quando ainda não existe perfil salvo.
-  */
-
-  if (usuarioEmailEhAdminInicial(usuario)) {
-    return "administrador";
   }
 
   return "usuario";

@@ -43,6 +43,25 @@ let obras = [];
    FORMATAR MOEDA
 ========================================= */
 
+/* =========================================
+   SEGURANÇA — ESCAPE DE HTML
+   Este arquivo inseria valores (localidade, nome da obra) direto
+   em innerHTML sem escapar. Qualquer administrador/planejador que
+   cadastrasse uma obra com um nome contendo, por exemplo,
+   "<img src=x onerror=...>" executaria script no navegador de
+   qualquer outro usuário (inclusive administradores) que abrisse
+   esta tela — um XSS persistente. A função abaixo neutraliza os
+   caracteres especiais de HTML antes da inserção.
+========================================= */
+function escaparHTML(valor) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function formatarMoeda(valor){
 
   return Number(valor || 0)
@@ -125,8 +144,8 @@ function carregarLocalidades(){
   localidades.forEach((localidade)=>{
 
     filtroLocalidade.innerHTML += `
-      <option value="${localidade}">
-        ${localidade}
+      <option value="${escaparHTML(localidade)}">
+        ${escaparHTML(localidade)}
       </option>
     `;
 
@@ -206,8 +225,8 @@ async function carregarFiltroObras(){
   lista.forEach((obra)=>{
 
     filtroObra.innerHTML += `
-      <option value="${obra.id}">
-        ${obra.nomeProjeto}
+      <option value="${escaparHTML(obra.id)}">
+        ${escaparHTML(obra.nomeProjeto)}
       </option>
     `;
 

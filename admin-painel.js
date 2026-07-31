@@ -46,11 +46,11 @@ const COLECAO_USUARIOS =
 const TELA_DASHBOARD =
   "./dashboard.html";
 
-const EMAILS_ADMIN_GERAL = [
-  "cicero.garcia@vale.com",
-  "c0706341@vale.com",
-  "ciceromgarcia@gmail.com"
-];
+/*
+  SEGURANÇA: lista fixa de e-mails admin removida (ficava exposta
+  via "Ver código-fonte"). Perfil salvo no Firestore é a única
+  fonte de verdade — ver authGuard.js / functions/index.js.
+*/
 
 const PERFIS_VALIDOS = [
   "administrador",
@@ -329,21 +329,17 @@ function obterEmailUsuario(usuario) {
   );
 }
 
-function emailStringEhAdministradorGeral(email) {
-  return EMAILS_ADMIN_GERAL.includes(
-    emailNormalizado(email)
-  );
-}
-
-function usuarioTemAcessoInicialAdmin(usuario) {
-  const email =
-    obterEmailUsuario(usuario);
-
-  if (!EMAILS_ADMIN_GERAL.includes(email)) {
-    return false;
-  }
-
-  return usuario?.adminRebaixado !== true;
+/*
+  Esta função antes comparava com uma lista fixa de e-mails.
+  Removemos a lista (ela expunha e-mails pessoais no código do
+  cliente). A partir de agora não existe mais "e-mail oficial de
+  admin" — a promoção a administrador é feita só pelo campo
+  "perfil" no Firestore. Mantemos a função (sempre retornando
+  false) apenas para não quebrar os pontos do formulário que a
+  chamam; o campo "adminRebaixado" também se torna sempre falso.
+*/
+function emailStringEhAdministradorGeral() {
+  return false;
 }
 
 function obterPerfilEfetivo(usuario) {
@@ -351,14 +347,6 @@ function obterPerfilEfetivo(usuario) {
     normalizarPerfilSistema(
       usuario?.perfil
     );
-
-  if (perfilSalvo === "administrador") {
-    return "administrador";
-  }
-
-  if (usuarioTemAcessoInicialAdmin(usuario)) {
-    return "administrador";
-  }
 
   return perfilSalvo;
 }
