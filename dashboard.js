@@ -2654,7 +2654,10 @@ function renderTabela() {
 
     tr.appendChild(
       criarCelulaTexto(
-        moedaCompleta(desvio)
+        moedaCompleta(desvio),
+        desvio < 0
+        ? "desvio-negativo"
+        : "desvio-ok"
       )
     );
 
@@ -2712,6 +2715,111 @@ function selecionarLinha(linha) {
 /* =====================================================
    ABRIR PLANEJAMENTO
 ===================================================== */
+
+function textoSeguro(valor) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function obraTemAnomaliaDeCustoOuPrazo(item) {
+  const temAnomalia = Boolean(
+    item.houveAnomalia === true ||
+    item.temAnomalia === "Sim" ||
+    item.possuiAnomalia === true ||
+    item.tipoAnomalia ||
+    item.criticidadeAnomalia ||
+    item.impactoAnomalia ||
+    item.descricaoAnomalia
+  );
+
+  if (!temAnomalia) {
+    return false;
+  }
+
+  const impacto = normalizarTexto(
+    item.impactoAnomalia ||
+    item.impactoPrincipal ||
+    ""
+  );
+
+  return impacto.includes("prazo") || impacto.includes("custo");
+}
+
+function ordenarAnomaliasPorCriticidade(lista) {
+  const pesoCriticidade = {
+    "critica": 0,
+    "critico": 0,
+    "alta": 1,
+    "media": 2,
+    "moderada": 2,
+    "baixa": 3
+  };
+
+  return [...lista].sort((a, b) => {
+    const pesoA = pesoCriticidade[normalizarTexto(a.criticidadeAnomalia || "")] ?? 9;
+    const pesoB = pesoCriticidade[normalizarTexto(b.criticidadeAnomalia || "")] ?? 9;
+
+    if (pesoA !== pesoB) {
+      return pesoA - pesoB;
+    }
+
+    const semanaA = parseInt(String(a.semana || "").replace(/\D/g, "")) || 0;
+    const semanaB = parseInt(String(b.semana || "").replace(/\D/g, "")) || 0;
+
+    return semanaB - semanaA;
+  });
+}
+
+function renderizarAnomaliasObraDashboard(realizadoLista) {
+  const container = document.getElementById("listaAnomaliasObraDashboard");
+  const aviso = document.getElementById("semAnomaliasObraDashboard");
+
+  if (!container || !aviso) {
+    return;
+  }
+
+  const comImpacto = ordenarAnomaliasPorCriticidade(
+    (realizadoLista || []).filter(obraTemAnomaliaDeCustoOuPrazo)
+  );
+
+  aviso.classList.toggle("ativo", comImpacto.length === 0);
+
+  container.innerHTML = comImpacto
+    .map((item) => {
+      const criticidadeClasse = normalizarTexto(
+        item.criticidadeAnomalia || ""
+      ).replace(/\s+/g, "-");
+
+      const impacto = item.impactoAnomalia || item.impactoPrincipal || "-";
+      const tipo = item.tipoAnomalia || item.categoriaAnomalia || "Sem tipo";
+      const status = item.statusAnomalia || item.status || "Aberta";
+      const descricao = item.descricaoAnomalia || item.observacaoAnomalia || "Sem descrição.";
+      const responsavel = item.responsavelAnomalia || item.responsavel || "-";
+      const prazo = item.prazoTratativaAnomalia || item.prazoTratativa || "";
+
+      return `
+        <div class="card-anomalia-dash criticidade-${textoSeguro(criticidadeClasse)}">
+          <div class="cabecalho-anomalia-dash">
+            <span class="semana-anomalia-dash">${textoSeguro(item.semana || "-")}</span>
+            <span class="tag-anomalia-dash">${textoSeguro(impacto)}</span>
+            <span class="tag-anomalia-dash">${textoSeguro(tipo)}</span>
+            <span class="tag-anomalia-dash">${textoSeguro(item.criticidadeAnomalia || "-")}</span>
+            <span class="tag-anomalia-dash">${textoSeguro(status)}</span>
+          </div>
+          <div class="descricao-anomalia-dash">${textoSeguro(descricao)}</div>
+          <div class="meta-anomalia-dash">
+            Responsável: ${textoSeguro(responsavel)}
+            ${prazo ? " · Prazo: " + textoSeguro(formatarData(prazo)) : ""}
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
 
 function abrirPlanejamento(firebaseId) {
 
@@ -2777,6 +2885,10 @@ function abrirPlanejamento(firebaseId) {
   criarGraficos(
     planejadoTratado,
     realizadoTratado
+  );
+
+  renderizarAnomaliasObraDashboard(
+    realizadoLista
   );
 
   setTimeout(() => {
@@ -3190,7 +3302,13 @@ function criarGraficos(
           borderColor: "#8BC34A",
           backgroundColor: "#8BC34A",
           tension: 0.4,
-          pointRadius: 5
+          pointRadius: 5,
+          datalabels: {
+            align: "top",
+            anchor: "end",
+            offset: 8,
+            color: "#8BC34A"
+          }
         },
 
         {
@@ -3200,7 +3318,13 @@ function criarGraficos(
           backgroundColor: "#007E7A",
           tension: 0.4,
           pointRadius: 5,
-          spanGaps: false
+          spanGaps: false,
+          datalabels: {
+            align: "bottom",
+            anchor: "end",
+            offset: 8,
+            color: "#007E7A"
+          }
         }
 
       ]
@@ -3228,7 +3352,13 @@ function criarGraficos(
           borderColor: "#8BC34A",
           backgroundColor: "#8BC34A",
           tension: 0.4,
-          pointRadius: 5
+          pointRadius: 5,
+          datalabels: {
+            align: "top",
+            anchor: "end",
+            offset: 8,
+            color: "#8BC34A"
+          }
         },
 
         {
@@ -3238,7 +3368,13 @@ function criarGraficos(
           backgroundColor: "#007E7A",
           tension: 0.4,
           pointRadius: 5,
-          spanGaps: false
+          spanGaps: false,
+          datalabels: {
+            align: "bottom",
+            anchor: "end",
+            offset: 8,
+            color: "#007E7A"
+          }
         }
 
       ]
@@ -3282,8 +3418,9 @@ function criarOpcoesGraficoPercentual() {
 
       datalabels: {
 
-        align: "top",
+        align: "bottom",
         anchor: "end",
+        offset: 8,
 
         formatter: (value) => {
 
@@ -3299,7 +3436,7 @@ function criarOpcoesGraficoPercentual() {
         },
 
         font: {
-          size: 10,
+          size: 12,
           weight: "bold"
         }
 

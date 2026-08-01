@@ -648,6 +648,16 @@ tbody input:focus{
   font-weight:600;
 }
 
+/* Desvio negativo = gastou mais do que o orçado */
+.desvio-negativo{
+  color:#C0392B !important;
+  font-weight:700;
+}
+
+.desvio-ok{
+  color:#0B2545;
+}
+
 /* =========================================
    GRÁFICOS
 ========================================= */
@@ -694,6 +704,90 @@ tbody input:focus{
   max-width:100%;
   flex:1 1 auto;
   font-family:'Segoe UI',sans-serif !important;
+}
+
+/* =========================================
+   ANOMALIAS DE CUSTO/PRAZO (painel da obra)
+========================================= */
+
+.card-anomalias-obra{
+  padding-bottom:6px;
+}
+
+.lista-anomalias-dashboard{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:12px;
+}
+
+.card-anomalia-dash{
+  border:1px solid #e2e8f0;
+  border-left:4px solid #c0392b;
+  border-radius:10px;
+  padding:12px 14px;
+  background:#fff;
+}
+
+.card-anomalia-dash.criticidade-alta,
+.card-anomalia-dash.criticidade-critica,
+.card-anomalia-dash.criticidade-critico{
+  border-left-color:#c0392b;
+}
+
+.card-anomalia-dash.criticidade-media,
+.card-anomalia-dash.criticidade-moderada{
+  border-left-color:#F4A300;
+}
+
+.card-anomalia-dash.criticidade-baixa{
+  border-left-color:#0ABB98;
+}
+
+.cabecalho-anomalia-dash{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+  margin-bottom:6px;
+}
+
+.semana-anomalia-dash{
+  font-weight:800;
+  color:#0B2545;
+  font-size:12.5px;
+}
+
+.tag-anomalia-dash{
+  padding:2px 9px;
+  border-radius:11px;
+  font-size:10.5px;
+  font-weight:700;
+  background:#f1f5f9;
+  color:#475569;
+  text-transform:uppercase;
+}
+
+.descricao-anomalia-dash{
+  font-size:12.5px;
+  color:#334155;
+  margin-bottom:4px;
+}
+
+.meta-anomalia-dash{
+  font-size:11.5px;
+  color:#94a3b8;
+}
+
+.aviso-sem-anomalias-dashboard{
+  display:none;
+  margin-top:12px;
+  color:#94a3b8;
+  font-size:12.5px;
+}
+
+.aviso-sem-anomalias-dashboard.ativo{
+  display:block;
 }
 
 /* =========================================
@@ -872,6 +966,16 @@ body.exportando-pdf .charts-stack{
 
 body.exportando-pdf #detalhamentoPlanejamento{
   overflow:visible !important;
+}
+
+body.exportando-pdf .card-anomalias-obra{
+  page-break-inside:avoid !important;
+  break-inside:avoid !important;
+}
+
+body.exportando-pdf .card-anomalia-dash{
+  page-break-inside:avoid !important;
+  break-inside:avoid !important;
 }
 
 /* =========================================
