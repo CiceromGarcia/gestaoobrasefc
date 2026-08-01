@@ -833,6 +833,13 @@ export function protegerPagina(opcoes = {}) {
           if (!user) {
             limparSessaoLocal();
             redirecionarLogin();
+
+            // CORREÇÃO: antes a Promise nunca era resolvida aqui, o
+            // que deixava qualquer `await protegerPagina()` pendurado
+            // para sempre caso o redirecionamento não completasse de
+            // imediato (ex.: bloqueador de pop-up). Resolvemos com
+            // null — a página está de qualquer forma saindo do ar.
+            resolve(null);
             return;
           }
 
@@ -844,6 +851,7 @@ export function protegerPagina(opcoes = {}) {
               "Usuário não encontrado no sistema. Procure o administrador."
             );
 
+            resolve(null);
             return;
           }
 
@@ -852,6 +860,7 @@ export function protegerPagina(opcoes = {}) {
               mensagemStatusUsuario(usuarioSistema)
             );
 
+            resolve(null);
             return;
           }
 
@@ -865,6 +874,7 @@ export function protegerPagina(opcoes = {}) {
 
             redirecionarDashboard();
 
+            resolve(null);
             return;
           }
 
@@ -878,6 +888,7 @@ export function protegerPagina(opcoes = {}) {
 
             redirecionarDashboard();
 
+            resolve(null);
             return;
           }
 
@@ -891,6 +902,7 @@ export function protegerPagina(opcoes = {}) {
 
             redirecionarDashboard();
 
+            resolve(null);
             return;
           }
 
@@ -928,6 +940,8 @@ export function protegerPagina(opcoes = {}) {
           await bloquearAcesso(
             "Erro ao validar permissões do usuário."
           );
+
+          resolve(null);
         }
       });
   });
