@@ -457,11 +457,55 @@
 
       <div class="card">
 
-        <div class="section-title">
+        <div class="section-title secao-titulo-com-semaforo">
 
-          <i class="fa-solid fa-list"></i>
+          <span class="secao-titulo-texto">
 
-          Resumo Executivo das Obras
+            <i class="fa-solid fa-list"></i>
+
+            Resumo Executivo das Obras
+
+          </span>
+
+          <div class="semaforo-mini-resumo" id="semaforoMiniResumo">
+
+            <button
+              type="button"
+              class="semaforo-mini-item semaforo-mini-verde"
+              id="semaforoMiniSaudaveis"
+              data-categoria="saudavel"
+              title="Obras saudáveis (AFO ≥ 95%) — clique para filtrar"
+            >
+              <span class="semaforo-mini-bolinha"></span>
+              <span class="semaforo-mini-numero">0</span>
+              <span class="semaforo-mini-label">Saudáveis</span>
+            </button>
+
+            <button
+              type="button"
+              class="semaforo-mini-item semaforo-mini-amarelo"
+              id="semaforoMiniAtencao"
+              data-categoria="atencao"
+              title="Obras em atenção (90% ≤ AFO < 95%) — clique para filtrar"
+            >
+              <span class="semaforo-mini-bolinha"></span>
+              <span class="semaforo-mini-numero">0</span>
+              <span class="semaforo-mini-label">Atenção</span>
+            </button>
+
+            <button
+              type="button"
+              class="semaforo-mini-item semaforo-mini-vermelho"
+              id="semaforoMiniCriticas"
+              data-categoria="critica"
+              title="Obras críticas (AFO < 90%) — clique para filtrar"
+            >
+              <span class="semaforo-mini-bolinha"></span>
+              <span class="semaforo-mini-numero">0</span>
+              <span class="semaforo-mini-label">Críticas</span>
+            </button>
+
+          </div>
 
         </div>
 

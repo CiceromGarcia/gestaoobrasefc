@@ -62,6 +62,7 @@ if (
 ===================================================== */
 
 let obras = [];
+let filtroSemaforoAtivo = null;
 
 let planejamentosBanco = [];
 
@@ -2420,7 +2421,7 @@ function carregarFiltroObras() {
    FILTRAR OBRAS
 ===================================================== */
 
-function obterObrasFiltradas(aplicarStatus = true) {
+function obterObrasFiltradas(aplicarStatus = true, aplicarSemaforo = true) {
 
   let lista =
   [...obras];
@@ -2476,8 +2477,90 @@ function obterObrasFiltradas(aplicarStatus = true) {
 
   }
 
+  if (
+    aplicarSemaforo &&
+    filtroSemaforoAtivo
+  ) {
+
+    lista =
+    lista.filter((item) =>
+      obterCategoriaSemaforo(item.afo) === filtroSemaforoAtivo
+    );
+
+  }
+
   return lista;
 
+}
+
+function obterCategoriaSemaforo(afo) {
+  const valor = Number(afo || 0);
+
+  if (valor >= 95) {
+    return "saudavel";
+  }
+
+  if (valor >= 90) {
+    return "atencao";
+  }
+
+  return "critica";
+}
+
+function atualizarSemaforoMiniResumo() {
+  const listaBase = obterObrasFiltradas(true, false);
+
+  const contagem = {
+    saudavel: 0,
+    atencao: 0,
+    critica: 0
+  };
+
+  listaBase.forEach((item) => {
+    contagem[obterCategoriaSemaforo(item.afo)]++;
+  });
+
+  const numeroSaudaveis = document.querySelector("#semaforoMiniSaudaveis .semaforo-mini-numero");
+  const numeroAtencao = document.querySelector("#semaforoMiniAtencao .semaforo-mini-numero");
+  const numeroCriticas = document.querySelector("#semaforoMiniCriticas .semaforo-mini-numero");
+
+  if (numeroSaudaveis) {
+    numeroSaudaveis.textContent = contagem.saudavel;
+  }
+
+  if (numeroAtencao) {
+    numeroAtencao.textContent = contagem.atencao;
+  }
+
+  if (numeroCriticas) {
+    numeroCriticas.textContent = contagem.critica;
+  }
+
+  document
+    .querySelectorAll(".semaforo-mini-item")
+    .forEach((botao) => {
+      botao.classList.toggle(
+        "ativo",
+        botao.dataset.categoria === filtroSemaforoAtivo
+      );
+    });
+}
+
+function configurarSemaforoMiniResumo() {
+  document
+    .querySelectorAll(".semaforo-mini-item")
+    .forEach((botao) => {
+      botao.addEventListener("click", () => {
+        const categoria = botao.dataset.categoria;
+
+        filtroSemaforoAtivo =
+        filtroSemaforoAtivo === categoria
+        ? null
+        : categoria;
+
+        renderTabela();
+      });
+    });
 }
 
 /* =====================================================
@@ -2550,6 +2633,8 @@ function atualizarCardsStatus() {
 function renderTabela() {
 
   atualizarCardsStatus();
+
+  atualizarSemaforoMiniResumo();
 
   if (!tbodyObras) {
     return;
@@ -3117,8 +3202,8 @@ function renderPlanejamento(
     : "";
 
     const classeFinanceiro =
-    financeiroExecutadoPercentual !== null &&
-    financeiroExecutadoPercentual > financeiroPlanejadoPercentual
+    financeiroExecutadoValor !== null &&
+    financeiroExecutadoValor > financeiroPlanejadoValor
     ? "valor-alerta"
     : "";
 
@@ -3775,6 +3860,8 @@ function configurarEventosFiltros() {
     "change",
     renderTabela
   );
+
+  configurarSemaforoMiniResumo();
 
 }
 

@@ -583,6 +583,79 @@ body.usuario-admin .menu a[data-admin-only]{
   gap:8px;
 }
 
+.secao-titulo-com-semaforo{
+  justify-content:space-between;
+  flex-wrap:wrap;
+  row-gap:6px;
+}
+
+.secao-titulo-texto{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.semaforo-mini-resumo{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.semaforo-mini-item{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  padding:3px 9px;
+  border:1px solid transparent;
+  border-radius:20px;
+  background:#f5f7f8;
+  cursor:pointer;
+  font-family:inherit;
+  transition:.15s ease;
+}
+
+.semaforo-mini-item:hover{
+  filter:brightness(0.96);
+}
+
+.semaforo-mini-numero{
+  font-size:12px;
+  font-weight:900;
+  color:#0B2545;
+}
+
+.semaforo-mini-bolinha{
+  width:8px;
+  height:8px;
+  min-width:8px;
+  border-radius:50%;
+  display:inline-block;
+}
+
+.semaforo-mini-verde .semaforo-mini-bolinha{ background:#1E824C; }
+.semaforo-mini-amarelo .semaforo-mini-bolinha{ background:#C77700; }
+.semaforo-mini-vermelho .semaforo-mini-bolinha{ background:#C0392B; }
+
+.semaforo-mini-label{
+  font-size:9.5px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.2px;
+  color:#5b6b73;
+}
+
+.semaforo-mini-verde .semaforo-mini-numero{ color:#1E824C; }
+.semaforo-mini-amarelo .semaforo-mini-numero{ color:#C77700; }
+.semaforo-mini-vermelho .semaforo-mini-numero{ color:#C0392B; }
+
+.semaforo-mini-item.ativo{
+  background:#fff;
+}
+
+.semaforo-mini-verde.ativo{ border-color:#1E824C; }
+.semaforo-mini-amarelo.ativo{ border-color:#C77700; }
+.semaforo-mini-vermelho.ativo{ border-color:#C0392B; }
+
 /* =========================================
    TABELAS
 ========================================= */
