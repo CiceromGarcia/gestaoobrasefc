@@ -97,7 +97,7 @@ function configurarEventos() {
     }
 
     elemento.addEventListener("change", () => {
-      if (id === "filtroRegional" || id === "filtroCentroCusto") {
+      if (id === "filtroRegional" || id === "filtroCentroCusto" || id === "filtroStatus") {
         atualizarFiltrosDependentes("principal");
       }
 
@@ -784,6 +784,7 @@ function atualizarFiltrosDependentes(origem) {
   const regionalSelecionada = getValor("filtroRegional");
   const centroSelecionado = getValor("filtroCentroCusto");
   const localidadeSelecionada = getValor("filtroLocalidade");
+  const statusSelecionado = getValor("filtroStatus");
   const obraSelecionada = getValor("filtroObra");
 
   let obrasBase = [...obras];
@@ -820,6 +821,32 @@ function atualizarFiltrosDependentes(origem) {
 
   if (localidadeAtual) {
     obrasBase = obrasBase.filter((obra) => obra.localidade === localidadeAtual);
+  }
+
+  // O dropdown de Obra também respeita o Status selecionado: o status
+  // não é um campo fixo no cadastro, é calculado (físico x financeiro,
+  // igual ao resto do painel), então precisamos montar o resumo dessas
+  // obras candidatas pra saber o status real de cada uma antes de
+  // decidir quais aparecem na lista.
+  if (statusSelecionado) {
+    const planFiltrado = filtrarListaPorObrasEPeriodo(planejamentos, obrasBase);
+    const realFiltrado = filtrarListaPorObrasEPeriodo(realizados, obrasBase);
+    const anomFiltrado = filtrarListaPorObrasEPeriodo(anomalias, obrasBase);
+
+    const resumoBase = montarResumoObras(
+      obrasBase,
+      planFiltrado,
+      realFiltrado,
+      anomFiltrado
+    );
+
+    const nomesComStatus = new Set(
+      resumoBase
+        .filter((item) => statusEquivalente(item.status, statusSelecionado))
+        .map((item) => item.nome)
+    );
+
+    obrasBase = obrasBase.filter((obra) => nomesComStatus.has(obterNomeObra(obra)));
   }
 
   const obrasPermitidas = [...new Set(
