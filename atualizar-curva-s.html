@@ -531,7 +531,7 @@
         <div class="campo-atualizacao">
 
           <label for="financeiroReal">
-            Financeiro Realizado
+            Financeiro Realizado (Total)
           </label>
 
           <input
@@ -539,6 +539,7 @@
             id="financeiroReal"
             placeholder="R$ 0,00"
             autocomplete="off"
+            readonly
           >
 
         </div>
@@ -547,16 +548,99 @@
 
       <div class="campo-atualizacao campo-full">
 
-        <label for="centroCustoApropriacao">
-          Centro de Custo de Apropriação
+        <label>
+          Lançamentos Financeiros da Semana
         </label>
 
-        <input
-          type="text"
-          id="centroCustoApropriacao"
-          placeholder="Digite o centro de custo de apropriação"
-          autocomplete="off"
-        >
+        <span class="dica-lancamentos">
+          Some quantos lançamentos precisar (Centro de Custo, Cartão de Suprimentos, etc.) — o total acima é calculado automaticamente.
+        </span>
+
+        <div class="grid-lancamento">
+
+          <div class="campo-atualizacao">
+
+            <label for="lancamentoOrigem">
+              Origem
+            </label>
+
+            <select id="lancamentoOrigem">
+
+              <option value="Centro de Custo">
+                Centro de Custo
+              </option>
+
+              <option value="Cartão de Suprimentos">
+                Cartão de Suprimentos
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="campo-atualizacao" id="boxLancamentoCentroCusto">
+
+            <label for="lancamentoCentroCusto">
+              Centro de Custo
+            </label>
+
+            <input
+              type="text"
+              id="lancamentoCentroCusto"
+              placeholder="Digite o centro de custo"
+              autocomplete="off"
+            >
+
+          </div>
+
+          <div class="campo-atualizacao">
+
+            <label for="lancamentoValor">
+              Valor (R$)
+            </label>
+
+            <input
+              type="text"
+              id="lancamentoValor"
+              placeholder="R$ 0,00"
+              autocomplete="off"
+            >
+
+          </div>
+
+          <div class="campo-atualizacao campo-botao-lancamento">
+
+            <button
+              type="button"
+              id="btnAdicionarLancamento"
+              class="btn-adicionar-lancamento"
+            >
+              <i class="fa-solid fa-plus"></i> Adicionar
+            </button>
+
+          </div>
+
+        </div>
+
+        <table class="tabela-lancamentos" id="tabelaLancamentos">
+
+          <thead>
+            <tr>
+              <th>Origem</th>
+              <th>Centro de Custo</th>
+              <th>Valor</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody id="tbodyLancamentos">
+          </tbody>
+
+        </table>
+
+        <div id="avisoSemLancamentos" class="aviso-sem-lancamentos">
+          Nenhum lançamento adicionado para esta semana ainda.
+        </div>
 
       </div>
 

@@ -98,29 +98,26 @@
 
     <section class="filters filters-principais">
 
+      <input type="hidden" id="filtroInicio">
+      <input type="hidden" id="filtroFim">
+
       <div class="field">
 
-        <label for="filtroInicio">
-          Início
+        <label for="filtroAnoCiclo">
+          Ano
         </label>
 
-        <input
-          type="date"
-          id="filtroInicio"
-        >
+        <select id="filtroAnoCiclo"></select>
 
       </div>
 
       <div class="field">
 
-        <label for="filtroFim">
-          Fim
+        <label for="filtroCiclo">
+          Ciclo
         </label>
 
-        <input
-          type="date"
-          id="filtroFim"
-        >
+        <select id="filtroCiclo"></select>
 
       </div>
 
@@ -142,22 +139,6 @@
 
       <div class="field">
 
-        <label for="filtroCentroCusto">
-          Centro de Custo
-        </label>
-
-        <select id="filtroCentroCusto">
-
-          <option value="">
-            Todos
-          </option>
-
-        </select>
-
-      </div>
-
-      <div class="field">
-
         <label for="filtroLocalidade">
           Localidade
         </label>
@@ -166,6 +147,38 @@
 
           <option value="">
             Todas
+          </option>
+
+        </select>
+
+      </div>
+
+      <div class="field field-obra">
+
+        <label for="filtroObra">
+          Obra
+        </label>
+
+        <select id="filtroObra">
+
+          <option value="">
+            Todas
+          </option>
+
+        </select>
+
+      </div>
+
+      <div class="field">
+
+        <label for="filtroCentroCusto">
+          Centro de Custo
+        </label>
+
+        <select id="filtroCentroCusto">
+
+          <option value="">
+            Todos
           </option>
 
         </select>
@@ -198,22 +211,6 @@
 
           <option value="Paralisado">
             Paralisado
-          </option>
-
-        </select>
-
-      </div>
-
-      <div class="field field-obra">
-
-        <label for="filtroObra">
-          Obra
-        </label>
-
-        <select id="filtroObra">
-
-          <option value="">
-            Todas
           </option>
 
         </select>
@@ -478,8 +475,72 @@
           </h2>
 
           <p>
-            Distribuição do investimento, status, semáforo e performance consolidada.
+            Distribuição do investimento e status consolidado das obras.
           </p>
+
+        </div>
+
+        <div class="semaforo-lista semaforo-lista-topo">
+
+          <div class="semaforo-item green">
+
+            <strong id="semSaudaveis">
+              0
+            </strong>
+
+            <div>
+
+              <span>
+                Saudáveis
+              </span>
+
+              <small>
+                AFO ≥ 95%
+              </small>
+
+            </div>
+
+          </div>
+
+          <div class="semaforo-item yellow">
+
+            <strong id="semAtencao">
+              0
+            </strong>
+
+            <div>
+
+              <span>
+                Atenção
+              </span>
+
+              <small>
+                90% ≤ AFO &lt; 95%
+              </small>
+
+            </div>
+
+          </div>
+
+          <div class="semaforo-item red">
+
+            <strong id="semCriticas">
+              0
+            </strong>
+
+            <div>
+
+              <span>
+                Críticas
+              </span>
+
+              <small>
+                AFO &lt; 90%
+              </small>
+
+            </div>
+
+          </div>
 
         </div>
 
@@ -506,156 +567,12 @@
           <div class="card-title simple">
 
             <h2>
-              Investimento por Centro de Custo
-            </h2>
-
-          </div>
-
-          <canvas id="chartCentroCusto"></canvas>
-
-        </div>
-
-        <div class="card chart-mini-card">
-
-          <div class="card-title simple">
-
-            <h2>
               Status das Obras
             </h2>
 
           </div>
 
           <canvas id="chartStatus"></canvas>
-
-        </div>
-
-        <div class="card semaforo">
-
-          <div class="card-title simple">
-
-            <h2>
-              Semáforo das Obras
-            </h2>
-
-          </div>
-
-          <div class="semaforo-lista">
-
-            <div class="semaforo-item green">
-
-              <strong id="semSaudaveis">
-                0
-              </strong>
-
-              <div>
-
-                <span>
-                  Saudáveis
-                </span>
-
-                <small>
-                  AFO ≥ 95%
-                </small>
-
-              </div>
-
-            </div>
-
-            <div class="semaforo-item yellow">
-
-              <strong id="semAtencao">
-                0
-              </strong>
-
-              <div>
-
-                <span>
-                  Atenção
-                </span>
-
-                <small>
-                  90% ≤ AFO &lt; 95%
-                </small>
-
-              </div>
-
-            </div>
-
-            <div class="semaforo-item red">
-
-              <strong id="semCriticas">
-                0
-              </strong>
-
-              <div>
-
-                <span>
-                  Críticas
-                </span>
-
-                <small>
-                  AFO &lt; 90%
-                </small>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-        <div class="card performance">
-
-          <div class="card-title simple">
-
-            <h2>
-              Performance
-            </h2>
-
-          </div>
-
-          <div class="performance-grid">
-
-            <div class="performance-box">
-
-              <span>
-                IPF Financeiro
-              </span>
-
-              <strong
-                id="ipfFinanceiro"
-                class="indicador-status"
-              >
-                0%
-              </strong>
-
-              <small>
-                Executado / Planejado
-              </small>
-
-            </div>
-
-            <div class="performance-box">
-
-              <span>
-                AFO Físico
-              </span>
-
-              <strong
-                id="afoFisico"
-                class="indicador-status"
-              >
-                0%
-              </strong>
-
-              <small>
-                Realizado / Planejado
-              </small>
-
-            </div>
-
-          </div>
 
         </div>
 

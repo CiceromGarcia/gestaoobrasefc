@@ -196,7 +196,7 @@ body {
 }
 
 .filters-principais {
-  grid-template-columns: 0.75fr 0.75fr 0.95fr 1fr 1fr 0.95fr 1.35fr auto;
+  grid-template-columns: 0.5fr 1.9fr 0.9fr 0.95fr 1.3fr 0.95fr 0.85fr auto;
   align-items: end;
 }
 
@@ -457,6 +457,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
 
   padding-bottom: 10px;
@@ -477,6 +478,22 @@ body {
   margin-top: 3px;
 }
 
+.semaforo-lista-topo {
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.semaforo-lista-topo .semaforo-item {
+  padding: 8px 10px;
+}
+
+.semaforo-lista-topo .semaforo-item strong {
+  width: 34px;
+  min-width: 34px;
+  padding: 6px;
+  font-size: 15px;
+}
+
 /* =========================================
    GRIDS
 ========================================= */
@@ -493,16 +510,7 @@ body {
 }
 
 .grid-indicadores > .chart-mini-card:nth-child(1),
-.grid-indicadores > .chart-mini-card:nth-child(2),
-.grid-indicadores > .chart-mini-card:nth-child(3) {
-  grid-column: span 4;
-}
-
-.grid-indicadores > .semaforo {
-  grid-column: span 6;
-}
-
-.grid-indicadores > .performance {
+.grid-indicadores > .chart-mini-card:nth-child(2) {
   grid-column: span 6;
 }
 
@@ -572,14 +580,14 @@ body {
 ========================================= */
 
 .chart-mini-card {
-  height: 350px;
+  height: 220px;
   position: relative;
 }
 
 .chart-mini-card canvas {
   width: 100% !important;
-  height: 286px !important;
-  max-height: 286px;
+  height: 160px !important;
+  max-height: 160px;
 }
 
 .card canvas {
@@ -587,7 +595,7 @@ body {
 }
 
 .chart-mini-card .card-title {
-  min-height: 32px;
+  min-height: 26px;
 }
 
 /* =========================================
@@ -595,7 +603,7 @@ body {
 ========================================= */
 
 .semaforo {
-  min-height: 210px;
+  min-height: 220px;
 }
 
 .semaforo-lista {
@@ -1294,12 +1302,12 @@ td:nth-child(2) {
   }
 
   .chart-mini-card {
-    height: 330px;
+    height: 240px;
   }
 
   .chart-mini-card canvas {
-    height: 248px !important;
-    max-height: 248px;
+    height: 178px !important;
+    max-height: 178px;
   }
 
   th,

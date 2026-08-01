@@ -513,7 +513,7 @@
         <div>
 
           <h2>
-            Editar Datas da Obra
+            Editar Obra
           </h2>
 
           <span>
@@ -573,7 +573,8 @@
             <input
               type="text"
               id="editObraNome"
-              readonly
+              placeholder="Nome da obra"
+              required
             >
 
           </div>
@@ -626,10 +627,25 @@
               Localidade
             </label>
 
+            <select
+              id="editLocalidadeObra"
+              required
+            ></select>
+
+          </div>
+
+          <div class="campo-modal">
+
+            <label for="editValorOrcado">
+              Orçamento (R$)
+            </label>
+
             <input
               type="text"
-              id="editLocalidadeObra"
-              readonly
+              id="editValorOrcado"
+              inputmode="numeric"
+              placeholder="R$ 0,00"
+              required
             >
 
           </div>

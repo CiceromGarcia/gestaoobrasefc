@@ -96,8 +96,28 @@ document.getElementById("fisicoReal");
 const inputFinanceiroReal =
 document.getElementById("financeiroReal");
 
-const inputCentroCustoApropriacao =
-document.getElementById("centroCustoApropriacao");
+const selectLancamentoOrigem =
+document.getElementById("lancamentoOrigem");
+
+const boxLancamentoCentroCusto =
+document.getElementById("boxLancamentoCentroCusto");
+
+const inputLancamentoCentroCusto =
+document.getElementById("lancamentoCentroCusto");
+
+const inputLancamentoValor =
+document.getElementById("lancamentoValor");
+
+const btnAdicionarLancamento =
+document.getElementById("btnAdicionarLancamento");
+
+const tbodyLancamentos =
+document.getElementById("tbodyLancamentos");
+
+const avisoSemLancamentos =
+document.getElementById("avisoSemLancamentos");
+
+let lancamentosSemanaAtual = [];
 
 const inputAnomalias =
 document.getElementById("anomalias");
@@ -204,6 +224,7 @@ async function iniciarTela() {
     configurarEventos();
 
     configurarMascaraFinanceiro();
+    configurarEventosLancamentos();
 
     configurarStatusObra();
 
@@ -212,6 +233,19 @@ async function iniciarTela() {
     aplicarPermissoesNaTela();
 
     await carregarObras();
+
+    const obraIdNaUrl = new URLSearchParams(window.location.search).get("obraId");
+
+    if (obraIdNaUrl && filtroObra) {
+      const existeNaLista = Array.from(filtroObra.options).some(
+        (opcao) => opcao.value === obraIdNaUrl
+      );
+
+      if (existeNaLista) {
+        filtroObra.value = obraIdNaUrl;
+        await selecionarObra();
+      }
+    }
 
   } catch (error) {
 
@@ -461,8 +495,10 @@ function aplicarPermissoesNaTela() {
 
   [
     inputFisicoReal,
-    inputFinanceiroReal,
-    inputCentroCustoApropriacao,
+    selectLancamentoOrigem,
+    inputLancamentoCentroCusto,
+    inputLancamentoValor,
+    btnAdicionarLancamento,
     selectTemAnomalia
   ]
     .filter(Boolean)
@@ -1763,25 +1799,9 @@ function prepararCorrecaoRealizado(tr, item, realizado) {
 
   }
 
-  if (inputFinanceiroReal) {
+  lancamentosSemanaAtual = obterLancamentosRealizado(realizado);
 
-    inputFinanceiroReal.value =
-    formatarMoeda(
-      obterFinanceiroRealizado(
-        realizado
-      )
-    );
-
-  }
-
-  if (inputCentroCustoApropriacao) {
-
-    inputCentroCustoApropriacao.value =
-    realizado.centroCustoApropriacao ||
-    realizado.centroCusto ||
-    "";
-
-  }
+  renderizarLancamentos();
 
   preencherCamposAnomalia(
     realizado
@@ -1860,16 +1880,6 @@ async function salvarAtualizacaoRealizado() {
     inputFisicoReal?.value
   );
 
-  const financeiroReal =
-  converterMoeda(
-    inputFinanceiroReal?.value
-  );
-
-  const centroCustoApropriacao =
-  textoLimpo(
-    inputCentroCustoApropriacao?.value
-  );
-
   if (
     fisicoReal < 0 ||
     fisicoReal > 100
@@ -1885,25 +1895,13 @@ async function salvarAtualizacaoRealizado() {
 
   }
 
-  if (financeiroReal < 0) {
+  if (lancamentosSemanaAtual.length === 0) {
 
     alert(
-      "Informe um financeiro realizado válido."
+      "Adicione pelo menos um lançamento financeiro para esta semana (Centro de Custo, Cartão de Suprimentos, etc.)."
     );
 
-    inputFinanceiroReal?.focus();
-
-    return;
-
-  }
-
-  if (!centroCustoApropriacao) {
-
-    alert(
-      "Informe o centro de custo de apropriação."
-    );
-
-    inputCentroCustoApropriacao?.focus();
+    inputLancamentoValor?.focus();
 
     return;
 
@@ -1927,9 +1925,7 @@ async function salvarAtualizacaoRealizado() {
 
     const dadosAtualizacao =
     montarDadosRealizado({
-      fisicoReal,
-      financeiroReal,
-      centroCustoApropriacao
+      fisicoReal
     });
 
     if (
@@ -2027,11 +2023,192 @@ async function salvarAtualizacaoRealizado() {
 
 }
 
+/* =========================================
+   LANÇAMENTOS FINANCEIROS DA SEMANA
+   (múltiplas origens: Centro de Custo,
+   Cartão de Suprimentos, etc.)
+========================================= */
+
+function obterLancamentosRealizado(realizado) {
+  const lista = realizado?.lancamentosFinanceiros;
+
+  if (Array.isArray(lista) && lista.length > 0) {
+    return lista.map((item) => ({
+      origem: item.origem || "Centro de Custo",
+      centroCusto: item.centroCusto || "",
+      valor: converterMoeda(item.valor || 0)
+    }));
+  }
+
+  // Registro antigo (anterior a esta funcionalidade): sintetiza um
+  // único lançamento a partir dos campos legados, sem perder dado.
+  const valorLegado = obterFinanceiroRealizado(realizado);
+
+  if (!realizado || valorLegado <= 0) {
+    return [];
+  }
+
+  const centroLegado =
+    realizado.centroCustoApropriacao ||
+    realizado.centroCusto ||
+    "";
+
+  return [
+    {
+      origem: "Centro de Custo",
+      centroCusto: centroLegado,
+      valor: valorLegado
+    }
+  ];
+}
+
+function textoSeguro(valor) {
+  return String(valor ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function calcularTotalLancamentos() {
+  return lancamentosSemanaAtual.reduce(
+    (soma, item) => soma + converterMoeda(item.valor || 0),
+    0
+  );
+}
+
+function renderizarLancamentos() {
+  if (tbodyLancamentos) {
+    tbodyLancamentos.innerHTML = lancamentosSemanaAtual
+      .map((item, indice) => {
+        return `
+          <tr>
+            <td>${textoSeguro(item.origem)}</td>
+            <td>${textoSeguro(item.centroCusto || "-")}</td>
+            <td>${formatarMoeda(item.valor)}</td>
+            <td>
+              <button
+                type="button"
+                class="btn-remover-lancamento"
+                data-indice="${indice}"
+                title="Remover lançamento"
+              >
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  if (avisoSemLancamentos) {
+    avisoSemLancamentos.classList.toggle(
+      "ativo",
+      lancamentosSemanaAtual.length === 0
+    );
+  }
+
+  if (inputFinanceiroReal) {
+    inputFinanceiroReal.value = formatarMoeda(
+      calcularTotalLancamentos()
+    );
+  }
+}
+
+function atualizarVisibilidadeCentroCusto() {
+  // O campo de Centro de Custo agora fica sempre visível: mesmo para
+  // "Cartão de Suprimentos" é útil registrar em qual centro de custo
+  // essa compra deve ser apropriada.
+  if (boxLancamentoCentroCusto) {
+    boxLancamentoCentroCusto.style.display = "";
+  }
+}
+
+function adicionarLancamento() {
+  const origem = selectLancamentoOrigem?.value || "Centro de Custo";
+  const centroCusto = textoLimpo(inputLancamentoCentroCusto?.value);
+  const valor = converterMoeda(inputLancamentoValor?.value);
+
+  if (!centroCusto) {
+    alert("Informe o centro de custo deste lançamento.");
+    inputLancamentoCentroCusto?.focus();
+    return;
+  }
+
+  if (valor <= 0) {
+    alert("Informe um valor válido para o lançamento.");
+    inputLancamentoValor?.focus();
+    return;
+  }
+
+  lancamentosSemanaAtual.push({
+    origem,
+    centroCusto,
+    valor
+  });
+
+  if (inputLancamentoCentroCusto) {
+    inputLancamentoCentroCusto.value = "";
+  }
+
+  if (inputLancamentoValor) {
+    inputLancamentoValor.value = "";
+  }
+
+  renderizarLancamentos();
+}
+
+function removerLancamento(indice) {
+  lancamentosSemanaAtual.splice(indice, 1);
+  renderizarLancamentos();
+}
+
+function resumoCentroCustoLancamentos() {
+  const partes = lancamentosSemanaAtual.map((item) => {
+    return item.origem === "Centro de Custo"
+      ? item.centroCusto
+      : `${item.centroCusto} (Cartão de Suprimentos)`;
+  });
+
+  return [...new Set(partes)].join(", ");
+}
+
+function configurarEventosLancamentos() {
+  selectLancamentoOrigem?.addEventListener(
+    "change",
+    atualizarVisibilidadeCentroCusto
+  );
+
+  inputLancamentoValor?.addEventListener("input", (event) => {
+    const digitos = event.target.value.replace(/\D/g, "");
+    event.target.value = formatarMoeda(Number(digitos) / 100);
+  });
+
+  btnAdicionarLancamento?.addEventListener("click", adicionarLancamento);
+
+  tbodyLancamentos?.addEventListener("click", (event) => {
+    const botao = event.target.closest(".btn-remover-lancamento");
+
+    if (!botao) {
+      return;
+    }
+
+    removerLancamento(Number(botao.dataset.indice));
+  });
+
+  atualizarVisibilidadeCentroCusto();
+  renderizarLancamentos();
+}
+
 function montarDadosRealizado({
-  fisicoReal,
-  financeiroReal,
-  centroCustoApropriacao
+  fisicoReal
 }) {
+
+  const financeiroReal = calcularTotalLancamentos();
+
+  const centroCustoApropriacao = resumoCentroCustoLancamentos();
 
   const semanaNumero =
   Number(
@@ -2096,6 +2273,13 @@ function montarDadosRealizado({
 
     centroCusto:
     centroCustoApropriacao,
+
+    lancamentosFinanceiros:
+    lancamentosSemanaAtual.map((item) => ({
+      origem: item.origem,
+      centroCusto: item.centroCusto || "",
+      valor: converterMoeda(item.valor)
+    })),
 
     ...dadosAnomalia,
 
@@ -2705,10 +2889,17 @@ function limparCamposFormularioSemana() {
     "";
   }
 
-  if (inputCentroCustoApropriacao) {
-    inputCentroCustoApropriacao.value =
-    "";
+  lancamentosSemanaAtual = [];
+
+  if (inputLancamentoCentroCusto) {
+    inputLancamentoCentroCusto.value = "";
   }
+
+  if (inputLancamentoValor) {
+    inputLancamentoValor.value = "";
+  }
+
+  renderizarLancamentos();
 
   if (selectTemAnomalia) {
     selectTemAnomalia.value =

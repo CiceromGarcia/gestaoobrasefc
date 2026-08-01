@@ -549,6 +549,114 @@ tbody tr:hover{
   font-weight:500;
 }
 
+#financeiroReal[readonly]{
+  background:#eef2f7;
+  color:#0B2545;
+  font-weight:700;
+}
+
+/* =========================================
+   LANÇAMENTOS FINANCEIROS DA SEMANA
+========================================= */
+
+.dica-lancamentos{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  margin-bottom:10px;
+}
+
+.grid-lancamento{
+  display:grid;
+  grid-template-columns:210px 1fr 150px 140px;
+  gap:10px;
+  align-items:end;
+  margin-bottom:12px;
+}
+
+.grid-lancamento input,
+.grid-lancamento select{
+  height:42px;
+}
+
+.campo-botao-lancamento{
+  justify-content:flex-end;
+}
+
+.btn-adicionar-lancamento{
+  height:42px;
+  padding:0 16px;
+  border:none;
+  border-radius:8px;
+  background:#007E7A;
+  color:#fff;
+  font-weight:600;
+  font-size:13px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+
+.btn-adicionar-lancamento:hover{
+  background:#00615e;
+}
+
+.tabela-lancamentos{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  table-layout:auto;
+  border-collapse:collapse;
+  margin-bottom:6px;
+}
+
+.tabela-lancamentos thead th{
+  background:#eef2f7;
+  color:#475569;
+  text-align:left;
+  text-transform:uppercase;
+  white-space:normal;
+  font-size:11px;
+  font-weight:700;
+  padding:8px 10px;
+  border-bottom:2px solid #e2e8f0;
+}
+
+.tabela-lancamentos tbody td{
+  padding:8px 10px;
+  border-bottom:1px solid #eef2f7;
+  text-align:left;
+  vertical-align:middle;
+  font-size:13px;
+  color:#111827;
+}
+
+.tabela-lancamentos tbody tr:hover{
+  background:none;
+  cursor:default;
+}
+
+.tabela-lancamentos .btn-remover-lancamento{
+  border:none;
+  background:none;
+  color:#c0392b;
+  cursor:pointer;
+  font-size:14px;
+}
+
+.aviso-sem-lancamentos{
+  color:#94a3b8;
+  font-size:13px;
+  padding:10px 0;
+  display:none;
+}
+
+.aviso-sem-lancamentos.ativo{
+  display:block;
+}
+
 /* =========================================
    BLOCO DE ANOMALIA
 ========================================= */

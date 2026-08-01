@@ -64,6 +64,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await carregarDados();
 
+    configurarFiltroCiclo();
     preencherFiltrosIniciais();
     atualizarDashboard();
 
@@ -83,8 +84,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function configurarEventos() {
   [
-    "filtroInicio",
-    "filtroFim",
     "filtroRegional",
     "filtroCentroCusto",
     "filtroLocalidade",
@@ -110,6 +109,19 @@ function configurarEventos() {
     });
   });
 
+  document.getElementById("filtroAnoCiclo")?.addEventListener("change", () => {
+    const numeroAtual = Number(getValor("filtroCiclo")) || 1;
+
+    popularSelectCiclo(getValor("filtroAnoCiclo"), numeroAtual);
+    aplicarCicloSelecionado();
+    atualizarDashboard();
+  });
+
+  document.getElementById("filtroCiclo")?.addEventListener("change", () => {
+    aplicarCicloSelecionado();
+    atualizarDashboard();
+  });
+
   document.getElementById("btnLimparFiltros")?.addEventListener("click", () => {
     document
       .querySelectorAll(".filters input, .filters select")
@@ -118,6 +130,7 @@ function configurarEventos() {
       });
 
     preencherFiltrosIniciais();
+    configurarFiltroCiclo();
     atualizarDashboard();
     limparTabelaAnomaliasSelecionada();
   });
@@ -634,6 +647,112 @@ function montarTextoConsolidadoAnomalia(anomalia) {
 /* =========================================
    FILTROS
 ========================================= */
+
+/* =========================================
+   FILTRO DE CICLO (21 a 20 do mês seguinte)
+========================================= */
+
+function formatarDataISO(ano, mes, dia) {
+  return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
+function formatarDataBRCurta(ano, mes, dia) {
+  return `${String(dia).padStart(2, "0")}/${String(mes).padStart(2, "0")}/${String(ano).slice(2)}`;
+}
+
+function obterCiclosDoAno(ano) {
+  const ciclos = [];
+
+  for (let numero = 1; numero <= 12; numero++) {
+    const mesInicio = numero === 1 ? 12 : numero - 1;
+    const anoInicio = numero === 1 ? ano - 1 : ano;
+
+    ciclos.push({
+      numero,
+      inicioISO: formatarDataISO(anoInicio, mesInicio, 21),
+      fimISO: formatarDataISO(ano, numero, 20),
+      label:
+        `Ciclo ${String(numero).padStart(2, "0")} – ` +
+        `${formatarDataBRCurta(anoInicio, mesInicio, 21)} a ${formatarDataBRCurta(ano, numero, 20)}`
+    });
+  }
+
+  return ciclos;
+}
+
+function obterCicloAtual(data = new Date()) {
+  const dia = data.getDate();
+  const mes = data.getMonth() + 1;
+  const anoAtual = data.getFullYear();
+
+  if (dia >= 21) {
+    return {
+      ano: mes === 12 ? anoAtual + 1 : anoAtual,
+      numero: mes === 12 ? 1 : mes + 1
+    };
+  }
+
+  return {
+    ano: anoAtual,
+    numero: mes
+  };
+}
+
+function popularSelectCiclo(ano, numeroSelecionado) {
+  const selectCiclo = document.getElementById("filtroCiclo");
+
+  if (!selectCiclo) {
+    return;
+  }
+
+  const ciclos = obterCiclosDoAno(Number(ano));
+
+  selectCiclo.innerHTML = ciclos
+    .map((ciclo) => {
+      const selecionado = ciclo.numero === Number(numeroSelecionado) ? "selected" : "";
+
+      return (
+        `<option value="${ciclo.numero}" data-inicio="${ciclo.inicioISO}" data-fim="${ciclo.fimISO}" ${selecionado}>` +
+        `${ciclo.label}</option>`
+      );
+    })
+    .join("");
+}
+
+function aplicarCicloSelecionado() {
+  const selectCiclo = document.getElementById("filtroCiclo");
+  const opcao = selectCiclo?.selectedOptions?.[0];
+
+  if (!opcao) {
+    return;
+  }
+
+  setValor("filtroInicio", opcao.dataset.inicio);
+  setValor("filtroFim", opcao.dataset.fim);
+}
+
+function configurarFiltroCiclo() {
+  const selectAno = document.getElementById("filtroAnoCiclo");
+
+  if (!selectAno) {
+    return;
+  }
+
+  const cicloAtual = obterCicloAtual();
+
+  const anos = [];
+
+  for (let ano = cicloAtual.ano - 3; ano <= cicloAtual.ano + 1; ano++) {
+    anos.push(ano);
+  }
+
+  selectAno.innerHTML = anos
+    .map((ano) => `<option value="${ano}" ${ano === cicloAtual.ano ? "selected" : ""}>${ano}</option>`)
+    .join("");
+
+  popularSelectCiclo(cicloAtual.ano, cicloAtual.numero);
+  aplicarCicloSelecionado();
+}
 
 function preencherFiltrosIniciais() {
   preencherSelect(

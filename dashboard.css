@@ -637,6 +637,17 @@ tbody input:focus{
   font-weight:700;
 }
 
+/* AFO abaixo de 100% fica em vermelho para chamar atenção */
+.afo-baixo{
+  color:#C0392B !important;
+  font-weight:700;
+}
+
+.afo-ok{
+  color:#1E824C;
+  font-weight:600;
+}
+
 /* =========================================
    GRÁFICOS
 ========================================= */

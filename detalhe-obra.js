@@ -2090,7 +2090,7 @@ function preencherSelectLocalidades(selectEl, localidadeSelecionada) {
     : [localidadeSelecionada, ...todasLocalidades];
 
   selectEl.innerHTML = opcoes
-    .map((nome) => `<option value="${nome}">${nome}</option>`)
+    .map((nome) => `<option value="${textoSeguro(nome)}">${textoSeguro(nome)}</option>`)
     .join("");
 
   selectEl.value = localidadeSelecionada || "";

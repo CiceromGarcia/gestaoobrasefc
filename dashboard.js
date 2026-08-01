@@ -2670,7 +2670,10 @@ function renderTabela() {
       criarCelulaTexto(
         percentual(
           item.afo
-        )
+        ),
+        Number(item.afo || 0) < 100
+        ? "afo-baixo"
+        : "afo-ok"
       )
     );
 

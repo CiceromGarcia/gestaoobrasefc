@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Ficha da Obra
+  </title>
+
+  <!-- Reaproveita o CSS do Gestão de Obras para manter a mesma identidade visual -->
+  <link
+    rel="stylesheet"
+    href="./gestaodeobras.css?v=313"
+  >
+
+  <link
+    rel="stylesheet"
+    href="./detalhe-obra.css?v=6"
+  >
+
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  >
+
+</head>
+
+<body>
+
+  <main class="page">
+
+    <!-- =====================================
+         CABEÇALHO
+    ====================================== -->
+
+    <header class="app-header">
+
+      <div class="header-textos">
+
+        <a
+          href="./gestaodeobras.html"
+          class="link-voltar"
+        >
+          <i class="fa-solid fa-arrow-left"></i>
+          Voltar para Gestão de Obras
+        </a>
+
+        <h1 id="tituloObra">
+          Ficha da Obra
+        </h1>
+
+        <span
+          class="header-subtitulo"
+          id="subtituloObra"
+        >
+          Carregando dados da obra...
+        </span>
+
+        <div
+          class="usuario-logado-info sg-usuario-logado-info"
+          id="usuarioLogadoInfo"
+        >
+
+          <span class="usuario-logado-item sg-usuario-logado-item">
+            <span class="usuario-label">Email:</span>
+            <strong id="usuarioEmailTopo">Carregando...</strong>
+          </span>
+
+          <span class="usuario-logado-separador sg-usuario-logado-separador">|</span>
+
+          <span class="usuario-logado-item sg-usuario-logado-item">
+            <span class="usuario-label">Perfil:</span>
+            <strong id="usuarioPerfilTopo">Carregando...</strong>
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="header-acoes">
+
+        <button
+          type="button"
+          class="btn-secundario"
+          id="btnImprimirFicha"
+        >
+          <i class="fa-solid fa-print"></i>
+          Imprimir Ficha
+        </button>
+
+        <button
+          type="button"
+          class="btn-secundario"
+          id="btnAtualizarCurvaSObra"
+        >
+          <i class="fa-solid fa-chart-line"></i>
+          Atualizar Curva S
+        </button>
+
+        <button
+          type="button"
+          class="btn-secundario"
+          id="btnEditarObraDetalhe"
+          data-admin-only
+        >
+          <i class="fa-solid fa-pen-to-square"></i>
+          Editar Obra
+        </button>
+
+      </div>
+
+    </header>
+
+    <div id="carregandoObra" class="aviso-carregando">
+      Carregando ficha da obra...
+    </div>
+
+    <div
+      id="obraNaoEncontrada"
+      class="aviso-erro"
+      style="display:none"
+    >
+      Obra não encontrada. Verifique se o link está correto ou volte para a Gestão de Obras.
+    </div>
+
+    <div class="relatorio-meta-impressao" id="relatorioMetaImpressao">
+    </div>
+
+    <div id="conteudoObra" style="display:none">
+
+      <!-- =====================================
+           IDENTIFICAÇÃO
+      ====================================== -->
+
+      <section class="topbar">
+
+        <div class="topbar-titulo">
+          <span class="titulo-numero">01</span>
+          Identificação
+        </div>
+
+        <div class="grid-identificacao" id="gridIdentificacao">
+        </div>
+
+      </section>
+
+      <!-- =====================================
+           RESUMO FÍSICO-FINANCEIRO
+      ====================================== -->
+
+      <section class="kpis" id="kpisResumoObra">
+      </section>
+
+      <!-- =====================================
+           CURVA S
+      ====================================== -->
+
+      <section class="table-wrap" id="secaoCurvaS">
+
+        <div class="table-header">
+          <div>
+            <h2>
+              <span class="titulo-numero">02</span>
+              Curva S — Planejado x Realizado
+            </h2>
+            <span>
+              Semana a semana, incluindo o detalhamento por origem (Centro de Custo / Cartão de Suprimentos)
+            </span>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table id="tabelaCurvaSDetalhe">
+            <thead>
+              <tr>
+                <th>Semana</th>
+                <th>Período</th>
+                <th>Físico Planejado</th>
+                <th>Físico Realizado</th>
+                <th>Financeiro Planejado</th>
+                <th>Financeiro Realizado</th>
+                <th>Origem do Financeiro</th>
+                <th>Anomalia</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyCurvaSObra">
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <!-- =====================================
+           ANOMALIAS
+      ====================================== -->
+
+      <section class="table-wrap" id="secaoAnomalias">
+
+        <div class="table-header">
+          <div>
+            <h2>
+              <span class="titulo-numero">03</span>
+              Anomalias Registradas
+            </h2>
+            <span>
+              Ocorrências e desvios lançados durante o acompanhamento semanal
+            </span>
+          </div>
+        </div>
+
+        <div id="listaAnomalias" class="lista-anomalias">
+        </div>
+
+        <div id="semAnomalias" class="aviso-vazio">
+          Nenhuma anomalia registrada para esta obra.
+        </div>
+
+      </section>
+
+      <!-- =====================================
+           HISTÓRICO DE ALTERAÇÕES
+      ====================================== -->
+
+      <section class="table-wrap">
+
+        <div class="table-header">
+          <div>
+            <h2>
+              <span class="titulo-numero">04</span>
+              Histórico de Alterações
+            </h2>
+            <span>
+              Auditoria de mudanças no cadastro da obra (nome, localidade, orçamento e datas)
+            </span>
+          </div>
+        </div>
+
+        <div id="listaHistorico" class="lista-historico">
+        </div>
+
+        <div id="semHistorico" class="aviso-vazio">
+          Nenhuma alteração registrada para esta obra ainda.
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+  <script
+    type="module"
+    src="./detalhe-obra.js?v=4"
+  ></script>
+
+</body>
+
+</html>
