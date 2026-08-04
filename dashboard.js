@@ -24,7 +24,9 @@ import {
 
 import {
   collection,
-  getDocs
+  getDocs,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
 /* =====================================================
@@ -2384,6 +2386,24 @@ function carregarFiltroObras() {
 
   }
 
+  if (filtroStatus?.value) {
+
+    const statusFiltro =
+    normalizarStatus(
+      filtroStatus.value
+    );
+
+    lista =
+    lista.filter((item) => {
+
+      return normalizarStatus(
+        item.fase
+      ) === statusFiltro;
+
+    });
+
+  }
+
   lista
     .sort((a, b) => {
 
@@ -3407,7 +3427,7 @@ function criarGraficos(
           datalabels: {
             align: "bottom",
             anchor: "end",
-            offset: 8,
+            offset: 12,
             color: "#007E7A"
           }
         }
@@ -3457,7 +3477,7 @@ function criarGraficos(
           datalabels: {
             align: "bottom",
             anchor: "end",
-            offset: 8,
+            offset: 12,
             color: "#007E7A"
           }
         }
@@ -3505,7 +3525,7 @@ function criarOpcoesGraficoPercentual() {
 
         align: "bottom",
         anchor: "end",
-        offset: 8,
+        offset: 12,
 
         formatter: (value) => {
 
@@ -3588,18 +3608,11 @@ function configurarExportarPDF() {
 
       try {
 
-        if (
-          !window.jspdf ||
-          !window.html2canvas
-        ) {
+        const tituloAnterior =
+        document.title;
 
-          alert(
-            "Bibliotecas de exportação PDF não carregadas."
-          );
-
-          return;
-
-        }
+        document.title =
+        "painel-executivo-obras";
 
         btnExportarPDF.disabled =
         true;
@@ -3618,128 +3631,13 @@ function configurarExportarPDF() {
         redimensionarGraficos();
 
         await new Promise((resolve) =>
-          setTimeout(resolve, 500)
+          setTimeout(resolve, 400)
         );
 
-        const { jsPDF } =
-        window.jspdf;
+        window.print();
 
-        const pdf =
-        new jsPDF(
-          "l",
-          "mm",
-          "a4"
-        );
-
-        const larguraPagina =
-        pdf.internal.pageSize.getWidth();
-
-        const alturaPagina =
-        pdf.internal.pageSize.getHeight();
-
-        const margem =
-        8;
-
-        const larguraUtil =
-        larguraPagina - margem * 2;
-
-        const alturaUtil =
-        alturaPagina - margem * 2;
-
-        let posicaoY =
-        margem;
-
-        let primeiraPagina =
-        true;
-
-        const blocos =
-        obterBlocosParaPDF();
-
-        for (const bloco of blocos) {
-
-          if (
-            !bloco ||
-            bloco.offsetParent === null
-          ) {
-            continue;
-          }
-
-          const canvas =
-          await window.html2canvas(
-            bloco,
-            {
-              scale: 2,
-              useCORS: true,
-              backgroundColor: "#ffffff",
-              logging: false
-            }
-          );
-
-          const imgData =
-          canvas.toDataURL(
-            "image/png"
-          );
-
-          let imgWidth =
-          larguraUtil;
-
-          let imgHeight =
-          (
-            canvas.height *
-            imgWidth
-          ) /
-          canvas.width;
-
-          if (imgHeight > alturaUtil) {
-
-            const fator =
-            alturaUtil / imgHeight;
-
-            imgHeight =
-            alturaUtil;
-
-            imgWidth =
-            imgWidth * fator;
-
-          }
-
-          if (
-            !primeiraPagina &&
-            posicaoY + imgHeight > alturaPagina - margem
-          ) {
-
-            pdf.addPage();
-
-            posicaoY =
-            margem;
-
-          }
-
-          const posicaoX =
-          margem + (
-            larguraUtil - imgWidth
-          ) / 2;
-
-          pdf.addImage(
-            imgData,
-            "PNG",
-            posicaoX,
-            posicaoY,
-            imgWidth,
-            imgHeight
-          );
-
-          posicaoY +=
-          imgHeight + 5;
-
-          primeiraPagina =
-          false;
-
-        }
-
-        pdf.save(
-          "painel-executivo-obras.pdf"
-        );
+        document.title =
+        tituloAnterior;
 
       } catch (error) {
 
@@ -3770,57 +3668,6 @@ function configurarExportarPDF() {
 
     }
   );
-
-}
-
-function obterBlocosParaPDF() {
-
-  const blocos = [];
-
-  const topbar =
-  document.querySelector(".topbar");
-
-  const filtros =
-  document.querySelector(".main > .card");
-
-  const resumoTopo =
-  document.querySelector(".resumo-topo");
-
-  const resumoTabela =
-  document.querySelector(".main > .card:nth-of-type(2)");
-
-  if (topbar) {
-    blocos.push(topbar);
-  }
-
-  if (filtros) {
-    blocos.push(filtros);
-  }
-
-  if (resumoTopo) {
-    blocos.push(resumoTopo);
-  }
-
-  if (resumoTabela) {
-    blocos.push(resumoTabela);
-  }
-
-  if (
-    detalhamentoPlanejamento &&
-    detalhamentoPlanejamento.style.display !== "none"
-  ) {
-
-    detalhamentoPlanejamento
-      .querySelectorAll(":scope > .card, :scope .chart-card")
-      .forEach((bloco) => {
-
-        blocos.push(bloco);
-
-      });
-
-  }
-
-  return blocos;
 
 }
 
@@ -3858,7 +3705,12 @@ function configurarEventosFiltros() {
 
   filtroStatus?.addEventListener(
     "change",
-    renderTabela
+    () => {
+
+      carregarFiltroObras();
+      renderTabela();
+
+    }
   );
 
   configurarSemaforoMiniResumo();
@@ -3874,6 +3726,51 @@ window.addEventListener(
    INIT
 ===================================================== */
 
+async function verificarUsuariosPendentesDashboard() {
+  const aviso = document.getElementById("avisoUsuariosPendentes");
+  const texto = document.getElementById("textoAvisoUsuariosPendentes");
+
+  if (!aviso || !texto) {
+    return;
+  }
+
+  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
+    aviso.style.display = "none";
+    return;
+  }
+
+  try {
+    const snapshot = await getDocs(
+      query(
+        collection(db, "usuariosSistema"),
+        where("status", "==", "pendente")
+      )
+    );
+
+    if (snapshot.empty) {
+      aviso.style.display = "none";
+      return;
+    }
+
+    const nomes = snapshot.docs
+      .map((documento) => {
+        const dados = documento.data();
+        return dados.nome || dados.email || "usuário sem nome";
+      })
+      .join(", ");
+
+    texto.textContent =
+      snapshot.size === 1
+        ? `1 usuário aguardando aprovação: ${nomes}`
+        : `${snapshot.size} usuários aguardando aprovação: ${nomes}`;
+
+    aviso.style.display = "flex";
+  } catch (error) {
+    console.warn("Não foi possível verificar usuários pendentes:", error);
+    aviso.style.display = "none";
+  }
+}
+
 document.addEventListener(
   "DOMContentLoaded",
   async () => {
@@ -3886,6 +3783,8 @@ document.addEventListener(
       aplicarPerfilVisual(
         usuarioLogadoGlobal
       );
+
+      verificarUsuariosPendentesDashboard();
 
       configurarMenuAtivo();
 

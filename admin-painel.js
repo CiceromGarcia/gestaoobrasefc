@@ -16,7 +16,8 @@
 ===================================================== */
 
 import {
-  db
+  db,
+  app
 } from "./firebaseConfig.js";
 
 import {
@@ -35,6 +36,13 @@ import {
   writeBatch,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+import {
+  getFunctions,
+  httpsCallable
+} from "https://www.gstatic.com/firebasejs/10.12.3/firebase-functions.js";
+
+const functions = getFunctions(app, "us-central1");
 
 /* =====================================================
    CONFIGURAÇÃO
@@ -1162,6 +1170,8 @@ async function carregarUsuarios() {
     });
 
     renderizarUsuarios();
+
+    atualizarAvisoUsuariosPendentes();
   } catch (error) {
     console.error(
       "Erro ao carregar usuários:",
@@ -1172,6 +1182,33 @@ async function carregarUsuarios() {
       "Erro ao carregar usuários."
     );
   }
+}
+
+function atualizarAvisoUsuariosPendentes() {
+  const aviso = document.getElementById("avisoUsuariosPendentes");
+  const texto = document.getElementById("textoAvisoUsuariosPendentes");
+
+  if (!aviso || !texto) {
+    return;
+  }
+
+  const pendentes = usuariosSistema.filter(usuarioEstaPendente);
+
+  if (pendentes.length === 0) {
+    aviso.style.display = "none";
+    return;
+  }
+
+  const nomes = pendentes
+    .map((usuario) => usuario.nome || usuario.email || "usuário sem nome")
+    .join(", ");
+
+  texto.textContent =
+    pendentes.length === 1
+      ? `1 usuário aguardando aprovação: ${nomes}`
+      : `${pendentes.length} usuários aguardando aprovação: ${nomes}`;
+
+  aviso.style.display = "flex";
 }
 
 /* =====================================================
@@ -1656,42 +1693,16 @@ async function excluirUsuario(id) {
     obterEmailUsuario(usuario) ||
     emailNormalizado(usuario.email);
 
-  const documentosMesmoEmail =
-    await consultarDocumentosUsuarioPorEmail(emailUsuario);
-
-  const documentosParaExcluir =
-    new Map();
-
-  documentosParaExcluir.set(
-    id,
-    doc(
-      db,
-      COLECAO_USUARIOS,
-      id
-    )
-  );
-
-  documentosMesmoEmail.forEach((docUsuario) => {
-    documentosParaExcluir.set(
-      docUsuario.id,
-      docUsuario.ref
-    );
-  });
-
-  const totalDocumentos =
-    documentosParaExcluir.size;
-
   const confirmar =
     confirm(
       [
-        "Deseja realmente excluir este usuário do banco de dados?",
+        "Deseja realmente excluir este usuário por completo?",
         "",
         `Nome: ${usuario.nome || "-"}`,
         `E-mail: ${emailUsuario || "-"}`,
         "",
-        `Registros encontrados para exclusão: ${totalDocumentos}`,
-        "",
-        "Todos os registros deste e-mail em usuariosSistema serão removidos para permitir novo cadastro."
+        "Isso remove o registro do usuário E a conta de login (Authentication),",
+        "permitindo que esse e-mail seja cadastrado novamente do zero."
       ].join("\n")
     );
 
@@ -1700,14 +1711,16 @@ async function excluirUsuario(id) {
   }
 
   try {
-    const lote =
-      writeBatch(db);
+    const excluirUsuarioCompleto =
+      httpsCallable(functions, "excluirUsuarioCompleto");
 
-    documentosParaExcluir.forEach((refDocumento) => {
-      lote.delete(refDocumento);
-    });
+    const resultado =
+      await excluirUsuarioCompleto({
+        uid: usuario.id,
+        email: emailUsuario
+      });
 
-    await lote.commit();
+    const dados = resultado.data || {};
 
     if (usuarioEditandoId === id) {
       limparFormulario();
@@ -1715,31 +1728,45 @@ async function excluirUsuario(id) {
 
     await carregarUsuarios();
 
-    alert(
-      [
-        "Usuário excluído do banco de dados com sucesso.",
-        "",
-        `E-mail: ${emailUsuario || "-"}`,
-        `Registros removidos: ${totalDocumentos}`,
-        "",
-        "Agora este e-mail pode ser cadastrado novamente."
-      ].join("\n")
-    );
+    if (dados.authExcluido) {
+      alert(
+        [
+          "Usuário excluído por completo (Firestore + login).",
+          "",
+          `E-mail: ${emailUsuario || "-"}`,
+          `Registros removidos: ${dados.documentosExcluidos ?? "-"}`,
+          "",
+          "Esse e-mail já pode ser cadastrado novamente."
+        ].join("\n")
+      );
+    } else {
+      alert(
+        [
+          "O registro do usuário foi removido, mas a conta de login",
+          "NÃO pôde ser excluída automaticamente.",
+          "",
+          dados.authErro ? `Detalhe: ${dados.authErro}` : "",
+          "",
+          "Peça pra apagar manualmente em Firebase Console > Authentication",
+          "antes de tentar cadastrar esse e-mail de novo."
+        ].join("\n")
+      );
+    }
   } catch (error) {
     console.error(
       "Erro ao excluir usuário:",
       error
     );
 
-    if (error?.code === "permission-denied") {
-      alert(
-        "O Firestore recusou a exclusão. Verifique se você está logado como Administrador Geral e se as regras foram publicadas."
-      );
-    } else {
-      alert(
-        "Erro ao excluir usuário do banco de dados."
-      );
-    }
+    alert(
+      [
+        "Erro ao excluir o usuário por completo.",
+        "",
+        String(error?.message || error),
+        "",
+        "Nada foi removido. Tente novamente ou apague manualmente pelo Firebase Console."
+      ].join("\n")
+    );
   }
 }
 

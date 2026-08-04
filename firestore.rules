@@ -121,7 +121,7 @@ service cloud.firestore {
         && request.resource.data.status == resource.data.status
         && request.resource.data.regional == resource.data.regional
         && request.resource.data.podeAprovarRM == resource.data.podeAprovarRM
-        && request.resource.data.adminRebaixado == resource.data.adminRebaixado;
+        && request.resource.data.get('adminRebaixado', false) == resource.data.get('adminRebaixado', false);
     }
 
     /* ==============================

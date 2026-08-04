@@ -3509,6 +3509,80 @@ function exibirErroIdentificacaoUsuario(erro) {
 }
 
 /* =========================
+   USUÁRIOS PENDENTES DE APROVAÇÃO
+========================= */
+
+let listaUsuariosPendentesCache = [];
+
+async function verificarUsuariosPendentes() {
+  const botao = document.getElementById("btnUsuariosPendentes");
+  const texto = document.getElementById("textoUsuariosPendentes");
+
+  if (!botao || !texto) {
+    return;
+  }
+
+  if (!usuarioEhAdministradorGeral(usuarioLogadoGlobal)) {
+    botao.style.display = "none";
+    return;
+  }
+
+  try {
+    const snapshot = await getDocs(
+      query(
+        collection(db, "usuariosSistema"),
+        where("status", "==", "pendente")
+      )
+    );
+
+    listaUsuariosPendentesCache = snapshot.docs.map((documento) => ({
+      id: documento.id,
+      ...documento.data()
+    }));
+
+    const quantidade = listaUsuariosPendentesCache.length;
+
+    if (quantidade === 0) {
+      botao.style.display = "none";
+      return;
+    }
+
+    texto.textContent =
+      quantidade === 1
+        ? "1 usuário aguardando"
+        : `${quantidade} usuários aguardando`;
+
+    botao.style.display = "inline-flex";
+  } catch (error) {
+    console.warn("Não foi possível verificar usuários pendentes:", error);
+    botao.style.display = "none";
+  }
+}
+
+function exibirListaUsuariosPendentes() {
+  if (!listaUsuariosPendentesCache.length) {
+    alert("Nenhum usuário pendente no momento.");
+    return;
+  }
+
+  const linhas = listaUsuariosPendentesCache.map((usuario) => {
+    const nome = usuario.nome || "(sem nome)";
+    const email = usuario.email || usuario.emailAuth || "(sem e-mail)";
+    return `• ${nome} — ${email}`;
+  });
+
+  alert(
+    [
+      "Usuários aguardando aprovação:",
+      "",
+      ...linhas,
+      "",
+      "Aprove ou reprove esses usuários no Firebase Console, na coleção usuariosSistema."
+    ].join("\n")
+  );
+}
+
+/* =========================
    INICIALIZAÇÃO
 ========================= */
 
@@ -3527,6 +3601,12 @@ document.addEventListener(
       aplicarVisibilidadeAdministrador();
 
       configurarEventos();
+
+      document
+        .getElementById("btnUsuariosPendentes")
+        ?.addEventListener("click", exibirListaUsuariosPendentes);
+
+      verificarUsuariosPendentes();
 
       await carregarProjetos();
 

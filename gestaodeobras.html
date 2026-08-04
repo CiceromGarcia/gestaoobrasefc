@@ -91,6 +91,21 @@
       <div class="header-actions">
 
         <button
+          type="button"
+          class="btn-badge-pendentes"
+          id="btnUsuariosPendentes"
+          data-admin-only
+          style="display:none"
+          title="Usuários aguardando aprovação"
+        >
+
+          <i class="fa-solid fa-user-clock"></i>
+
+          <span id="textoUsuariosPendentes">0 usuários aguardando</span>
+
+        </button>
+
+        <button
           class="btn-pdf"
           id="btnExportarPdfGestao"
           type="button"
