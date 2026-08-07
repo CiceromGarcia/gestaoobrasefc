@@ -1082,7 +1082,8 @@ function carregarObrasSelect() {
     obra.localidade === localidadeSelecionada;
 
     const passaStatus =
-    obra.statusCalculado === "Em andamento";
+    obra.statusCalculado === "Em andamento" ||
+    obra.statusCalculado === "Planejado";
 
     return (
       passaRegional &&
