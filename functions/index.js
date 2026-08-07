@@ -33,11 +33,18 @@ const db = admin.firestore();
   automaticamente pela função de sincronização.
 */
 
-// ===== Config legacy =====
-const legacyCfg =
-  (require("firebase-functions").config && require("firebase-functions").config()) || {};
-const smtp = legacyCfg.smtp || {};
-const appCfg = legacyCfg.app || {};
+// ===== Config via variáveis de ambiente (functions.config() foi descontinuado) =====
+const smtp = {
+  host: process.env.SMTP_HOST || "",
+  port: process.env.SMTP_PORT || "587",
+  secure: process.env.SMTP_SECURE || "false",
+  user: process.env.SMTP_USER || "",
+  pass: process.env.SMTP_PASS || ""
+};
+const appCfg = {
+  url: process.env.APP_URL || "https://SEU-HOST/pesquisa.html",
+  rollup_token: process.env.ROLLUP_TOKEN || ""
+};
 
 // ===== Utils gerais =====
 const canonical = (s) =>
