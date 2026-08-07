@@ -89,7 +89,8 @@ service cloud.firestore {
     }
 
     function podeEditarObraProgramada() {
-      return ehAdministradorGeral();
+      return ehAdministradorGeral()
+        || ehPlanejador();
     }
 
     function podeExcluirObraProgramada() {
