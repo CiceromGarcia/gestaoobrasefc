@@ -727,6 +727,8 @@ td{
   text-align:center;
   background:#fff;
   font-size:11px;
+  color:#1a1a1a;
+  font-weight:400;
 }
 
 tbody input{

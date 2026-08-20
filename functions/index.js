@@ -448,6 +448,991 @@ exports.remindPendingSurveys = onSchedule(
 );
 
 /* ===================================================================
+   3.1) RESUMO SEMANAL DE OBRAS EM ANDAMENTO (E-MAIL)
+
+   Envia, toda segunda-feira às 8h (America/Sao_Paulo), um e-mail com a
+   lista de obras "Em andamento" para os destinatários configurados.
+
+   O status "Em andamento" aqui é calculado com A MESMA REGRA usada no
+   dashboard (dashboard.js: calcularStatusObra e funções de apoio) —
+   não é só o campo `status` salvo no cadastro da obra, e sim o status
+   combinado com o avanço físico mais recente lançado na Curva S. As
+   funções abaixo (sufixo "Dash") são um port fiel dessas funções do
+   client para o backend, só para esse e-mail — mantidas separadas das
+   funções `num`/`toDate`/`canonical` já existentes (usadas pelo motor
+   de indicadores) para não alterar o comportamento delas.
+=================================================================== */
+
+// Envia só para o e-mail do Cicero: o fan-out para o resto do time
+// (adriana.santos.silva, crislane.campos, andre.oliveira, jeydson.cutrim,
+// c0706341 — todos @vale.com) é feito por uma regra de encaminhamento
+// interno no próprio Outlook, já que o SMTP corporativo está bloqueado
+// e o remetente real (Gmail) não deveria mandar direto pra caixas
+// externas ao domínio dele em nome da empresa.
+const RESUMO_OBRAS_ANDAMENTO_EMAILS_PADRAO = [
+  "cicero.garcia@vale.com"
+];
+
+function destinatariosResumoObrasAndamento() {
+  const viaEnv = String(process.env.RESUMO_OBRAS_ANDAMENTO_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean);
+
+  return viaEnv.length ? viaEnv : RESUMO_OBRAS_ANDAMENTO_EMAILS_PADRAO;
+}
+
+// ---- Utilitários de texto/número/percentual (port de dashboard.js) ----
+
+function normalizarTextoDash(valor) {
+  return String(valor || "")
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+function normalizarStatusDash(valor) {
+  const texto = normalizarTextoDash(valor);
+
+  if (texto === "planejado" || texto === "planejada") {
+    return "planejada";
+  }
+
+  if (
+    texto === "em andamento" ||
+    texto === "andamento" ||
+    texto === "execucao" ||
+    texto === "execução"
+  ) {
+    return "em andamento";
+  }
+
+  if (texto === "concluido" || texto === "concluida") {
+    return "concluida";
+  }
+
+  if (texto === "paralisado" || texto === "paralisada") {
+    return "paralisada";
+  }
+
+  return texto;
+}
+
+function converterValorDash(valor) {
+  if (valor === null || valor === undefined || valor === "") {
+    return 0;
+  }
+
+  if (typeof valor === "number") {
+    if (!Number.isFinite(valor)) {
+      return 0;
+    }
+
+    if (Number.isInteger(valor) && Math.abs(valor) >= 10000000) {
+      return valor / 100;
+    }
+
+    return valor;
+  }
+
+  let texto = String(valor).replace(/R\$/gi, "").replace(/\s/g, "").trim();
+
+  if (!texto) {
+    return 0;
+  }
+
+  const temVirgula = texto.includes(",");
+  const temPonto = texto.includes(".");
+  const somenteNumeros = texto.replace(/\D/g, "");
+
+  if (temVirgula) {
+    texto = texto.replace(/\./g, "").replace(",", ".");
+
+    const convertido = Number(texto) || 0;
+
+    if (convertido >= 100000000 && temPonto) {
+      return convertido / 100;
+    }
+
+    return convertido;
+  }
+
+  texto = texto.replace(/[^\d.-]/g, "");
+
+  const convertido = Number(texto) || 0;
+
+  if (
+    !temVirgula &&
+    !temPonto &&
+    somenteNumeros.length >= 8 &&
+    convertido >= 10000000
+  ) {
+    return convertido / 100;
+  }
+
+  return convertido;
+}
+
+function converterPercentualDash(valor) {
+  if (valor === null || valor === undefined || valor === "") {
+    return 0;
+  }
+
+  if (typeof valor === "number") {
+    return Number.isFinite(valor) ? valor : 0;
+  }
+
+  let texto = String(valor).replace("%", "").replace(/\s/g, "").trim();
+
+  if (texto.includes(",")) {
+    texto = texto.replace(/\./g, "").replace(",", ".");
+  }
+
+  texto = texto.replace(/[^\d.-]/g, "");
+
+  return Number(texto) || 0;
+}
+
+function valorTemPercentualDash(valor) {
+  return String(valor || "").includes("%");
+}
+
+function limitarPercentualDash(valor) {
+  const numero = Number(valor || 0);
+
+  if (!Number.isFinite(numero)) {
+    return 0;
+  }
+
+  return Math.min(Math.max(numero, 0), 100);
+}
+
+function financeiroParaPercentualDash(valorFinanceiro, valorBase) {
+  const base = Number(valorBase || 0);
+
+  if (base <= 0) {
+    return 0;
+  }
+
+  return (Number(valorFinanceiro || 0) / base) * 100;
+}
+
+function percentualParaFinanceiroDash(valorPercentual, valorBase) {
+  const base = Number(valorBase || 0);
+
+  if (base <= 0) {
+    return 0;
+  }
+
+  return (Number(valorPercentual || 0) / 100) * base;
+}
+
+// ---- Datas (port de dashboard.js) ----
+
+function converterDataBRParaDateDash(valor) {
+  if (!valor) {
+    return null;
+  }
+
+  const partes = String(valor).trim().split("/");
+
+  if (partes.length !== 3) {
+    return null;
+  }
+
+  const data = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
+
+  return isNaN(data.getTime()) ? null : data;
+}
+
+function converterDataISOParaDateDash(valor) {
+  if (!valor) {
+    return null;
+  }
+
+  const texto = String(valor).trim().split("T")[0];
+  const match = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const data = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+
+  return isNaN(data.getTime()) ? null : data;
+}
+
+function obterDataGenericaDash(valor) {
+  if (!valor) {
+    return null;
+  }
+
+  if (valor?.toDate) {
+    return valor.toDate();
+  }
+
+  if (valor?.seconds) {
+    return new Date(valor.seconds * 1000);
+  }
+
+  if (valor instanceof Date) {
+    return isNaN(valor.getTime()) ? null : valor;
+  }
+
+  if (typeof valor === "string") {
+    const texto = valor.trim();
+
+    if (!texto) {
+      return null;
+    }
+
+    if (texto.includes("/")) {
+      return converterDataBRParaDateDash(texto);
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}/.test(texto)) {
+      return converterDataISOParaDateDash(texto);
+    }
+  }
+
+  const data = new Date(valor);
+
+  return isNaN(data.getTime()) ? null : data;
+}
+
+function formatarDataDash(data) {
+  const dt = obterDataGenericaDash(data);
+
+  return dt ? dt.toLocaleDateString("pt-BR") : "-";
+}
+
+function obterDataInicioObraDash(dados) {
+  return obterDataGenericaDash(
+    dados.dataInicio ||
+    dados.dataInicioPrevisto ||
+    dados.inicioPrevisto ||
+    dados.inicio ||
+    dados.dataInicioObra ||
+    dados.dataInicial ||
+    dados.inicioObra ||
+    ""
+  );
+}
+
+function obterDataFimObraDash(dados) {
+  return obterDataGenericaDash(
+    dados.dataFim ||
+    dados.dataTerminoPrevisto ||
+    dados.dataFimPrevisto ||
+    dados.dataTermino ||
+    dados.terminoPrevisto ||
+    dados.termino ||
+    dados.fim ||
+    dados.dataFimObra ||
+    dados.dataFinal ||
+    dados.terminoObra ||
+    ""
+  );
+}
+
+function extrairDatasPeriodoDash(periodo) {
+  if (!periodo) {
+    return { inicio: null, fim: null };
+  }
+
+  const texto = String(periodo).replace(/\s+/g, " ").trim();
+
+  const matchBR = texto.match(/(\d{2}\/\d{2}\/\d{4})\s*a\s*(\d{2}\/\d{2}\/\d{4})/i);
+
+  if (matchBR) {
+    return {
+      inicio: converterDataBRParaDateDash(matchBR[1]),
+      fim: converterDataBRParaDateDash(matchBR[2])
+    };
+  }
+
+  const matchISO = texto.match(/(\d{4}-\d{2}-\d{2})\s*a\s*(\d{4}-\d{2}-\d{2})/i);
+
+  if (matchISO) {
+    return {
+      inicio: converterDataISOParaDateDash(matchISO[1]),
+      fim: converterDataISOParaDateDash(matchISO[2])
+    };
+  }
+
+  return { inicio: null, fim: null };
+}
+
+function obterDatasDoPlanejamentoDash(item) {
+  const datasPeriodo = extrairDatasPeriodoDash(item.periodo);
+
+  let inicio = datasPeriodo.inicio;
+  let fim = datasPeriodo.fim;
+
+  if (!inicio) {
+    inicio = obterDataGenericaDash(item.dataInicio || item.inicio || item.dataInicial);
+  }
+
+  if (!fim) {
+    fim = obterDataGenericaDash(item.dataFim || item.fim || item.dataFinal);
+  }
+
+  return { inicio, fim };
+}
+
+// ---- Semanas / realizado / planejado (port de dashboard.js) ----
+
+function numeroSemanaDash(valor) {
+  return parseInt(String(valor || "").replace(/\D/g, "")) || 0;
+}
+
+function obterTimestampComparacaoDash(item) {
+  const data = obterDataGenericaDash(
+    item?.atualizadoEm || item?.criadoEm || item?.dataAtualizacao || item?.dataRegistro
+  );
+
+  return data ? data.getTime() : 0;
+}
+
+function obterFisicoRealizadoAcumuladoDash(item) {
+  if (!item) {
+    return 0;
+  }
+
+  if (item.fisicoRealAcum !== undefined) return converterPercentualDash(item.fisicoRealAcum);
+  if (item.fisicoAcum !== undefined) return converterPercentualDash(item.fisicoAcum);
+  if (item.fisicoAcumulado !== undefined) return converterPercentualDash(item.fisicoAcumulado);
+  if (item.avancoFisicoAcumulado !== undefined) return converterPercentualDash(item.avancoFisicoAcumulado);
+  if (item.fisicoReal !== undefined) return converterPercentualDash(item.fisicoReal);
+  if (item.avancoFisicoNovo !== undefined) return converterPercentualDash(item.avancoFisicoNovo);
+  if (item.avancoFisico !== undefined) return converterPercentualDash(item.avancoFisico);
+
+  return converterPercentualDash(item.fisico || 0);
+}
+
+function obterFinanceiroRealizadoValorAcumuladoDash(item, valorBase) {
+  if (!item) {
+    return 0;
+  }
+
+  const candidatos = [
+    item.financeiroRealAcum,
+    item.financeiroAcum,
+    item.financeiroRealAcumulado,
+    item.financeiroAcumulado,
+    item.valorExecutado,
+    item.executado,
+    item.financeiroReal,
+    item.investimentoNovo,
+    item.custoSemana,
+    item.custo,
+    item.financeiro
+  ];
+
+  for (const valor of candidatos) {
+    if (valor === undefined || valor === null || valor === "") {
+      continue;
+    }
+
+    if (valorTemPercentualDash(valor)) {
+      return percentualParaFinanceiroDash(converterPercentualDash(valor), valorBase);
+    }
+
+    return converterValorDash(valor);
+  }
+
+  return 0;
+}
+
+function obterValorOrcadoObraDash(dados) {
+  const camposTexto = [
+    dados.valorObra, dados.valorOrcado, dados.valorOrçado, dados.investimento,
+    dados.valorInvestimento, dados.orcamento, dados.orçamento, dados.orcado,
+    dados.orçado, dados.valorTotal, dados.custoTotal, dados.custoOrcado,
+    dados.orcadoTotal, dados.orcamentoTotal, dados.orçamentoTotal, dados.investimentoTotal
+  ];
+
+  for (const valor of camposTexto) {
+    if (typeof valor !== "string") {
+      continue;
+    }
+
+    const convertido = converterValorDash(valor);
+
+    if (convertido > 0) {
+      return convertido;
+    }
+  }
+
+  const camposNumericos = [
+    dados.valorObraNumero, dados.valorObraNumerico, dados.valorOrcadoNumero,
+    dados.valorOrçadoNumero, dados.investimentoNumero, dados.investimentoTotalNumero,
+    dados.valorInvestimentoNumero, dados.orcamentoNumero, dados.orçamentoNumero,
+    dados.orcadoNumero, dados.orçadoNumero, dados.valorTotalNumero, dados.valorTotalNumerico,
+    dados.custoTotalNumero, dados.custoOrcadoNumero, dados.valorObra, dados.valorOrcado,
+    dados.valorOrçado, dados.investimento, dados.valorInvestimento, dados.orcamento,
+    dados.orçamento, dados.orcado, dados.orçado, dados.valorTotal, dados.custoTotal,
+    dados.custoOrcado, dados.orcadoTotal, dados.orcamentoTotal, dados.orçamentoTotal,
+    dados.investimentoTotal, dados.valor, dados.custoTotal
+  ];
+
+  for (const valor of camposNumericos) {
+    const convertido = converterValorDash(valor);
+
+    if (convertido > 0) {
+      return convertido;
+    }
+  }
+
+  return 0;
+}
+
+function obterFinanceiroPlanejadoPercentualItemDash(item, valorBase) {
+  const candidatosPercentuais = [
+    item.financeiroAcumPercentual, item.financeiroPlanejadoAcumPercentual,
+    item.financeiroPlanejadoPercentualAcum, item.financeiroPercentualAcum,
+    item.percentualFinanceiroAcum, item.percentualFinanceiroPlanejado, item.financeiroPercentual
+  ];
+
+  for (const valor of candidatosPercentuais) {
+    if (valor !== undefined && valor !== null && valor !== "") {
+      return limitarPercentualDash(converterPercentualDash(valor));
+    }
+  }
+
+  const candidatosAcumulados = [
+    item.financeiroAcum, item.financeiroPlanejadoAcum,
+    item.financeiroPlanejadoAcumulado, item.financeiroAcumulado, item.financeiroAcumuladoCalculado
+  ];
+
+  for (const valor of candidatosAcumulados) {
+    if (valor === undefined || valor === null || valor === "") {
+      continue;
+    }
+
+    if (valorTemPercentualDash(valor)) {
+      return limitarPercentualDash(converterPercentualDash(valor));
+    }
+
+    const convertido = converterValorDash(valor);
+
+    if (convertido <= 100) {
+      return limitarPercentualDash(convertido);
+    }
+
+    return limitarPercentualDash(financeiroParaPercentualDash(convertido, valorBase));
+  }
+
+  const candidatosSemanais = [item.financeiro, item.financeiroPlanejado, item.valorPlanejado];
+
+  for (const valor of candidatosSemanais) {
+    if (valor === undefined || valor === null || valor === "") {
+      continue;
+    }
+
+    if (valorTemPercentualDash(valor)) {
+      return limitarPercentualDash(converterPercentualDash(valor));
+    }
+
+    const convertido = converterValorDash(valor);
+
+    if (convertido <= 100) {
+      return limitarPercentualDash(convertido);
+    }
+
+    return limitarPercentualDash(financeiroParaPercentualDash(convertido, valorBase));
+  }
+
+  return 0;
+}
+
+// ---- Match obra <-> Curva S e deduplicação (port de dashboard.js) ----
+
+function registroPertenceAObraDash(registro, obra) {
+  if (!registro || !obra) {
+    return false;
+  }
+
+  const chavesObra = [
+    obra.firebaseId, obra.docId, obra.idProjeto, obra.idObra,
+    obra.obraId, obra.codigoObra, obra.codigo, obra.nomeProjeto
+  ].filter(Boolean).map(normalizarTextoDash);
+
+  const chavesRegistro = [
+    registro.obraId, registro.idObra, registro.idProjeto, registro.projetoId,
+    registro.obraDocId, registro.codigoObra, registro.codigo, registro.obra,
+    registro.obraNome, registro.nomeObra, registro.nomeProjeto, registro.projeto
+  ].filter(Boolean).map(normalizarTextoDash);
+
+  if (chavesRegistro.some((chave) => chavesObra.includes(chave))) {
+    return true;
+  }
+
+  const nomeObra = normalizarTextoDash(obra.nomeProjeto);
+
+  const nomeRegistro = normalizarTextoDash(
+    registro.nomeProjeto || registro.nomeObra || registro.obraNome ||
+    registro.obra || registro.projeto
+  );
+
+  const centroObra = normalizarTextoDash(obra.centroCusto);
+
+  const centroRegistro = normalizarTextoDash(
+    registro.centroCusto || registro.centroDeCusto || registro.centroCustoApropriacao
+  );
+
+  if (nomeObra && nomeRegistro && nomeObra === nomeRegistro) {
+    return true;
+  }
+
+  if (centroObra && centroRegistro && centroObra === centroRegistro && !nomeRegistro) {
+    return true;
+  }
+
+  return false;
+}
+
+function deduplicarPorSemanaDash(lista) {
+  const mapa = new Map();
+
+  lista.forEach((item) => {
+    const numero = numeroSemanaDash(item.semana);
+
+    if (numero <= 0) {
+      return;
+    }
+
+    const existente = mapa.get(numero);
+
+    if (!existente) {
+      mapa.set(numero, item);
+      return;
+    }
+
+    if (obterTimestampComparacaoDash(item) >= obterTimestampComparacaoDash(existente)) {
+      mapa.set(numero, item);
+    }
+  });
+
+  return Array.from(mapa.values()).sort(
+    (a, b) => numeroSemanaDash(a.semana) - numeroSemanaDash(b.semana)
+  );
+}
+
+// ---- Status da obra (port de dashboard.js: calcularStatusObra) ----
+
+function calcularStatusObraDash(dadosObra, executadoFisico, executadoFinanceiro) {
+  const statusManual = normalizarStatusDash(
+    dadosObra.status || dadosObra.statusNovo || dadosObra.fase || ""
+  );
+
+  const fisico = Number(executadoFisico || 0);
+  const financeiro = Number(executadoFinanceiro || 0);
+
+  if (statusManual === "paralisada") {
+    return "Paralisada";
+  }
+
+  if (statusManual === "concluida" || fisico >= 100) {
+    return "Concluída";
+  }
+
+  if (fisico > 0 && fisico < 100) {
+    return "Em andamento";
+  }
+
+  if (financeiro > 0 && fisico === 0) {
+    return "Paralisada";
+  }
+
+  if (statusManual === "em andamento") {
+    return "Em andamento";
+  }
+
+  return "Planejada";
+}
+
+// ---- Formatação para o e-mail ----
+
+function moedaDash(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function moedaCompletaDash(valor) {
+  return `R$ ${moedaDash(valor)}`;
+}
+
+function percentualDash(valor) {
+  return `${Number(valor || 0).toFixed(2).replace(".", ",")}%`;
+}
+
+// ---- Cálculo principal (port de dashboard.js: carregarObrasFirebase) ----
+
+async function calcularResumoObrasEmAndamento() {
+  const [obrasSnap, planSnap, realSnap] = await Promise.all([
+    db.collection("obras").get(),
+    db.collection("planejamentoCurvaS").get(),
+    db.collection("realizadoCurvaS").get()
+  ]);
+
+  const mapDocs = (snap) =>
+    snap.docs.map((d) => ({ firebaseId: d.id, docId: d.id, ...d.data() }));
+
+  const obrasBanco = mapDocs(obrasSnap);
+  const planejamentosBanco = mapDocs(planSnap);
+  const realizadosBanco = mapDocs(realSnap);
+
+  const resultado = [];
+  let contadorId = 1;
+
+  for (const dados of obrasBanco) {
+    const idPadrao =
+      dados.idProjeto || dados.idObra || dados.codigoObra ||
+      `OBR-${String(contadorId).padStart(4, "0")}`;
+
+    contadorId++;
+
+    const nomeProjeto =
+      dados.nomeProjeto || dados.nomeObra || dados.obraNome || dados.obra || "-";
+
+    const investimentoObra = obterValorOrcadoObraDash(dados);
+
+    const obraBase = {
+      firebaseId: dados.firebaseId,
+      docId: dados.docId,
+      idProjeto: idPadrao,
+      idObra: dados.idObra || "",
+      obraId: dados.obraId || "",
+      codigoObra: dados.codigoObra || dados.codigo || "",
+      nomeProjeto,
+      localidade: dados.localidade || "-",
+      centroCusto: dados.centroCusto || dados.centroDeCusto || dados.numeroOM || "-"
+    };
+
+    let planejamentoListaResumo = deduplicarPorSemanaDash(
+      planejamentosBanco.filter((item) => registroPertenceAObraDash(item, obraBase))
+    );
+
+    let dataInicioPlanejamento = null;
+    let dataFimPlanejamento = null;
+    let acumuladoFisicoPlanejadoResumo = 0;
+    let planejadoFisicoFinal = 0;
+    const planejadoFisicoPorSemana = new Map();
+
+    planejamentoListaResumo.forEach((item) => {
+      const datasPlanejamento = obterDatasDoPlanejamentoDash(item);
+
+      if (
+        datasPlanejamento.inicio &&
+        (!dataInicioPlanejamento || datasPlanejamento.inicio < dataInicioPlanejamento)
+      ) {
+        dataInicioPlanejamento = datasPlanejamento.inicio;
+      }
+
+      if (
+        datasPlanejamento.fim &&
+        (!dataFimPlanejamento || datasPlanejamento.fim > dataFimPlanejamento)
+      ) {
+        dataFimPlanejamento = datasPlanejamento.fim;
+      }
+
+      const fisicoSemana = converterPercentualDash(item.fisico || item.fisicoPlanejado || 0);
+
+      acumuladoFisicoPlanejadoResumo =
+        item.fisicoAcum !== undefined ? converterPercentualDash(item.fisicoAcum) :
+        item.fisicoAcumulado !== undefined ? converterPercentualDash(item.fisicoAcumulado) :
+        acumuladoFisicoPlanejadoResumo + fisicoSemana;
+
+      planejadoFisicoFinal = acumuladoFisicoPlanejadoResumo;
+
+      const numeroDaSemana = numeroSemanaDash(item.semana);
+
+      if (numeroDaSemana > 0) {
+        planejadoFisicoPorSemana.set(numeroDaSemana, acumuladoFisicoPlanejadoResumo);
+      }
+    });
+
+    const dataInicioExibicao = obterDataInicioObraDash(dados) || dataInicioPlanejamento;
+    const dataFimExibicao = obterDataFimObraDash(dados) || dataFimPlanejamento;
+
+    let realizadoListaResumo = deduplicarPorSemanaDash(
+      realizadosBanco.filter((item) => registroPertenceAObraDash(item, obraBase))
+    );
+
+    const ultimoRealizado = realizadoListaResumo[realizadoListaResumo.length - 1];
+
+    const executadoFisico = ultimoRealizado
+      ? obterFisicoRealizadoAcumuladoDash(ultimoRealizado)
+      : 0;
+
+    const executadoFinanceiro = ultimoRealizado
+      ? obterFinanceiroRealizadoValorAcumuladoDash(ultimoRealizado, investimentoObra)
+      : converterValorDash(dados.valorExecutado || dados.executado || 0);
+
+    const statusCalculado = calcularStatusObraDash(dados, executadoFisico, executadoFinanceiro);
+
+    const numeroSemanaUltimoRealizado = ultimoRealizado
+      ? numeroSemanaDash(ultimoRealizado.semana)
+      : 0;
+
+    const planejadoFisicoAteSemanaAtual =
+      planejadoFisicoPorSemana.get(numeroSemanaUltimoRealizado) || planejadoFisicoFinal || 0;
+
+    const afo = planejadoFisicoAteSemanaAtual > 0
+      ? (executadoFisico / planejadoFisicoAteSemanaAtual) * 100
+      : 0;
+
+    resultado.push({
+      idProjeto: idPadrao,
+      nomeProjeto,
+      localidade: obraBase.localidade,
+      centroCusto: obraBase.centroCusto,
+      dataInicioObra: dataInicioExibicao,
+      dataFimObra: dataFimExibicao,
+      investimento: investimentoObra,
+      executado: executadoFinanceiro,
+      avancoFisico: executadoFisico,
+      afo,
+      fase: statusCalculado
+    });
+  }
+
+  return resultado.filter((item) => normalizarStatusDash(item.fase) === "em andamento");
+}
+
+// ---- Semáforo de saúde da obra (port de dashboard.js: obterCategoriaSemaforo) ----
+// Mesmos limiares usados no mini-resumo do dashboard: AFO >= 95% = saudável,
+// >= 90% = atenção, abaixo disso = crítica.
+
+function obterCategoriaSemaforoDash(afo) {
+  const valor = Number(afo || 0);
+
+  if (valor >= 95) {
+    return "saudavel";
+  }
+
+  if (valor >= 90) {
+    return "atencao";
+  }
+
+  return "critica";
+}
+
+function linhaObraHtmlDash(item) {
+  const desvio = item.investimento - item.executado;
+  const corDesvio = desvio < 0 ? "#C0392B" : "#0B2545";
+
+  const corAfo =
+    item.afo >= 95 ? "#1E824C" :
+    item.afo >= 90 ? "#C77700" :
+    "#C0392B";
+
+  return `
+    <tr>
+      <td style="padding:6px 8px;border:1px solid #eee;">${item.idProjeto}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;">${item.nomeProjeto}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;">${item.localidade}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;text-align:center;">${formatarDataDash(item.dataInicioObra)}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;text-align:center;">${formatarDataDash(item.dataFimObra)}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;text-align:center;">${item.centroCusto}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;text-align:right;">${moedaCompletaDash(item.investimento)}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;text-align:right;">${moedaCompletaDash(item.executado)}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;text-align:right;color:${corDesvio};">${moedaCompletaDash(desvio)}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;text-align:center;">${percentualDash(item.avancoFisico)}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;text-align:center;color:${corAfo};font-weight:700;">${percentualDash(item.afo)}</td>
+    </tr>
+  `;
+}
+
+function tabelaObrasHtmlDash(lista) {
+  const corpoTabela = lista.length
+    ? lista.map(linhaObraHtmlDash).join("")
+    : `<tr><td colspan="11" style="padding:12px;text-align:center;">Nenhuma obra nesta categoria.</td></tr>`;
+
+  return `
+    <div style="overflow-x:auto;">
+      <table style="border-collapse:collapse;width:100%;font-size:12px;margin-bottom:20px;">
+        <thead>
+          <tr style="background:#007E7A;color:#fff;">
+            <th style="padding:8px;">ID</th>
+            <th style="padding:8px;">Nome Obra</th>
+            <th style="padding:8px;">Localidade</th>
+            <th style="padding:8px;">Dt Início</th>
+            <th style="padding:8px;">Dt Conclusão</th>
+            <th style="padding:8px;">Centro Custo</th>
+            <th style="padding:8px;">Orçado(R$)</th>
+            <th style="padding:8px;">Executado(R$)</th>
+            <th style="padding:8px;">Desvio(R$)</th>
+            <th style="padding:8px;">Físico(%)</th>
+            <th style="padding:8px;">AFO(%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${corpoTabela}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function blocoCategoriaHtmlDash(titulo, cor, lista) {
+  return `
+    <h3 style="color:${cor};border-left:4px solid ${cor};padding-left:8px;margin:20px 0 8px;">
+      ${titulo} (${lista.length})
+    </h3>
+    ${tabelaObrasHtmlDash(lista)}
+  `;
+}
+
+function montarHtmlResumoObrasEmAndamento(lista) {
+  const criticas = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "critica");
+  const atencao = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "atencao");
+  const saudaveis = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "saudavel");
+
+  return `
+    <div style="font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;">
+      <h2 style="color:#007E7A;margin-bottom:4px;">Obras em andamento</h2>
+      <p style="margin-top:0;color:#444;">
+        Resumo semanal automático — ${lista.length} obra(s) em andamento
+        (mesmo critério de saúde do dashboard, baseado no AFO):
+        <span style="color:#C0392B;font-weight:700;">${criticas.length} crítica(s)</span> ·
+        <span style="color:#C77700;font-weight:700;">${atencao.length} em atenção</span> ·
+        <span style="color:#1E824C;font-weight:700;">${saudaveis.length} saudável(is)</span>.
+      </p>
+
+      ${blocoCategoriaHtmlDash("🔴 Críticas — AFO abaixo de 90%", "#C0392B", criticas)}
+      ${blocoCategoriaHtmlDash("🟡 Atenção — AFO entre 90% e 94,99%", "#C77700", atencao)}
+      ${blocoCategoriaHtmlDash("🟢 Saudáveis — AFO igual ou acima de 95%", "#1E824C", saudaveis)}
+
+      <p style="color:#94a3b8;font-size:11px;margin-top:16px;">
+        E-mail automático gerado pelo sistema de Gestão de Obras. Não responda esta mensagem.
+      </p>
+    </div>
+  `;
+}
+
+exports.enviarResumoObrasEmAndamentoSemanal = onSchedule(
+  {
+    schedule: "0 8 * * 1",
+    timeZone: "America/Sao_Paulo"
+  },
+  async () => {
+    const transport = buildTransport();
+
+    if (!transport) {
+      logger.warn("enviarResumoObrasEmAndamentoSemanal: SMTP não configurado, e-mail não enviado.");
+      return;
+    }
+
+    const destinatarios = destinatariosResumoObrasAndamento();
+
+    if (!destinatarios.length) {
+      logger.warn("enviarResumoObrasEmAndamentoSemanal: nenhum destinatário configurado.");
+      return;
+    }
+
+    try {
+      const lista = await calcularResumoObrasEmAndamento();
+      const html = montarHtmlResumoObrasEmAndamento(lista);
+
+      await transport.sendMail({
+        from: smtp.user,
+        to: destinatarios.join(","),
+        subject: `Resumo Semanal — ${lista.length} Obra(s) em Andamento`,
+        html
+      });
+
+      logger.info(
+        `[enviarResumoObrasEmAndamentoSemanal] E-mail enviado. obras=${lista.length} destinatarios=${destinatarios.length}`
+      );
+    } catch (e) {
+      logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao gerar/enviar resumo:", e);
+    }
+  }
+);
+
+/* ===================================================================
+   3.2) TESTE MANUAL DO RESUMO SEMANAL (sem esperar segunda-feira)
+
+   Endpoint HTTP protegido por login de administrador (mesmo esquema de
+   exigirAdminHttp usado em backfillRollups/recomputeIndicators). Gera e
+   envia o MESMO e-mail do resumo semanal, mas só para o endereço
+   informado — não mexe nos destinatários reais, então dá pra testar
+   quantas vezes quiser sem incomodar o resto do time.
+
+   Uso (depois de dar deploy):
+     https://SEU-HOST-DAS-FUNCTIONS/testarResumoObrasEmAndamento?email=voce@vale.com
+   com o header "Authorization: Bearer <ID token de um admin>".
+=================================================================== */
+
+exports.testarResumoObrasEmAndamento = onRequest(
+  {
+    region: "us-central1",
+    memory: "512MiB",
+    timeoutSeconds: 120,
+    // CORS liberado só para este endpoint de teste, pra dar pra chamar
+    // com fetch() direto do console do navegador (sem precisar de
+    // terminal/curl) — continua exigindo login de admin (exigirAdminHttp).
+    cors: true
+  },
+  async (req, res) => {
+    try {
+      const decoded = await exigirAdminHttp(req);
+
+      const transport = buildTransport();
+
+      if (!transport) {
+        return res.status(503).send("SMTP não configurado (variáveis SMTP_* ausentes).");
+      }
+
+      const emailDestino = String(req.query.email || decoded.email || "").trim();
+
+      if (!emailDestino) {
+        return res.status(400).send(
+          "Informe o e-mail de destino em ?email=voce@vale.com"
+        );
+      }
+
+      const lista = await calcularResumoObrasEmAndamento();
+
+      const avisoTeste = `
+        <div style="background:#fff3cd;border:1px solid #ffe69c;padding:10px 14px;margin-bottom:12px;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;">
+          <strong>Este é um envio de TESTE</strong>, disparado manualmente por ${decoded.email || decoded.uid}.
+          O envio real acontece toda segunda-feira às 8h para a lista oficial de destinatários.
+        </div>
+      `;
+
+      const html = avisoTeste + montarHtmlResumoObrasEmAndamento(lista);
+
+      await transport.sendMail({
+        from: smtp.user,
+        to: emailDestino,
+        subject: `[TESTE] Resumo Semanal — ${lista.length} Obra(s) em Andamento`,
+        html
+      });
+
+      logger.info(
+        `[testarResumoObrasEmAndamento] Teste enviado para ${emailDestino} por ${decoded.email || decoded.uid}. obras=${lista.length}`
+      );
+
+      return res.status(200).send(
+        `OK: e-mail de teste enviado para ${emailDestino}. Obras em andamento encontradas: ${lista.length}.`
+      );
+    } catch (e) {
+      logger.error("[testarResumoObrasEmAndamento] erro:", e);
+
+      return res
+        .status(e.statusCode || 500)
+        .send(e.statusCode ? e.message : "Erro ao enviar e-mail de teste.");
+    }
+  }
+);
+
+/* ===================================================================
    4) Motor de Indicadores - Rollups por ciclo
 =================================================================== */
 
@@ -1382,7 +2367,8 @@ async function coletarDocsRelacionados({
     "indicadoresObra_snapshot",
     "indicadoresObra_semanal",
     "indicadoresObra_mensal",
-    "pesquisasObras"
+    "pesquisasObras",
+    "pesquisasRespostas"
   ];
 
   const camposRelacionamento = [
@@ -1625,8 +2611,12 @@ exports.excluirObraCompleta = onCall(
   {
     region: "us-central1",
     memory: "1GiB",
-    timeoutSeconds: 540,
-    enforceAppCheck: true
+    timeoutSeconds: 540
+    // Nota: enforceAppCheck fica desligado pelo mesmo motivo descrito em
+    // excluirUsuarioCompleto — a site key do App Check ainda não foi
+    // configurada em firebaseConfig.js. A checagem de admin abaixo já é a
+    // proteção real; pode reativar "enforceAppCheck: true" assim que a
+    // site key for configurada no cliente.
   },
   async (request) => {
     await usuarioCallableEhAdmin(request.auth);

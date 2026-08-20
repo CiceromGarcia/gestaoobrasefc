@@ -187,7 +187,14 @@ service cloud.firestore {
         && request.resource.data.aplicada == false
         && request.resource.data.materiais is list
         && contratoValidoRM()
-        && donoDaRM(request.resource.data);
+        && donoDaRM(request.resource.data)
+        // Reforço: na CRIAÇÃO (diferente da leitura de RMs antigas via
+        // donoDaRM, que aceita várias formas legadas de identificar o
+        // dono), uid e e-mail do autor devem bater os dois com o token
+        // autenticado — evita que alguém crie uma RM com criadoPorUid
+        // correto (seu) mas criadoPorEmail de outra pessoa.
+        && request.resource.data.criadoPorUid == request.auth.uid
+        && request.resource.data.criadoPorEmail == emailLogado();
     }
 
     function camposDeAprovacaoRM() {

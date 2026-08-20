@@ -1,17 +1,28 @@
 /* =====================================================
-   GESTÃO DE OBRAS - v313
+   GESTÃO DE OBRAS - v314
    Painel de obras + edição de datas + exclusão somente por Administrador Geral
    Cabeçalho padronizado via HTML/CSS + permissões por perfil
    Coluna Cliente removida da tabela
-   Versão SEM Cloud Functions / SEM Blaze
+
+   A pré-visualização/contagem de documentos vinculados (antes da
+   confirmação final) continua sendo feita direto no client, sem Cloud
+   Function — é só leitura. A exclusão em si, porém, é delegada à Cloud
+   Function `excluirObraCompleta` (Admin SDK, checa admin, grava auditoria
+   atômica em auditoriaExclusoesObras): evita duas implementações
+   divergentes do mesmo apagamento em massa.
 ===================================================== */
 
-import { db } from "./firebaseConfig.js";
+import { app, db } from "./firebaseConfig.js";
 
 import {
   getAuth,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+
+import {
+  getFunctions,
+  httpsCallable
+} from "https://www.gstatic.com/firebasejs/10.12.3/firebase-functions.js";
 
 import { protegerPagina } from "./authGuard.js";
 
@@ -21,8 +32,6 @@ import {
   getDoc,
   doc,
   updateDoc,
-  addDoc,
-  writeBatch,
   query,
   where,
   arrayUnion,
@@ -30,6 +39,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
 const auth = getAuth();
+const functions = getFunctions(app, "us-central1");
 
 /* =========================
    VARIÁVEIS GLOBAIS
@@ -2855,36 +2865,6 @@ function contarPorColecao(refsMap) {
   return resumo;
 }
 
-async function apagarEmLotes(refsMap) {
-  const referencias = Array.from(refsMap.values());
-  const tamanhoLote = 450;
-
-  let totalExcluido = 0;
-
-  for (
-    let indice = 0;
-    indice < referencias.length;
-    indice += tamanhoLote
-  ) {
-    const parte = referencias.slice(
-      indice,
-      indice + tamanhoLote
-    );
-
-    const lote = writeBatch(db);
-
-    parte.forEach((referencia) => {
-      lote.delete(referencia);
-    });
-
-    await lote.commit();
-
-    totalExcluido += parte.length;
-  }
-
-  return totalExcluido;
-}
-
 /* =========================
    MODAL DE EXCLUSÃO
 ========================= */
@@ -3000,76 +2980,6 @@ function formatarResumoColecoes(resumo) {
    AUDITORIA DA EXCLUSÃO
 ========================= */
 
-async function registrarAuditoriaExclusao(obra, dadosExclusao) {
-  const usuarioUid = obterUidUsuario(usuarioLogadoGlobal);
-  const usuarioEmail = obterEmailUsuario(usuarioLogadoGlobal);
-  const usuarioNome = obterNomeUsuario(usuarioLogadoGlobal);
-  const usuarioPerfil = obterNomePerfilExibicao(usuarioLogadoGlobal);
-
-  const payloadAuditoria = {
-    tipo: "EXCLUSAO_COMPLETA_OBRA",
-
-    obraDocId: obra.id || "",
-    colecaoOrigem: obra.colecaoOrigem || "obras",
-
-    codigoObra:
-      obra.codigoObraTela ||
-      obra.codigoObra ||
-      obra.codigo ||
-      "",
-
-    nomeObra:
-      obra.nomeObraTela ||
-      obra.nomeProjeto ||
-      obra.nomeObra ||
-      "",
-
-    regional: obra.regional || "",
-    localidade: obra.localidade || "",
-    status: obra.statusFinal || obra.status || "",
-
-    dataInicio:
-      dataParaInput(
-        obra.inicioObraTela ||
-        obra.dataInicio ||
-        obra.dataInicioPrevisto
-      ),
-
-    dataFim:
-      dataParaInput(
-        obra.fimObraTela ||
-        obra.dataFim ||
-        obra.dataTerminoPrevisto
-      ),
-
-    prioridade:
-      obra.prioridadeFinal ||
-      obra.gutNivel ||
-      obra.prioridade ||
-      "",
-
-    custoExecucao: numeroBRL(obra.custoExecucao),
-    totalDocumentosExcluidos: dadosExclusao.totalExcluido || 0,
-    documentosPorColecao: dadosExclusao.resumoColecoes || {},
-    chavesUtilizadas: dadosExclusao.chaves || [],
-
-    excluidoPorUid: usuarioUid,
-    excluidoPorNome: usuarioNome,
-    excluidoPorEmail: usuarioEmail,
-    excluidoPorPerfil: usuarioPerfil,
-
-    excluidoEm: serverTimestamp(),
-    excluidoEmISO: new Date().toISOString()
-  };
-
-  return addDoc(
-    collection(
-      db,
-      "historicoExclusoesObras"
-    ),
-    payloadAuditoria
-  );
-}
 
 /* =========================
    EXCLUSÃO DEFINITIVA
@@ -3147,8 +3057,7 @@ async function excluirObraCompleta(event) {
     }
 
     const {
-      refsMap,
-      chaves
+      refsMap
     } = await coletarReferenciasDaObra(obra);
 
     const totalLocalizado = refsMap.size;
@@ -3187,27 +3096,23 @@ async function excluirObraCompleta(event) {
         '<i class="fa-solid fa-spinner fa-spin"></i> Excluindo registros...';
     }
 
-    const totalExcluido = await apagarEmLotes(refsMap);
+    // A exclusão em si (e a auditoria, gravada atomicamente em
+    // auditoriaExclusoesObras) é feita pela Cloud Function, com
+    // Admin SDK — evita manter duas implementações do mesmo apagamento
+    // em massa divergindo com o tempo.
+    const excluirObraCallable =
+      httpsCallable(functions, "excluirObraCompleta");
 
-    let auditoriaRegistrada = true;
+    const resultado = await excluirObraCallable({
+      obraDocId: obraId,
+      codigoObra,
+      nomeObra,
+      colecaoOrigem: obra.colecaoOrigem || "obras",
+      confirmacao: "EXCLUIR"
+    });
 
-    try {
-      await registrarAuditoriaExclusao(
-        obra,
-        {
-          totalExcluido,
-          resumoColecoes,
-          chaves
-        }
-      );
-    } catch (erroAuditoria) {
-      auditoriaRegistrada = false;
-
-      console.error(
-        "A obra foi excluída, mas não foi possível registrar a auditoria:",
-        erroAuditoria
-      );
-    }
+    const totalExcluido =
+      resultado?.data?.totalDocumentosExcluidos ?? totalLocalizado;
 
     fecharModalExcluirObra();
 
@@ -3223,23 +3128,14 @@ async function excluirObraCompleta(event) {
 
     await carregarProjetos();
 
-    const mensagemSucesso = [
-      "Obra excluída com sucesso.",
-      "",
-      `Código: ${codigoObra}`,
-      `Obra: ${nomeObra}`,
-      `Documentos excluídos: ${totalExcluido}`
-    ];
-
-    if (!auditoriaRegistrada) {
-      mensagemSucesso.push(
-        "",
-        "Atenção: a exclusão foi concluída, mas o registro de auditoria não pôde ser salvo."
-      );
-    }
-
     alert(
-      mensagemSucesso.join("\n")
+      [
+        "Obra excluída com sucesso.",
+        "",
+        `Código: ${codigoObra}`,
+        `Obra: ${nomeObra}`,
+        `Documentos excluídos: ${totalExcluido}`
+      ].join("\n")
     );
   } catch (error) {
     console.error(
@@ -3247,18 +3143,20 @@ async function excluirObraCompleta(event) {
       error
     );
 
-    if (error?.code === "permission-denied") {
+    const codigoErro = String(error?.code || "");
+
+    if (codigoErro.endsWith("permission-denied")) {
       alert(
         [
-          "O Firestore recusou a exclusão.",
+          "O servidor recusou a exclusão.",
           "",
           "Confirme se o perfil mostrado no cabeçalho é:",
           "• Administrador Geral.",
           "",
-          "Também verifique se as regras atualizadas do Firestore foram publicadas."
+          "Também verifique se as Cloud Functions atualizadas foram publicadas."
         ].join("\n")
       );
-    } else if (error?.code === "unavailable") {
+    } else if (codigoErro.endsWith("unavailable")) {
       alert(
         "O Firebase está temporariamente indisponível. Verifique a conexão e tente novamente."
       );
