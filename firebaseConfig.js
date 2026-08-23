@@ -61,7 +61,13 @@ const app = initializeApp(
       (já feito no functions/index.js) e, se quiser, no Firestore.
 ===================================================== */
 
-const APP_CHECK_SITE_KEY = "COLE_SUA_SITE_KEY_AQUI";
+const APP_CHECK_SITE_KEY = "6LewY5UtAAAAAIp6k-PHvKLWH9HSyKvTLZGqtxMc";
+
+// TEMPORÁRIO — só para gerar o token de depuração em localhost.
+// Remover esta linha depois de cadastrar o token no Firebase Console.
+if (location.hostname === "localhost") {
+  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+}
 
 let appCheck = null;
 
