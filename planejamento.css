@@ -38,8 +38,8 @@ body{
   align-items:flex-start;
   gap:20px;
 
-  background:linear-gradient(135deg,#0f2a2e 0%,#0a1f22 100%);
-  box-shadow:0 6px 18px rgba(15,42,46,.22);
+  background:linear-gradient(135deg,#007E7A 0%,#005f5c 100%);
+  box-shadow:0 6px 18px rgba(0,126,122,.25);
 }
 
 .header-textos{
@@ -125,7 +125,7 @@ body{
 
 .header .usuario-logado-info strong,
 .header .sg-usuario-logado-info strong{
-  color:#5eeade !important;
+  color:#ffffff !important;
   font-size:12px !important;
   font-weight:800 !important;
   line-height:1.25 !important;

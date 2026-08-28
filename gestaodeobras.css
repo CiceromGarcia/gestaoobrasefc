@@ -155,10 +155,10 @@ body:not(.usuario-admin) .btn-excluir-obra{
   justify-content:space-between;
   gap:20px;
 
-  background:linear-gradient(135deg,#0f2a2e 0%,#0a1f22 100%);
+  background:linear-gradient(135deg,#007E7A 0%,#005f5c 100%);
   color:#fff;
 
-  box-shadow:0 6px 18px rgba(15,42,46,.22);
+  box-shadow:0 6px 18px rgba(0,126,122,.25);
 }
 
 .header-left{
@@ -258,7 +258,7 @@ body:not(.usuario-admin) .btn-excluir-obra{
 
 .usuario-logado-info strong,
 .sg-usuario-logado-info strong{
-  color:#5eeade !important;
+  color:#ffffff !important;
 
   font-size:12px !important;
   font-weight:800 !important;

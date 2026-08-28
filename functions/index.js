@@ -1330,6 +1330,15 @@ function obterCategoriaSemaforoDash(afo) {
   return "critica";
 }
 
+// Obra sem nenhum lançamento de avanço físico/financeiro ainda dá
+// AFO = 0 (0 dividido por qualquer planejado), o que cai na faixa de
+// "crítica" — mas isso não é uma obra atrasada, é uma obra que ainda
+// não teve nenhuma semana atualizada. Trata como categoria própria pra
+// não soar alarme falso.
+function obraSemLancamentoDash(item) {
+  return Number(item.avancoFisico || 0) === 0 && Number(item.executado || 0) === 0;
+}
+
 function linhaObraHtmlDash(item) {
   const desvio = item.investimento - item.executado;
   const corDesvio = desvio < 0 ? "#C0392B" : "#0B2545";
@@ -1445,7 +1454,10 @@ function blocoObrasParalisadasHtmlDash(lista) {
 }
 
 function montarHtmlResumoObrasEmAndamento(lista, paralisadas = []) {
-  const criticas = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "critica");
+  const semLancamento = lista.filter(obraSemLancamentoDash);
+  const criticas = lista.filter(
+    (item) => !obraSemLancamentoDash(item) && obterCategoriaSemaforoDash(item.afo) === "critica"
+  );
   const atencao = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "atencao");
   const saudaveis = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "saudavel");
 
@@ -1457,13 +1469,15 @@ function montarHtmlResumoObrasEmAndamento(lista, paralisadas = []) {
         (mesmo critério de saúde do dashboard, baseado no AFO):
         <span style="color:#C0392B;font-weight:700;">${criticas.length} crítica(s)</span> ·
         <span style="color:#C77700;font-weight:700;">${atencao.length} em atenção</span> ·
-        <span style="color:#1E824C;font-weight:700;">${saudaveis.length} saudável(is)</span>
+        <span style="color:#1E824C;font-weight:700;">${saudaveis.length} saudável(is)</span> ·
+        <span style="color:#5f6b6d;font-weight:700;">${semLancamento.length} sem lançamento</span>
         · <span style="color:#5f6b6d;font-weight:700;">${paralisadas.length} paralisada(s)</span>.
       </p>
 
       ${blocoCategoriaHtmlDash("🔴 Críticas — AFO abaixo de 90%", "#C0392B", criticas)}
       ${blocoCategoriaHtmlDash("🟡 Atenção — AFO entre 90% e 94,99%", "#C77700", atencao)}
       ${blocoCategoriaHtmlDash("🟢 Saudáveis — AFO igual ou acima de 95%", "#1E824C", saudaveis)}
+      ${blocoCategoriaHtmlDash("⚪ Sem lançamento — nenhum avanço físico/financeiro registrado ainda", "#7f8c8d", semLancamento)}
       ${blocoObrasParalisadasHtmlDash(paralisadas)}
 
       <p style="color:#94a3b8;font-size:11px;margin-top:16px;">
@@ -1484,7 +1498,10 @@ function montarHtmlResumoObrasEmAndamento(lista, paralisadas = []) {
 // chegava cortada no WhatsApp. Quebrando em partes menores, cada
 // mensagem individual fica bem abaixo desse limite.
 function montarPartesResumoObrasEmAndamento(lista, paralisadas = []) {
-  const criticas = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "critica");
+  const semLancamento = lista.filter(obraSemLancamentoDash);
+  const criticas = lista.filter(
+    (item) => !obraSemLancamentoDash(item) && obterCategoriaSemaforoDash(item.afo) === "critica"
+  );
   const atencao = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "atencao");
   const saudaveis = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "saudavel");
 
@@ -1510,6 +1527,9 @@ function montarPartesResumoObrasEmAndamento(lista, paralisadas = []) {
   const linhaResumida = (item) =>
     `✅ *${item.nomeProjeto}* (${item.localidade}) — AFO ${percentualDash(item.afo)}`;
 
+  const linhaSemLancamento = (item) =>
+    `⚪ *${item.nomeProjeto}* (${item.localidade})`;
+
   const linhaParalisada = (item) =>
     `⏸ *${item.nomeProjeto}*\n  ${item.regional} · ${item.localidade} · Físico ${percentualDash(item.avancoFisico)}`;
 
@@ -1527,7 +1547,7 @@ function montarPartesResumoObrasEmAndamento(lista, paralisadas = []) {
     `🗓️ ${dataEnvio}`,
     ``,
     `*Total:* ${lista.length} obra(s)`,
-    `🔴 ${criticas.length} crítica(s)  ·  🟡 ${atencao.length} atenção  ·  🟢 ${saudaveis.length} saudável(is)`,
+    `🔴 ${criticas.length} crítica(s)  ·  🟡 ${atencao.length} atenção  ·  🟢 ${saudaveis.length} saudável(is)  ·  ⚪ ${semLancamento.length} sem lançamento`,
     divisor,
     ``,
     secao("🔴 *CRÍTICAS*", "AFO abaixo de 90%", criticas),
@@ -1535,13 +1555,23 @@ function montarPartesResumoObrasEmAndamento(lista, paralisadas = []) {
     secao("🟡 *ATENÇÃO*", "AFO entre 90% e 94,99%", atencao)
   ].join("\n");
 
-  const parte2 = secao(
-    "🟢 *SAUDÁVEIS*",
-    "AFO igual ou acima de 95%",
-    saudaveis,
-    linhaResumida,
-    "\n"
-  );
+  const parte2 = [
+    secao(
+      "🟢 *SAUDÁVEIS*",
+      "AFO igual ou acima de 95%",
+      saudaveis,
+      linhaResumida,
+      "\n"
+    ),
+    ``,
+    secao(
+      "⚪ *SEM LANÇAMENTO*",
+      "nenhum avanço registrado ainda",
+      semLancamento,
+      linhaSemLancamento,
+      "\n"
+    )
+  ].join("\n");
 
   const parte3 = [
     `⏸ *PARALISADAS* (${paralisadas.length})`,
@@ -2823,6 +2853,57 @@ async function apagarEmLotes(refs) {
    `getIdToken(true)` após detectar mudança de perfil).
 =================================================================== */
 
+// Perfis que podem enviar foto na Curva S — usado pelo storage.rules via
+// a claim perfilCurvaS, sem precisar consultar o Firestore a partir do
+// Storage (recurso cross-service que exige permissão de IAM extra e não
+// é confiável logo após o Storage ser criado no projeto).
+const PERFIS_COM_ACESSO_CURVA_S = [
+  "gestor",
+  "planejador",
+  "engenharia",
+  "editor"
+];
+
+// Extraído pra ser reaproveitado tanto pelo trigger (dispara a cada
+// escrita em usuariosSistema/{uid}) quanto pelo backfill manual abaixo
+// (corrige de uma vez usuários cadastrados antes dessa claim existir,
+// que só seriam sincronizados na próxima vez que o cadastro deles fosse
+// editado — o que pode nunca acontecer).
+async function calcularESincronizarClaims(uid, dadosUsuario) {
+  const perfil = canonical(dadosUsuario.perfil || dadosUsuario.role || dadosUsuario.tipo || "");
+  const status = canonical(dadosUsuario.status || "");
+  const ativo = status === "ativo";
+
+  const deveSerAdmin =
+    ativo &&
+    (perfil === "administrador" || perfil === "admin" || perfil === "adm");
+
+  const devePerfilCurvaS =
+    ativo && PERFIS_COM_ACESSO_CURVA_S.includes(perfil)
+    ? perfil
+    : "";
+
+  const usuarioAuth = await admin.auth().getUser(uid);
+  const claimsAtuais = usuarioAuth.customClaims || {};
+
+  const jaEhAdmin = claimsAtuais.admin === true;
+  const perfilCurvaSAtual = claimsAtuais.perfilCurvaS || "";
+
+  if (
+    jaEhAdmin === deveSerAdmin &&
+    perfilCurvaSAtual === devePerfilCurvaS
+  ) {
+    return { alterado: false, admin: deveSerAdmin, perfilCurvaS: devePerfilCurvaS };
+  }
+
+  await admin.auth().setCustomUserClaims(uid, {
+    admin: deveSerAdmin,
+    perfilCurvaS: devePerfilCurvaS
+  });
+
+  return { alterado: true, admin: deveSerAdmin, perfilCurvaS: devePerfilCurvaS };
+}
+
 exports.sincronizarClaimAdmin = onDocumentWritten(
   {
     document: "usuariosSistema/{uid}"
@@ -2841,54 +2922,75 @@ exports.sincronizarClaimAdmin = onDocumentWritten(
       return;
     }
 
-    const perfil = canonical(after.perfil || after.role || after.tipo || "");
-    const status = canonical(after.status || "");
-    const ativo = status === "ativo";
-
-    const deveSerAdmin =
-      ativo &&
-      (perfil === "administrador" || perfil === "admin" || perfil === "adm");
-
-    // Claim usada pelo storage.rules pra liberar upload de foto na
-    // Curva S sem precisar consultar o Firestore a partir do Storage
-    // (recurso cross-service que depende de permissão de IAM extra e
-    // não é confiável logo após o Storage ser criado no projeto).
-    const perfisComAcessoCurvaS = [
-      "gestor",
-      "planejador",
-      "engenharia",
-      "editor"
-    ];
-
-    const devePerfilCurvaS =
-      ativo && perfisComAcessoCurvaS.includes(perfil)
-      ? perfil
-      : "";
-
     try {
-      const usuarioAuth = await admin.auth().getUser(uid);
-      const claimsAtuais = usuarioAuth.customClaims || {};
+      const resultado = await calcularESincronizarClaims(uid, after);
 
-      const jaEhAdmin = claimsAtuais.admin === true;
-      const perfilCurvaSAtual = claimsAtuais.perfilCurvaS || "";
-
-      if (
-        jaEhAdmin === deveSerAdmin &&
-        perfilCurvaSAtual === devePerfilCurvaS
-      ) {
-        return; // nada mudou, evita escrita desnecessária
+      if (resultado.alterado) {
+        logger.info(
+          `[sincronizarClaimAdmin] uid=${uid} admin=${resultado.admin} perfilCurvaS=${resultado.perfilCurvaS || "-"}`
+        );
       }
-
-      await admin.auth().setCustomUserClaims(uid, {
-        admin: deveSerAdmin,
-        perfilCurvaS: devePerfilCurvaS
-      });
-
-      logger.info(
-        `[sincronizarClaimAdmin] uid=${uid} admin=${deveSerAdmin} perfilCurvaS=${devePerfilCurvaS || "-"}`
-      );
     } catch (e) {
       logger.error(`[sincronizarClaimAdmin] falha ao sincronizar uid=${uid}`, e);
+    }
+  }
+);
+
+/* ===================================================================
+   7.1) BACKFILL MANUAL DAS CLAIMS (admin/perfilCurvaS)
+
+   Corrige de uma vez usuários cujo cadastro não foi regravado desde que
+   a claim perfilCurvaS passou a existir (upload de foto na Curva S) —
+   sem isso, eles só seriam sincronizados na próxima edição do cadastro,
+   o que pode nunca acontecer.
+
+   Uso (depois de dar deploy):
+     https://SEU-HOST-DAS-FUNCTIONS/backfillClaimsUsuarios
+   com o header "Authorization: Bearer <ID token de um admin>".
+=================================================================== */
+
+exports.backfillClaimsUsuarios = onRequest(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 120,
+    cors: true
+  },
+  async (req, res) => {
+    try {
+      const decoded = await exigirAdminHttp(req);
+
+      const snapshot = await db.collection("usuariosSistema").get();
+
+      let alterados = 0;
+      let falhas = 0;
+
+      for (const docSnap of snapshot.docs) {
+        try {
+          const resultado = await calcularESincronizarClaims(docSnap.id, docSnap.data());
+
+          if (resultado.alterado) {
+            alterados++;
+          }
+        } catch (e) {
+          falhas++;
+          logger.warn(`[backfillClaimsUsuarios] falha uid=${docSnap.id}`, e);
+        }
+      }
+
+      logger.info(
+        `[backfillClaimsUsuarios] disparado por ${decoded.email || decoded.uid}. total=${snapshot.size} alterados=${alterados} falhas=${falhas}`
+      );
+
+      return res.status(200).send(
+        `OK: ${snapshot.size} usuário(s) verificado(s), ${alterados} claim(s) atualizada(s), ${falhas} falha(s).`
+      );
+    } catch (e) {
+      logger.error("[backfillClaimsUsuarios] erro:", e);
+
+      return res
+        .status(e.statusCode || 500)
+        .send(e.statusCode ? e.message : "Erro ao sincronizar claims.");
     }
   }
 );
