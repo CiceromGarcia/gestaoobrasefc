@@ -45,6 +45,10 @@ const appCfg = {
   url: process.env.APP_URL || "https://SEU-HOST/pesquisa.html",
   rollup_token: process.env.ROLLUP_TOKEN || ""
 };
+const callmebot = {
+  phone: process.env.CALLMEBOT_PHONE || "",
+  apikey: process.env.CALLMEBOT_APIKEY || ""
+};
 
 // ===== Utils gerais =====
 const canonical = (s) =>
@@ -188,6 +192,54 @@ function buildTransport() {
       pass: smtp.pass
     }
   });
+}
+
+// ===== WhatsApp (CallMeBot) =====
+// Serviço não-oficial e gratuito (api.callmebot.com). Requer que o número
+// de destino tenha previamente autorizado o bot pelo próprio WhatsApp
+// (ver instruções em .env.example). Falha aqui nunca deve derrubar o
+// envio de e-mail, por isso quem chama trata o erro separadamente.
+async function enviarWhatsAppCallMeBot(texto) {
+  if (!callmebot.phone || !callmebot.apikey) {
+    logger.warn("enviarWhatsAppCallMeBot: CALLMEBOT_PHONE/CALLMEBOT_APIKEY ausentes.");
+    return { ok: false, motivo: "não configurado" };
+  }
+
+  const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(callmebot.phone)}&text=${encodeURIComponent(texto)}&apikey=${encodeURIComponent(callmebot.apikey)}`;
+
+  const resposta = await fetch(url);
+  const corpo = await resposta.text();
+
+  if (!resposta.ok) {
+    throw new Error(`CallMeBot respondeu ${resposta.status}: ${corpo}`);
+  }
+
+  return { ok: true, corpo };
+}
+
+const aguardarMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Manda várias mensagens em sequência pro mesmo número, com uma pequena
+// pausa entre cada uma (o CallMeBot enfileira/rejeita se chegar rápido
+// demais). Continua tentando as próximas mesmo se uma falhar, pra não
+// perder o resto do resumo por causa de uma falha pontual.
+async function enviarWhatsAppCallMeBotEmPartes(partes) {
+  const resultados = [];
+
+  for (let i = 0; i < partes.length; i++) {
+    if (i > 0) {
+      await aguardarMs(3000);
+    }
+
+    try {
+      resultados.push(await enviarWhatsAppCallMeBot(partes[i]));
+    } catch (e) {
+      logger.error(`enviarWhatsAppCallMeBotEmPartes: falha na parte ${i + 1}/${partes.length}:`, e);
+      resultados.push({ ok: false, motivo: e.message });
+    }
+  }
+
+  return resultados;
 }
 
 function fmtLinkPesquisa({ obra, localidade, regional, sponsorEmail, token }) {
@@ -707,6 +759,34 @@ function formatarDataDash(data) {
   return dt ? dt.toLocaleDateString("pt-BR") : "-";
 }
 
+function formatarDataHoraDash(data) {
+  const dt = obterDataGenericaDash(data);
+
+  if (!dt) {
+    return "-";
+  }
+
+  const dataFmt = dt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  const horaFmt = dt.toLocaleTimeString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  return `${dataFmt} ${horaFmt}`;
+}
+
+function textoUltimaAtualizacaoDash(item) {
+  if (!item.ultimaAtualizacaoNome && !item.ultimaAtualizacaoData) {
+    return "Sem lançamento de realizado ainda";
+  }
+
+  const nome = item.ultimaAtualizacaoNome || "desconhecido";
+  const quando = formatarDataHoraDash(item.ultimaAtualizacaoData);
+
+  return `Atualizado por ${nome} em ${quando}`;
+}
+
 function obterDataInicioObraDash(dados) {
   return obterDataGenericaDash(
     dados.dataInicio ||
@@ -1072,7 +1152,7 @@ function percentualDash(valor) {
 
 // ---- Cálculo principal (port de dashboard.js: carregarObrasFirebase) ----
 
-async function calcularResumoObrasEmAndamento() {
+async function calcularTodasObrasComStatusDash() {
   const [obrasSnap, planSnap, realSnap] = await Promise.all([
     db.collection("obras").get(),
     db.collection("planejamentoCurvaS").get(),
@@ -1109,6 +1189,7 @@ async function calcularResumoObrasEmAndamento() {
       obraId: dados.obraId || "",
       codigoObra: dados.codigoObra || dados.codigo || "",
       nomeProjeto,
+      regional: dados.regional || dados.regiao || dados.regionalObra || "-",
       localidade: dados.localidade || "-",
       centroCusto: dados.centroCusto || dados.centroDeCusto || dados.numeroOM || "-"
     };
@@ -1165,6 +1246,18 @@ async function calcularResumoObrasEmAndamento() {
 
     const ultimoRealizado = realizadoListaResumo[realizadoListaResumo.length - 1];
 
+    // Quem alimentou o último lançamento de "realizado" e quando — o campo
+    // atualizadoPor* é preenchido tanto na criação quanto na correção do
+    // registro (ver montarDadosRealizado em atualizar-curva-s.js), então
+    // sempre reflete o último planejador que mexeu nesse dado.
+    const ultimaAtualizacaoNome = ultimoRealizado
+      ? (ultimoRealizado.atualizadoPorNome || ultimoRealizado.criadoPorNome || "")
+      : "";
+
+    const ultimaAtualizacaoData = ultimoRealizado
+      ? (ultimoRealizado.atualizadoEm || ultimoRealizado.criadoEm || null)
+      : null;
+
     const executadoFisico = ultimoRealizado
       ? obterFisicoRealizadoAcumuladoDash(ultimoRealizado)
       : 0;
@@ -1189,6 +1282,7 @@ async function calcularResumoObrasEmAndamento() {
     resultado.push({
       idProjeto: idPadrao,
       nomeProjeto,
+      regional: obraBase.regional,
       localidade: obraBase.localidade,
       centroCusto: obraBase.centroCusto,
       dataInicioObra: dataInicioExibicao,
@@ -1197,11 +1291,25 @@ async function calcularResumoObrasEmAndamento() {
       executado: executadoFinanceiro,
       avancoFisico: executadoFisico,
       afo,
-      fase: statusCalculado
+      fase: statusCalculado,
+      ultimaAtualizacaoNome,
+      ultimaAtualizacaoData
     });
   }
 
-  return resultado.filter((item) => normalizarStatusDash(item.fase) === "em andamento");
+  return resultado;
+}
+
+async function calcularResumoObrasEmAndamento() {
+  const todas = await calcularTodasObrasComStatusDash();
+
+  return todas.filter((item) => normalizarStatusDash(item.fase) === "em andamento");
+}
+
+async function calcularResumoObrasParalisadas() {
+  const todas = await calcularTodasObrasComStatusDash();
+
+  return todas.filter((item) => normalizarStatusDash(item.fase) === "paralisada");
 }
 
 // ---- Semáforo de saúde da obra (port de dashboard.js: obterCategoriaSemaforo) ----
@@ -1244,6 +1352,7 @@ function linhaObraHtmlDash(item) {
       <td style="padding:6px 8px;border:1px solid #eee;text-align:right;color:${corDesvio};">${moedaCompletaDash(desvio)}</td>
       <td style="padding:6px 8px;border:1px solid #eee;text-align:center;">${percentualDash(item.avancoFisico)}</td>
       <td style="padding:6px 8px;border:1px solid #eee;text-align:center;color:${corAfo};font-weight:700;">${percentualDash(item.afo)}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;font-size:11px;color:#555;">${textoUltimaAtualizacaoDash(item)}</td>
     </tr>
   `;
 }
@@ -1251,7 +1360,7 @@ function linhaObraHtmlDash(item) {
 function tabelaObrasHtmlDash(lista) {
   const corpoTabela = lista.length
     ? lista.map(linhaObraHtmlDash).join("")
-    : `<tr><td colspan="11" style="padding:12px;text-align:center;">Nenhuma obra nesta categoria.</td></tr>`;
+    : `<tr><td colspan="12" style="padding:12px;text-align:center;">Nenhuma obra nesta categoria.</td></tr>`;
 
   return `
     <div style="overflow-x:auto;">
@@ -1269,6 +1378,7 @@ function tabelaObrasHtmlDash(lista) {
             <th style="padding:8px;">Desvio(R$)</th>
             <th style="padding:8px;">Físico(%)</th>
             <th style="padding:8px;">AFO(%)</th>
+            <th style="padding:8px;">Última Atualização</th>
           </tr>
         </thead>
         <tbody>
@@ -1288,7 +1398,53 @@ function blocoCategoriaHtmlDash(titulo, cor, lista) {
   `;
 }
 
-function montarHtmlResumoObrasEmAndamento(lista) {
+function linhaObraParalisadaHtmlDash(item) {
+  return `
+    <tr>
+      <td style="padding:6px 8px;border:1px solid #eee;">${item.idProjeto}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;">${item.nomeProjeto}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;">${item.regional}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;">${item.localidade}</td>
+      <td style="padding:6px 8px;border:1px solid #eee;text-align:center;">${percentualDash(item.avancoFisico)}</td>
+    </tr>
+  `;
+}
+
+function tabelaObrasParalisadasHtmlDash(lista) {
+  const corpoTabela = lista.length
+    ? lista.map(linhaObraParalisadaHtmlDash).join("")
+    : `<tr><td colspan="5" style="padding:12px;text-align:center;">Nenhuma obra paralisada.</td></tr>`;
+
+  return `
+    <div style="overflow-x:auto;">
+      <table style="border-collapse:collapse;width:100%;font-size:12px;margin-bottom:20px;">
+        <thead>
+          <tr style="background:#7f8c8d;color:#fff;">
+            <th style="padding:8px;">ID</th>
+            <th style="padding:8px;">Nome Obra</th>
+            <th style="padding:8px;">Regional</th>
+            <th style="padding:8px;">Localidade</th>
+            <th style="padding:8px;">Físico(%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${corpoTabela}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function blocoObrasParalisadasHtmlDash(lista) {
+  return `
+    <h3 style="color:#5f6b6d;border-left:4px solid #5f6b6d;padding-left:8px;margin:20px 0 8px;">
+      ⏸ Paralisadas (${lista.length})
+    </h3>
+    ${tabelaObrasParalisadasHtmlDash(lista)}
+  `;
+}
+
+function montarHtmlResumoObrasEmAndamento(lista, paralisadas = []) {
   const criticas = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "critica");
   const atencao = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "atencao");
   const saudaveis = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "saudavel");
@@ -1301,18 +1457,99 @@ function montarHtmlResumoObrasEmAndamento(lista) {
         (mesmo critério de saúde do dashboard, baseado no AFO):
         <span style="color:#C0392B;font-weight:700;">${criticas.length} crítica(s)</span> ·
         <span style="color:#C77700;font-weight:700;">${atencao.length} em atenção</span> ·
-        <span style="color:#1E824C;font-weight:700;">${saudaveis.length} saudável(is)</span>.
+        <span style="color:#1E824C;font-weight:700;">${saudaveis.length} saudável(is)</span>
+        · <span style="color:#5f6b6d;font-weight:700;">${paralisadas.length} paralisada(s)</span>.
       </p>
 
       ${blocoCategoriaHtmlDash("🔴 Críticas — AFO abaixo de 90%", "#C0392B", criticas)}
       ${blocoCategoriaHtmlDash("🟡 Atenção — AFO entre 90% e 94,99%", "#C77700", atencao)}
       ${blocoCategoriaHtmlDash("🟢 Saudáveis — AFO igual ou acima de 95%", "#1E824C", saudaveis)}
+      ${blocoObrasParalisadasHtmlDash(paralisadas)}
 
       <p style="color:#94a3b8;font-size:11px;margin-top:16px;">
         E-mail automático gerado pelo sistema de Gestão de Obras. Não responda esta mensagem.
       </p>
     </div>
   `;
+}
+
+// Versão em texto puro do mesmo resumo, para WhatsApp (CallMeBot não
+// suporta HTML nem "cards" de verdade — só a formatação nativa do
+// WhatsApp: *negrito*, _itálico_ e linhas divisórias com caractere
+// repetido, que é o truque padrão pra simular um cabeçalho/cartão).
+//
+// Retorna um ARRAY de mensagens (não uma string só): com muitas obras
+// saudáveis, o texto único passava de algum limite de tamanho do
+// CallMeBot e a cauda da mensagem (justamente a seção de saudáveis)
+// chegava cortada no WhatsApp. Quebrando em partes menores, cada
+// mensagem individual fica bem abaixo desse limite.
+function montarPartesResumoObrasEmAndamento(lista, paralisadas = []) {
+  const criticas = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "critica");
+  const atencao = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "atencao");
+  const saudaveis = lista.filter((item) => obterCategoriaSemaforoDash(item.afo) === "saudavel");
+
+  // "▬" (bloco largo) quebra em duas linhas em telas estreitas de celular
+  // e fica com aparência de linha "cortada" — "─" é mais fino e cabe
+  // numa linha só na maioria dos aparelhos.
+  const divisor = "─".repeat(18);
+
+  // Críticas/atenção precisam de mais contexto (é onde a atenção do
+  // gestor deve ir), então ficam com bloco completo. Saudáveis entram
+  // resumidas numa linha só — com muitas obras saudáveis, o bloco
+  // completo deixava a mensagem longa demais e o CallMeBot cortava o
+  // final do texto (cauda perdida, que era justamente essa seção).
+  const linhaDetalhada = (item) =>
+    [
+      `*${item.nomeProjeto}*`,
+      `📍 ${item.localidade}`,
+      `📈 Físico ${percentualDash(item.avancoFisico)} · AFO ${percentualDash(item.afo)}`,
+      `💰 Orçado ${moedaCompletaDash(item.investimento)} · Executado ${moedaCompletaDash(item.executado)}`,
+      `🕒 _${textoUltimaAtualizacaoDash(item)}_`
+    ].join("\n");
+
+  const linhaResumida = (item) =>
+    `✅ *${item.nomeProjeto}* (${item.localidade}) — AFO ${percentualDash(item.afo)}`;
+
+  const linhaParalisada = (item) =>
+    `⏸ *${item.nomeProjeto}*\n  ${item.regional} · ${item.localidade} · Físico ${percentualDash(item.avancoFisico)}`;
+
+  const blocoLista = (itens, linha, separador) =>
+    itens.length ? itens.map(linha).join(separador) : "Nenhuma.";
+
+  const secao = (titulo, subtitulo, itens, linha = linhaDetalhada, separador = "\n\n") =>
+    [`${titulo} _(${subtitulo})_`, ``, blocoLista(itens, linha, separador), divisor].join("\n");
+
+  const dataEnvio = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+
+  const parte1 = [
+    `📊 *RESUMO SEMANAL — OBRAS EM ANDAMENTO*`,
+    divisor,
+    `🗓️ ${dataEnvio}`,
+    ``,
+    `*Total:* ${lista.length} obra(s)`,
+    `🔴 ${criticas.length} crítica(s)  ·  🟡 ${atencao.length} atenção  ·  🟢 ${saudaveis.length} saudável(is)`,
+    divisor,
+    ``,
+    secao("🔴 *CRÍTICAS*", "AFO abaixo de 90%", criticas),
+    ``,
+    secao("🟡 *ATENÇÃO*", "AFO entre 90% e 94,99%", atencao)
+  ].join("\n");
+
+  const parte2 = secao(
+    "🟢 *SAUDÁVEIS*",
+    "AFO igual ou acima de 95%",
+    saudaveis,
+    linhaResumida,
+    "\n"
+  );
+
+  const parte3 = [
+    `⏸ *PARALISADAS* (${paralisadas.length})`,
+    ``,
+    blocoLista(paralisadas, linhaParalisada, "\n\n")
+  ].join("\n");
+
+  return [parte1, parte2, parte3];
 }
 
 exports.enviarResumoObrasEmAndamentoSemanal = onSchedule(
@@ -1337,7 +1574,8 @@ exports.enviarResumoObrasEmAndamentoSemanal = onSchedule(
 
     try {
       const lista = await calcularResumoObrasEmAndamento();
-      const html = montarHtmlResumoObrasEmAndamento(lista);
+      const paralisadas = await calcularResumoObrasParalisadas();
+      const html = montarHtmlResumoObrasEmAndamento(lista, paralisadas);
 
       await transport.sendMail({
         from: smtp.user,
@@ -1349,6 +1587,18 @@ exports.enviarResumoObrasEmAndamentoSemanal = onSchedule(
       logger.info(
         `[enviarResumoObrasEmAndamentoSemanal] E-mail enviado. obras=${lista.length} destinatarios=${destinatarios.length}`
       );
+
+      try {
+        const partesWhatsApp = montarPartesResumoObrasEmAndamento(lista, paralisadas);
+        const resultadosWhatsApp = await enviarWhatsAppCallMeBotEmPartes(partesWhatsApp);
+        const enviados = resultadosWhatsApp.filter((r) => r.ok).length;
+
+        logger.info(
+          `[enviarResumoObrasEmAndamentoSemanal] WhatsApp: ${enviados}/${partesWhatsApp.length} parte(s) enviada(s)`
+        );
+      } catch (eWhatsApp) {
+        logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao enviar WhatsApp:", eWhatsApp);
+      }
     } catch (e) {
       logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao gerar/enviar resumo:", e);
     }
@@ -1398,6 +1648,7 @@ exports.testarResumoObrasEmAndamento = onRequest(
       }
 
       const lista = await calcularResumoObrasEmAndamento();
+      const paralisadas = await calcularResumoObrasParalisadas();
 
       const avisoTeste = `
         <div style="background:#fff3cd;border:1px solid #ffe69c;padding:10px 14px;margin-bottom:12px;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;">
@@ -1406,7 +1657,7 @@ exports.testarResumoObrasEmAndamento = onRequest(
         </div>
       `;
 
-      const html = avisoTeste + montarHtmlResumoObrasEmAndamento(lista);
+      const html = avisoTeste + montarHtmlResumoObrasEmAndamento(lista, paralisadas);
 
       await transport.sendMail({
         from: smtp.user,
@@ -1428,6 +1679,62 @@ exports.testarResumoObrasEmAndamento = onRequest(
       return res
         .status(e.statusCode || 500)
         .send(e.statusCode ? e.message : "Erro ao enviar e-mail de teste.");
+    }
+  }
+);
+
+/* ===================================================================
+   3.3) TESTE MANUAL DO RESUMO SEMANAL POR WHATSAPP (CallMeBot)
+
+   Mesmo esquema de proteção do teste por e-mail (login de admin via
+   exigirAdminHttp). Manda pro número já configurado em CALLMEBOT_PHONE
+   (o CallMeBot só manda pro número que autorizou o bot, não dá pra
+   escolher destinatário livremente).
+
+   Uso (depois de dar deploy):
+     https://SEU-HOST-DAS-FUNCTIONS/testarResumoObrasWhatsApp
+   com o header "Authorization: Bearer <ID token de um admin>".
+=================================================================== */
+
+exports.testarResumoObrasWhatsApp = onRequest(
+  {
+    region: "us-central1",
+    memory: "512MiB",
+    timeoutSeconds: 120,
+    cors: true
+  },
+  async (req, res) => {
+    try {
+      const decoded = await exigirAdminHttp(req);
+
+      if (!callmebot.phone || !callmebot.apikey) {
+        return res.status(503).send(
+          "CallMeBot não configurado (variáveis CALLMEBOT_PHONE/CALLMEBOT_APIKEY ausentes)."
+        );
+      }
+
+      const lista = await calcularResumoObrasEmAndamento();
+      const paralisadas = await calcularResumoObrasParalisadas();
+      const partes = montarPartesResumoObrasEmAndamento(lista, paralisadas);
+
+      partes[0] = `[TESTE disparado por ${decoded.email || decoded.uid}]\n\n${partes[0]}`;
+
+      const resultados = await enviarWhatsAppCallMeBotEmPartes(partes);
+      const enviados = resultados.filter((r) => r.ok).length;
+
+      logger.info(
+        `[testarResumoObrasWhatsApp] Teste enviado por ${decoded.email || decoded.uid}. obras=${lista.length} partes=${enviados}/${partes.length}`
+      );
+
+      return res.status(200).send(
+        `OK: ${enviados}/${partes.length} mensagem(ns) de teste enviada(s) via WhatsApp. Obras em andamento encontradas: ${lista.length}.`
+      );
+    } catch (e) {
+      logger.error("[testarResumoObrasWhatsApp] erro:", e);
+
+      return res
+        .status(e.statusCode || 500)
+        .send(e.statusCode ? e.message : "Erro ao enviar WhatsApp de teste.");
     }
   }
 );
@@ -2525,9 +2832,9 @@ exports.sincronizarClaimAdmin = onDocumentWritten(
     const after = event.data?.after?.exists ? event.data.after.data() : null;
 
     if (!after) {
-      // Documento excluído: por segurança, remove a claim.
+      // Documento excluído: por segurança, remove as claims.
       try {
-        await admin.auth().setCustomUserClaims(uid, { admin: false });
+        await admin.auth().setCustomUserClaims(uid, { admin: false, perfilCurvaS: "" });
       } catch (e) {
         logger.warn(`[sincronizarClaimAdmin] usuário ${uid} não existe mais no Auth.`, e);
       }
@@ -2536,22 +2843,49 @@ exports.sincronizarClaimAdmin = onDocumentWritten(
 
     const perfil = canonical(after.perfil || after.role || after.tipo || "");
     const status = canonical(after.status || "");
+    const ativo = status === "ativo";
+
     const deveSerAdmin =
-      status === "ativo" &&
+      ativo &&
       (perfil === "administrador" || perfil === "admin" || perfil === "adm");
+
+    // Claim usada pelo storage.rules pra liberar upload de foto na
+    // Curva S sem precisar consultar o Firestore a partir do Storage
+    // (recurso cross-service que depende de permissão de IAM extra e
+    // não é confiável logo após o Storage ser criado no projeto).
+    const perfisComAcessoCurvaS = [
+      "gestor",
+      "planejador",
+      "engenharia",
+      "editor"
+    ];
+
+    const devePerfilCurvaS =
+      ativo && perfisComAcessoCurvaS.includes(perfil)
+      ? perfil
+      : "";
 
     try {
       const usuarioAuth = await admin.auth().getUser(uid);
-      const jaEhAdmin = usuarioAuth.customClaims?.admin === true;
+      const claimsAtuais = usuarioAuth.customClaims || {};
 
-      if (jaEhAdmin === deveSerAdmin) {
+      const jaEhAdmin = claimsAtuais.admin === true;
+      const perfilCurvaSAtual = claimsAtuais.perfilCurvaS || "";
+
+      if (
+        jaEhAdmin === deveSerAdmin &&
+        perfilCurvaSAtual === devePerfilCurvaS
+      ) {
         return; // nada mudou, evita escrita desnecessária
       }
 
-      await admin.auth().setCustomUserClaims(uid, { admin: deveSerAdmin });
+      await admin.auth().setCustomUserClaims(uid, {
+        admin: deveSerAdmin,
+        perfilCurvaS: devePerfilCurvaS
+      });
 
       logger.info(
-        `[sincronizarClaimAdmin] uid=${uid} admin=${deveSerAdmin}`
+        `[sincronizarClaimAdmin] uid=${uid} admin=${deveSerAdmin} perfilCurvaS=${devePerfilCurvaS || "-"}`
       );
     } catch (e) {
       logger.error(`[sincronizarClaimAdmin] falha ao sincronizar uid=${uid}`, e);

@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// Baseado em custom claims do Auth (admin / perfilCurvaS), sincronizadas
+// pela Cloud Function sincronizarClaimAdmin sempre que usuariosSistema/{uid}
+// muda — o mesmo mecanismo já usado com sucesso pelas Cloud Functions.
+// Evita depender de firestore.get()/exists() aqui no Storage: esse
+// recurso cross-service exige uma permissão de IAM extra que não estava
+// disponível logo após o Storage ser criado neste projeto.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function estaLogado() {
+      return request.auth != null;
+    }
+
+    function ehAdmin() {
+      return estaLogado() && request.auth.token.admin == true;
+    }
+
+    function podeEnviarFotoCurvaS() {
+      return ehAdmin()
+        || (
+          estaLogado()
+          && request.auth.token.perfilCurvaS in [
+            "gestor",
+            "planejador",
+            "engenharia",
+            "editor"
+          ]
+        );
+    }
+
+    // Fotos anexadas ao lançar avanço físico/financeiro na Curva S.
+    match /curvaSFotos/{obraId}/{arquivo} {
+      allow read: if estaLogado();
+
+      allow write: if podeEnviarFotoCurvaS()
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches("image/.*");
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

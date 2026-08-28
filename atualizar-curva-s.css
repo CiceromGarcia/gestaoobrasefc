@@ -566,6 +566,75 @@ tbody tr:hover{
   margin-bottom:10px;
 }
 
+.input-arquivo-oculto{
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+}
+
+.campo-arquivo{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.btn-arquivo{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:#007E7A;
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  padding:10px 18px;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:background .15s ease;
+}
+
+.btn-arquivo:hover{
+  background:#006965;
+}
+
+.foto-arquivo-nome{
+  font-size:13px;
+  color:#64748b;
+}
+
+.foto-realizado-preview{
+  margin-top:10px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:13px;
+  color:#475569;
+}
+
+.foto-realizado-preview img{
+  width:64px;
+  height:64px;
+  object-fit:cover;
+  border-radius:8px;
+  border:1px solid #e5e7eb;
+}
+
+.foto-semana-thumb{
+  width:32px;
+  height:32px;
+  object-fit:cover;
+  border-radius:6px;
+  cursor:pointer;
+}
+
 .grid-lancamento{
   display:grid;
   grid-template-columns:210px 1fr 150px 140px;
@@ -872,6 +941,95 @@ button:hover{
 
 #btnConfirmarSenha:hover{
   background:#006965;
+}
+
+/* =========================================
+   MODAL: ESCOLHA AO DAR DUPLO CLIQUE NUMA
+   SEMANA JÁ LANÇADA (corrigir x anomalia)
+========================================= */
+
+.modal-escolha-semana{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+  padding:20px;
+}
+
+.modal-escolha-semana.ativo{
+  display:flex;
+}
+
+.modal-escolha-semana-conteudo{
+  width:100%;
+  max-width:380px;
+  background:#fff;
+  border-radius:16px;
+  padding:24px;
+  box-shadow:0 20px 45px rgba(0,0,0,.25);
+  animation:abrirModal .18s ease;
+}
+
+.modal-escolha-semana-conteudo h3{
+  color:#007E7A;
+  font-size:20px;
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.modal-escolha-semana-conteudo p{
+  color:#475569;
+  font-size:14px;
+  line-height:1.4;
+  margin-bottom:16px;
+}
+
+.modal-escolha-botoes{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.btn-escolha{
+  background:#007E7A;
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  padding:12px 10px;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.btn-escolha:hover{
+  background:#006965;
+}
+
+.btn-escolha-cancelar{
+  width:100%;
+  background:#e5e7eb;
+  color:#374151;
+  border:none;
+  border-radius:10px;
+  padding:10px;
+  font-size:13px;
+  cursor:pointer;
+}
+
+.btn-escolha-cancelar:hover{
+  background:#d1d5db;
+}
+
+@media(max-width:520px){
+
+  .modal-escolha-botoes{
+    grid-template-columns:1fr;
+  }
+
 }
 
 /* =========================================

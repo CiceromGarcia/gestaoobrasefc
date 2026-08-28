@@ -13,7 +13,8 @@
 ===================================================== */
 
 import {
-  db
+  db,
+  storage
 } from "./firebaseConfig.js";
 
 import {
@@ -30,6 +31,12 @@ import {
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+import {
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.3/firebase-storage.js";
 
 /* =========================================
    CONFIGURAÇÕES
@@ -119,6 +126,23 @@ document.getElementById("avisoSemLancamentos");
 
 let lancamentosSemanaAtual = [];
 
+/* =========================================
+   FOTO DA SEMANA (opcional)
+========================================= */
+
+const inputFotoRealizado =
+document.getElementById("fotoRealizado");
+
+const fotoRealizadoPreview =
+document.getElementById("fotoRealizadoPreview");
+
+const fotoRealizadoNomeArquivo =
+document.getElementById("fotoRealizadoNomeArquivo");
+
+// Quando entra em modo de correção, guarda a foto já salva pra não
+// perder ela caso o usuário não escolha um arquivo novo.
+let fotoExistente = null;
+
 const inputAnomalias =
 document.getElementById("anomalias");
 
@@ -152,6 +176,28 @@ document.getElementById("acaoCorretivaAnomalia");
 
 const inputResponsavelAnomalia =
 document.getElementById("responsavelAnomalia");
+
+const secaoAnomalia =
+document.getElementById("secaoAnomalia");
+
+/* =========================================
+   MODAL: ESCOLHA AO DAR DUPLO CLIQUE NUMA
+   SEMANA JÁ LANÇADA
+========================================= */
+
+const modalEscolhaSemana =
+document.getElementById("modalEscolhaSemana");
+
+const btnEscolhaCorrigir =
+document.getElementById("btnEscolhaCorrigir");
+
+const btnEscolhaAnomalia =
+document.getElementById("btnEscolhaAnomalia");
+
+const btnEscolhaCancelar =
+document.getElementById("btnEscolhaCancelar");
+
+let escolhaSemanaPendente = null;
 
 /* =========================================
    ELEMENTOS STATUS DA OBRA
@@ -469,12 +515,29 @@ function aplicarPermissoesNaTela() {
     usuarioLogadoGlobal
   );
 
+  // Enquanto a obra está paralisada, não faz sentido lançar novo
+  // realizado — só os controles de status (abaixo) ficam liberados,
+  // pra dar pra reativar a obra a partir daqui.
+  const obraParalisada =
+  obraEstaParalisada(
+    obraSelecionada
+  );
+
+  const podeLancarAgora =
+  podeLancarCurvaS &&
+  !obraParalisada;
+
   if (btnSalvar) {
 
     btnSalvar.disabled =
-    !podeLancarCurvaS;
+    !podeLancarAgora;
 
-    if (!podeLancarCurvaS) {
+    if (obraParalisada) {
+
+      btnSalvar.textContent =
+      "Obra paralisada — reative para lançar";
+
+    } else if (!podeLancarCurvaS) {
 
       btnSalvar.textContent =
       "Sem permissão para salvar";
@@ -505,7 +568,7 @@ function aplicarPermissoesNaTela() {
     .forEach((campo) => {
 
       campo.disabled =
-      !podeLancarCurvaS;
+      !podeLancarAgora;
 
     });
 
@@ -597,6 +660,37 @@ function configurarEventos() {
   selectTemAnomalia?.addEventListener(
     "change",
     atualizarEstadoAnomalia
+  );
+
+  inputFotoRealizado?.addEventListener(
+    "change",
+    renderizarPreviewFoto
+  );
+
+  btnEscolhaCorrigir?.addEventListener(
+    "click",
+    escolherCorrigirLancamento
+  );
+
+  btnEscolhaAnomalia?.addEventListener(
+    "click",
+    escolherRegistrarAnomalia
+  );
+
+  btnEscolhaCancelar?.addEventListener(
+    "click",
+    fecharEscolhaSemana
+  );
+
+  modalEscolhaSemana?.addEventListener(
+    "click",
+    (evento) => {
+
+      if (evento.target === modalEscolhaSemana) {
+        fecharEscolhaSemana();
+      }
+
+    }
   );
 
 }
@@ -1022,12 +1116,16 @@ function carregarLocalidades() {
       obras
         .filter((obra) => {
 
+          // Inclui "Paralisada" aqui também — senão a localidade de uma
+          // obra paralisada nem aparece no filtro, e ela fica inacessível
+          // antes mesmo de chegar no seletor de obra.
           return (
-            (
-              !regionalSelecionada ||
-              obra.regional === regionalSelecionada
-            ) &&
-            obra.statusCalculado === "Em andamento"
+            !regionalSelecionada ||
+            obra.regional === regionalSelecionada
+          ) && (
+            obra.statusCalculado === "Em andamento" ||
+            obra.statusCalculado === "Planejado" ||
+            obra.statusCalculado === "Paralisada"
           );
 
         })
@@ -1081,9 +1179,13 @@ function carregarObrasSelect() {
     !localidadeSelecionada ||
     obra.localidade === localidadeSelecionada;
 
+    // "Paralisada" entra na lista pra permitir reativar a obra por aqui
+    // (ver aplicarPermissoesNaTela: enquanto paralisada, só os controles
+    // de status ficam liberados — lançar novo realizado continua bloqueado).
     const passaStatus =
     obra.statusCalculado === "Em andamento" ||
-    obra.statusCalculado === "Planejado";
+    obra.statusCalculado === "Planejado" ||
+    obra.statusCalculado === "Paralisada";
 
     return (
       passaRegional &&
@@ -1104,8 +1206,36 @@ function carregarObrasSelect() {
     option.value =
     obra.id;
 
+    // Prefixo com o código do projeto (ex.: OBR-0032, gerado no
+    // cadastro) — ajuda a diferenciar obras com o mesmo nome. Cai pro
+    // ID bruto do documento só se a obra não tiver esse código (dados
+    // antigos, cadastrados antes desse campo existir).
+    const codigoObra =
+    obra.idProjeto ||
+    obra.idObra ||
+    obra.codigoObra ||
+    obra.id;
+
+    const nomeBase =
+    `[${codigoObra}] ${obra.nome || obra.id}`;
+
+    const paralisada =
+    obra.statusCalculado === "Paralisada";
+
     option.textContent =
-    obra.nome || obra.id;
+    paralisada
+    ? `⏸ ${nomeBase} — Paralisada`
+    : nomeBase;
+
+    if (paralisada) {
+
+      option.style.color =
+      "#C0392B";
+
+      option.style.fontWeight =
+      "700";
+
+    }
 
     filtroObra.appendChild(option);
 
@@ -1456,7 +1586,7 @@ function renderizarTabelaSemanas() {
     tabelaSemanas.innerHTML =
     `
       <tr>
-        <td colspan="9">
+        <td colspan="10">
           Selecione uma obra para carregar o planejamento.
         </td>
       </tr>
@@ -1471,7 +1601,7 @@ function renderizarTabelaSemanas() {
     tabelaSemanas.innerHTML =
     `
       <tr>
-        <td colspan="9">
+        <td colspan="10">
           Nenhum planejamento encontrado para esta obra.
         </td>
       </tr>
@@ -1607,6 +1737,12 @@ function renderizarTabelaSemanas() {
       )
     );
 
+    tr.appendChild(
+      criarCelulaFoto(
+        realizado?.fotoUrl || ""
+      )
+    );
+
     if (realizado) {
 
       tr.classList.add(
@@ -1615,14 +1751,14 @@ function renderizarTabelaSemanas() {
 
       tr.title =
       usuarioPodeCorrigirRealizado(usuarioLogadoGlobal)
-      ? "Duplo clique para corrigir esta atualização."
-      : "Semana já atualizada. Correção permitida apenas para administrador.";
+      ? "Duplo clique para corrigir esta atualização ou registrar uma anomalia."
+      : "Semana já atualizada. Correção/anomalia permitida apenas para administrador.";
 
       tr.addEventListener(
         "dblclick",
         () => {
 
-          prepararCorrecaoRealizado(
+          abrirEscolhaSemana(
             tr,
             planejado,
             realizado
@@ -1670,6 +1806,60 @@ function criarCelulaTexto(valor, classe = "") {
     );
 
   }
+
+  return td;
+
+}
+
+function criarCelulaFoto(fotoUrl) {
+
+  const td =
+  document.createElement("td");
+
+  if (!fotoUrl) {
+
+    td.textContent =
+    "-";
+
+    return td;
+
+  }
+
+  const img =
+  document.createElement("img");
+
+  img.src =
+  fotoUrl;
+
+  img.alt =
+  "Foto da semana";
+
+  img.className =
+  "foto-semana-thumb";
+
+  img.title =
+  "Clique para ampliar";
+
+  img.addEventListener(
+    "click",
+    (evento) => {
+
+      // Impede que o clique na miniatura dispare a seleção/duplo-clique
+      // da linha (correção/anomalia) — aqui é só pra abrir a foto.
+      evento.stopPropagation();
+
+      window.open(
+        fotoUrl,
+        "_blank",
+        "noopener,noreferrer"
+      );
+
+    }
+  );
+
+  td.appendChild(
+    img
+  );
 
   return td;
 
@@ -1746,6 +1936,98 @@ function selecionarSemanaPendente(tr, item) {
 }
 
 /* =========================================
+   MODAL: ESCOLHA AO DAR DUPLO CLIQUE NUMA
+   SEMANA JÁ LANÇADA
+========================================= */
+
+function abrirEscolhaSemana(tr, item, realizado) {
+
+  escolhaSemanaPendente =
+  { tr, item, realizado };
+
+  modalEscolhaSemana?.classList.add(
+    "ativo"
+  );
+
+}
+
+function fecharEscolhaSemana() {
+
+  escolhaSemanaPendente =
+  null;
+
+  modalEscolhaSemana?.classList.remove(
+    "ativo"
+  );
+
+}
+
+function escolherCorrigirLancamento() {
+
+  const pendente =
+  escolhaSemanaPendente;
+
+  fecharEscolhaSemana();
+
+  if (!pendente) {
+    return;
+  }
+
+  prepararCorrecaoRealizado(
+    pendente.tr,
+    pendente.item,
+    pendente.realizado
+  );
+
+}
+
+// Registrar anomalia numa semana já lançada é, na prática, corrigir o
+// lançamento existente pra incluir os dados da anomalia — não existe
+// (ainda) uma página separada de cadastro de anomalia, os campos vivem
+// no mesmo formulário. Por isso reaproveita prepararCorrecaoRealizado
+// (que já barra quem não é admin) e só liga o "Houve Anomalia? = Sim"
+// e leva o foco pra lá.
+function escolherRegistrarAnomalia() {
+
+  const pendente =
+  escolhaSemanaPendente;
+
+  fecharEscolhaSemana();
+
+  if (!pendente) {
+    return;
+  }
+
+  prepararCorrecaoRealizado(
+    pendente.tr,
+    pendente.item,
+    pendente.realizado
+  );
+
+  if (!usuarioPodeCorrigirRealizado(usuarioLogadoGlobal)) {
+    // prepararCorrecaoRealizado já alertou e não entrou em modo edição.
+    return;
+  }
+
+  if (selectTemAnomalia) {
+
+    selectTemAnomalia.value =
+    "Sim";
+
+    atualizarEstadoAnomalia();
+
+  }
+
+  secaoAnomalia?.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+
+  selectTipoAnomalia?.focus();
+
+}
+
+/* =========================================
    PREPARAR CORREÇÃO
 ========================================= */
 
@@ -1807,6 +2089,18 @@ function prepararCorrecaoRealizado(tr, item, realizado) {
   preencherCamposAnomalia(
     realizado
   );
+
+  if (inputFotoRealizado) {
+    inputFotoRealizado.value =
+    "";
+  }
+
+  fotoExistente =
+  realizado.fotoUrl
+  ? { fotoUrl: realizado.fotoUrl, fotoCaminho: realizado.fotoCaminho || "" }
+  : null;
+
+  renderizarPreviewFoto();
 
   if (btnSalvar) {
     btnSalvar.textContent =
@@ -1924,6 +2218,28 @@ async function salvarAtualizacaoRealizado() {
       "Salvando...";
     }
 
+    let dadosFoto =
+    null;
+
+    if (inputFotoRealizado?.files?.[0]) {
+
+      if (btnSalvar) {
+        btnSalvar.textContent =
+        "Enviando foto...";
+      }
+
+      dadosFoto =
+      await uploadFotoRealizadoSeSelecionada(
+        obraSelecionada.id
+      );
+
+      if (btnSalvar) {
+        btnSalvar.textContent =
+        "Salvando...";
+      }
+
+    }
+
     const dadosAtualizacao =
     montarDadosRealizado({
       fisicoReal
@@ -1942,6 +2258,7 @@ async function salvarAtualizacaoRealizado() {
         ),
         {
           ...dadosAtualizacao,
+          ...(dadosFoto || {}),
 
           corrigidoPorUid:
           usuarioLogadoGlobal?.uid || "",
@@ -1975,6 +2292,7 @@ async function salvarAtualizacaoRealizado() {
         ),
         {
           ...dadosAtualizacao,
+          ...(dadosFoto || {}),
 
           criadoPorUid:
           usuarioLogadoGlobal?.uid || "",
@@ -2875,6 +3193,146 @@ function obterClasseCriticidadeAnomalia(realizado) {
 }
 
 /* =========================================
+   FOTO DA SEMANA (opcional)
+========================================= */
+
+function renderizarPreviewFoto() {
+
+  const arquivoSelecionado =
+  inputFotoRealizado?.files?.[0] ||
+  null;
+
+  if (fotoRealizadoNomeArquivo) {
+
+    fotoRealizadoNomeArquivo.textContent =
+    arquivoSelecionado?.name ||
+    "Nenhum arquivo escolhido";
+
+  }
+
+  if (!fotoRealizadoPreview) {
+    return;
+  }
+
+  if (arquivoSelecionado) {
+
+    fotoRealizadoPreview.innerHTML =
+    "";
+
+    const img =
+    document.createElement("img");
+
+    img.src =
+    URL.createObjectURL(arquivoSelecionado);
+
+    fotoRealizadoPreview.appendChild(
+      img
+    );
+
+    const texto =
+    document.createElement("span");
+
+    texto.textContent =
+    "Nova foto selecionada — será enviada ao salvar.";
+
+    fotoRealizadoPreview.appendChild(
+      texto
+    );
+
+    return;
+
+  }
+
+  if (fotoExistente?.fotoUrl) {
+
+    fotoRealizadoPreview.innerHTML =
+    "";
+
+    const link =
+    document.createElement("a");
+
+    link.href =
+    fotoExistente.fotoUrl;
+
+    link.target =
+    "_blank";
+
+    link.rel =
+    "noopener noreferrer";
+
+    const img =
+    document.createElement("img");
+
+    img.src =
+    fotoExistente.fotoUrl;
+
+    link.appendChild(
+      img
+    );
+
+    fotoRealizadoPreview.appendChild(
+      link
+    );
+
+    const texto =
+    document.createElement("span");
+
+    texto.textContent =
+    "Foto já salva — escolha outro arquivo pra substituir.";
+
+    fotoRealizadoPreview.appendChild(
+      texto
+    );
+
+    return;
+
+  }
+
+  fotoRealizadoPreview.innerHTML =
+  "";
+
+}
+
+async function uploadFotoRealizadoSeSelecionada(obraId) {
+
+  const arquivo =
+  inputFotoRealizado?.files?.[0] ||
+  null;
+
+  if (!arquivo) {
+    return null;
+  }
+
+  const nomeArquivo =
+  `${Date.now()}_${arquivo.name}`.replace(/[^\w.\-]/g, "_");
+
+  const caminho =
+  `curvaSFotos/${obraId}/${nomeArquivo}`;
+
+  const referencia =
+  storageRef(
+    storage,
+    caminho
+  );
+
+  await uploadBytes(
+    referencia,
+    arquivo
+  );
+
+  const url =
+  await getDownloadURL(
+    referencia
+  );
+
+  return {
+    fotoUrl: url,
+    fotoCaminho: caminho
+  };
+
+}
+
+/* =========================================
    LIMPAR CAMPOS
 ========================================= */
 
@@ -2910,6 +3368,16 @@ function limparCamposFormularioSemana() {
   limparCamposAnomalia();
 
   atualizarEstadoAnomalia();
+
+  if (inputFotoRealizado) {
+    inputFotoRealizado.value =
+    "";
+  }
+
+  fotoExistente =
+  null;
+
+  renderizarPreviewFoto();
 
 }
 
@@ -2987,7 +3455,7 @@ function limparTela() {
     tabelaSemanas.innerHTML =
     `
       <tr>
-        <td colspan="9">
+        <td colspan="10">
           Selecione uma obra para carregar o planejamento.
         </td>
       </tr>

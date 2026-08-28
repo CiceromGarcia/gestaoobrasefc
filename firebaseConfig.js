@@ -13,8 +13,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
 
 import {
+  getStorage
+} from "https://www.gstatic.com/firebasejs/10.12.3/firebase-storage.js";
+
+import {
   initializeAppCheck,
-  ReCaptchaV3Provider
+  ReCaptchaEnterpriseProvider
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app-check.js";
 
 /* =====================================================
@@ -73,7 +77,7 @@ let appCheck = null;
 
 if (APP_CHECK_SITE_KEY && APP_CHECK_SITE_KEY !== "COLE_SUA_SITE_KEY_AQUI") {
   appCheck = initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
+    provider: new ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY),
     isTokenAutoRefreshEnabled: true
   });
 } else {
@@ -92,6 +96,10 @@ const auth = getAuth(
   app
 );
 
+const storage = getStorage(
+  app
+);
+
 /* =====================================================
    EXPORTAÇÃO
 ===================================================== */
@@ -100,5 +108,6 @@ export {
   app,
   db,
   auth,
-  appCheck
+  appCheck,
+  storage
 };

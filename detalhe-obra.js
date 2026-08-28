@@ -49,6 +49,9 @@ const tbodyCurvaSObra = $("tbodyCurvaSObra");
 const listaAnomalias = $("listaAnomalias");
 const semAnomalias = $("semAnomalias");
 
+const galeriaFotos = $("galeriaFotos");
+const semFotos = $("semFotos");
+
 const listaHistorico = $("listaHistorico");
 const semHistorico = $("semHistorico");
 
@@ -776,6 +779,46 @@ function renderizarAnomalias(realizados) {
 }
 
 /* =========================
+   RENDERIZAÇÃO — GALERIA DE FOTOS
+========================= */
+
+function renderizarFotos(realizados) {
+  if (!galeriaFotos || !semFotos) {
+    return;
+  }
+
+  const comFoto = realizados.filter((item) => item.fotoUrl);
+
+  galeriaFotos.innerHTML = "";
+
+  semFotos.classList.toggle("ativo", comFoto.length === 0);
+
+  // Mais recente primeiro — realizados já vem ordenado por semana
+  // crescente (ver carregarFichaDaObra).
+  [...comFoto].reverse().forEach((item) => {
+    const link = document.createElement("a");
+    link.className = "card-foto";
+    link.href = item.fotoUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.title = "Clique para ampliar";
+
+    const img = document.createElement("img");
+    img.src = item.fotoUrl;
+    img.alt = `Foto da semana ${item.semana || ""}`;
+    img.loading = "lazy";
+    link.appendChild(img);
+
+    const legenda = document.createElement("div");
+    legenda.className = "legenda-foto";
+    legenda.textContent = item.semana || "-";
+    link.appendChild(legenda);
+
+    galeriaFotos.appendChild(link);
+  });
+}
+
+/* =========================
    RENDERIZAÇÃO — HISTÓRICO
 ========================= */
 
@@ -942,6 +985,7 @@ async function carregarFichaDaObra() {
   renderizarResumo(orcado, executado, fisicoAtual, afo);
   renderizarCurvaS(semanasFinal);
   renderizarAnomalias(realizados);
+  renderizarFotos(realizados);
   renderizarHistorico(obra);
 
   carregandoObra.style.display = "none";

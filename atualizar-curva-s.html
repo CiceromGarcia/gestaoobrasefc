@@ -14,10 +14,31 @@
     Atualização da Curva S
   </title>
 
+  <link
+    rel="icon"
+    type="image/png"
+    href="./favicon.png"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="./apple-touch-icon.png"
+  >
+
+  <!-- PWA: permite "instalar" o sistema como app no celular -->
+  <link
+    rel="manifest"
+    href="./manifest.json"
+  >
+  <meta
+    name="theme-color"
+    content="#007E7A"
+  >
+
   <!-- CSS -->
   <link
     rel="stylesheet"
-    href="./atualizar-curva-s.css?v=003"
+    href="./atualizar-curva-s.css?v=005"
   >
 
   <!-- AJUSTE DO USUÁRIO LOGADO NO CABEÇALHO -->
@@ -469,6 +490,10 @@
                 Data Atualização
               </th>
 
+              <th>
+                Foto
+              </th>
+
             </tr>
 
           </thead>
@@ -543,6 +568,48 @@
           >
 
         </div>
+
+      </div>
+
+      <div class="campo-atualizacao campo-full">
+
+        <label for="fotoRealizado">
+          Foto da Semana (opcional)
+        </label>
+
+        <span class="dica-lancamentos">
+          Anexe uma foto do avanço físico desta semana — jpg, png ou webp, até 8MB.
+        </span>
+
+        <input
+          type="file"
+          id="fotoRealizado"
+          accept="image/*"
+          class="input-arquivo-oculto"
+        >
+
+        <div class="campo-arquivo">
+
+          <label
+            for="fotoRealizado"
+            class="btn-arquivo"
+          >
+            📷 Escolher foto
+          </label>
+
+          <span
+            id="fotoRealizadoNomeArquivo"
+            class="foto-arquivo-nome"
+          >
+            Nenhum arquivo escolhido
+          </span>
+
+        </div>
+
+        <div
+          id="fotoRealizadoPreview"
+          class="foto-realizado-preview"
+        ></div>
 
       </div>
 
@@ -662,7 +729,7 @@
 
         </div>
 
-        <div class="grid-anomalia">
+        <div class="grid-anomalia" id="secaoAnomalia">
 
           <div class="campo-atualizacao">
 
@@ -931,13 +998,62 @@
   </div>
 
   <!-- =====================================
+       MODAL: duplo clique numa semana já lançada
+  ====================================== -->
+
+  <div class="modal-escolha-semana" id="modalEscolhaSemana">
+
+    <div class="modal-escolha-semana-conteudo">
+
+      <h3>
+        Semana já lançada
+      </h3>
+
+      <p>
+        O que você deseja fazer com esta semana?
+      </p>
+
+      <div class="modal-escolha-botoes">
+
+        <button
+          type="button"
+          id="btnEscolhaCorrigir"
+          class="btn-escolha"
+        >
+          Corrigir lançamento
+        </button>
+
+        <button
+          type="button"
+          id="btnEscolhaAnomalia"
+          class="btn-escolha"
+        >
+          Registrar anomalia
+        </button>
+
+      </div>
+
+      <button
+        type="button"
+        id="btnEscolhaCancelar"
+        class="btn-escolha-cancelar"
+      >
+        Cancelar
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- =====================================
        JS
   ====================================== -->
 
   <script
     type="module"
-    src="./atualizar-curva-s.js?v=003"
+    src="./atualizar-curva-s.js?v=008"
   ></script>
+  <script src="./pwa-register.js"></script>
 
 </body>
 

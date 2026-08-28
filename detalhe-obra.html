@@ -14,6 +14,27 @@
     Ficha da Obra
   </title>
 
+  <link
+    rel="icon"
+    type="image/png"
+    href="./favicon.png"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="./apple-touch-icon.png"
+  >
+
+  <!-- PWA: permite "instalar" o sistema como app no celular -->
+  <link
+    rel="manifest"
+    href="./manifest.json"
+  >
+  <meta
+    name="theme-color"
+    content="#007E7A"
+  >
+
   <!-- Reaproveita o CSS do Gestão de Obras para manter a mesma identidade visual -->
   <link
     rel="stylesheet"
@@ -22,7 +43,7 @@
 
   <link
     rel="stylesheet"
-    href="./detalhe-obra.css?v=6"
+    href="./detalhe-obra.css?v=7"
   >
 
   <link
@@ -225,6 +246,33 @@
       </section>
 
       <!-- =====================================
+           GALERIA DE FOTOS
+      ====================================== -->
+
+      <section class="table-wrap" id="secaoFotos">
+
+        <div class="table-header">
+          <div>
+            <h2>
+              <span class="titulo-numero">04</span>
+              Galeria de Fotos
+            </h2>
+            <span>
+              Fotos anexadas ao lançar o avanço físico/financeiro de cada semana
+            </span>
+          </div>
+        </div>
+
+        <div id="galeriaFotos" class="galeria-fotos">
+        </div>
+
+        <div id="semFotos" class="aviso-vazio">
+          Nenhuma foto anexada para esta obra ainda.
+        </div>
+
+      </section>
+
+      <!-- =====================================
            HISTÓRICO DE ALTERAÇÕES
       ====================================== -->
 
@@ -233,7 +281,7 @@
         <div class="table-header">
           <div>
             <h2>
-              <span class="titulo-numero">04</span>
+              <span class="titulo-numero">05</span>
               Histórico de Alterações
             </h2>
             <span>
@@ -257,8 +305,9 @@
 
   <script
     type="module"
-    src="./detalhe-obra.js?v=4"
+    src="./detalhe-obra.js?v=5"
   ></script>
+  <script src="./pwa-register.js"></script>
 
 </body>
 
