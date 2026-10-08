@@ -1588,49 +1588,59 @@ exports.enviarResumoObrasEmAndamentoSemanal = onSchedule(
     timeZone: "America/Sao_Paulo"
   },
   async () => {
-    const transport = buildTransport();
+    let lista;
+    let paralisadas;
 
-    if (!transport) {
-      logger.warn("enviarResumoObrasEmAndamentoSemanal: SMTP não configurado, e-mail não enviado.");
+    try {
+      lista = await calcularResumoObrasEmAndamento();
+      paralisadas = await calcularResumoObrasParalisadas();
+    } catch (e) {
+      logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao calcular resumo:", e);
       return;
     }
 
-    const destinatarios = destinatariosResumoObrasAndamento();
+    // E-mail e WhatsApp são canais independentes: desativar/falhar um não
+    // pode impedir o outro de ser enviado (ex.: SMTP desligado nas férias
+    // não deve derrubar o aviso por WhatsApp, e vice-versa).
+    try {
+      const transport = buildTransport();
 
-    if (!destinatarios.length) {
-      logger.warn("enviarResumoObrasEmAndamentoSemanal: nenhum destinatário configurado.");
-      return;
+      if (!transport) {
+        logger.warn("[enviarResumoObrasEmAndamentoSemanal] SMTP não configurado, e-mail não enviado.");
+      } else {
+        const destinatarios = destinatariosResumoObrasAndamento();
+
+        if (!destinatarios.length) {
+          logger.warn("[enviarResumoObrasEmAndamentoSemanal] nenhum destinatário configurado.");
+        } else {
+          const html = montarHtmlResumoObrasEmAndamento(lista, paralisadas);
+
+          await transport.sendMail({
+            from: smtp.user,
+            to: destinatarios.join(","),
+            subject: `Resumo Semanal — ${lista.length} Obra(s) em Andamento`,
+            html
+          });
+
+          logger.info(
+            `[enviarResumoObrasEmAndamentoSemanal] E-mail enviado. obras=${lista.length} destinatarios=${destinatarios.length}`
+          );
+        }
+      }
+    } catch (e) {
+      logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao enviar e-mail:", e);
     }
 
     try {
-      const lista = await calcularResumoObrasEmAndamento();
-      const paralisadas = await calcularResumoObrasParalisadas();
-      const html = montarHtmlResumoObrasEmAndamento(lista, paralisadas);
-
-      await transport.sendMail({
-        from: smtp.user,
-        to: destinatarios.join(","),
-        subject: `Resumo Semanal — ${lista.length} Obra(s) em Andamento`,
-        html
-      });
+      const partesWhatsApp = montarPartesResumoObrasEmAndamento(lista, paralisadas);
+      const resultadosWhatsApp = await enviarWhatsAppCallMeBotEmPartes(partesWhatsApp);
+      const enviados = resultadosWhatsApp.filter((r) => r.ok).length;
 
       logger.info(
-        `[enviarResumoObrasEmAndamentoSemanal] E-mail enviado. obras=${lista.length} destinatarios=${destinatarios.length}`
+        `[enviarResumoObrasEmAndamentoSemanal] WhatsApp: ${enviados}/${partesWhatsApp.length} parte(s) enviada(s)`
       );
-
-      try {
-        const partesWhatsApp = montarPartesResumoObrasEmAndamento(lista, paralisadas);
-        const resultadosWhatsApp = await enviarWhatsAppCallMeBotEmPartes(partesWhatsApp);
-        const enviados = resultadosWhatsApp.filter((r) => r.ok).length;
-
-        logger.info(
-          `[enviarResumoObrasEmAndamentoSemanal] WhatsApp: ${enviados}/${partesWhatsApp.length} parte(s) enviada(s)`
-        );
-      } catch (eWhatsApp) {
-        logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao enviar WhatsApp:", eWhatsApp);
-      }
-    } catch (e) {
-      logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao gerar/enviar resumo:", e);
+    } catch (eWhatsApp) {
+      logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao enviar WhatsApp:", eWhatsApp);
     }
   }
 );
