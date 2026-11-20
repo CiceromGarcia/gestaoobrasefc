@@ -63,6 +63,14 @@ const app = initializeApp(
       e cadastre-o em App Check > Apps > gerenciar tokens de depuração.
    5. Só DEPOIS de configurado, ative "Enforce" nas Cloud Functions
       (já feito no functions/index.js) e, se quiser, no Firestore.
+
+   NUNCA ative "Enforce" para Authentication no Console (App Check >
+   APIs > Authentication). Em 17/09/2026 isso bloqueou o login de
+   ~17% dos usuários com "auth/firebase-app-check-token-is-invalid" —
+   o reCAPTCHA marca como suspeitos, com alguma frequência, usuários
+   legítimos em rede corporativa/VPN (comum na Vale), e barrar login
+   é bem pior que o risco que o Enforce evita (que já é coberto nas
+   Cloud Functions). Deixe Authentication só como "Monitorando".
 ===================================================== */
 
 const APP_CHECK_SITE_KEY = "6LewY5UtAAAAAIp6k-PHvKLWH9HSyKvTLZGqtxMc";

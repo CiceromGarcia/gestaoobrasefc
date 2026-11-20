@@ -11,10 +11,16 @@
   font-family:'Segoe UI',sans-serif;
 }
 
+html{
+  overflow-x:hidden;
+}
+
 body{
   background:#f4f5f7;
   color:#333;
   padding:25px;
+  overflow-x:hidden;
+  max-width:100vw;
 }
 
 .container{
@@ -180,6 +186,7 @@ body{
 .campo{
   display:flex;
   flex-direction:column;
+  min-width:0;
 }
 
 .campo label{
@@ -191,6 +198,8 @@ body{
 
 .campo input,
 .campo select{
+  width:100%;
+  min-width:0;
   height:42px;
   padding:0 12px;
   border:1px solid #ddd;
@@ -222,6 +231,7 @@ body{
   display:flex;
   gap:10px;
   min-height:42px;
+  min-width:0;
 }
 
 button{
@@ -396,13 +406,24 @@ canvas{
   }
 
   .header{
-    flex-direction:column;
-    align-items:flex-start;
-    gap:12px;
+    flex-direction:row;
+    align-items:center;
+    flex-wrap:nowrap;
+    gap:10px;
   }
 
   .header h1{
-    font-size:26px;
+    font-size:19px;
+  }
+
+  .header p{
+    font-size:12px;
+  }
+
+  .header-logo{
+    align-self:center;
+    height:26px;
+    max-width:90px;
   }
 
   .header .usuario-logado-info,
@@ -413,8 +434,8 @@ canvas{
     gap:2px !important;
   }
 
-  .header .usuario-logado-separador,
-  .header .sg-usuario-logado-separador{
+  .header .usuario-logado-info span.usuario-logado-separador,
+  .header .sg-usuario-logado-info span.sg-usuario-logado-separador{
     display:none !important;
   }
 
@@ -432,11 +453,16 @@ canvas{
   }
 
   .header h1{
-    font-size:22px;
+    font-size:17px;
   }
 
   .header p{
-    font-size:13px;
+    font-size:11px;
+  }
+
+  .header-logo{
+    height:22px;
+    max-width:72px;
   }
 
   .filtros{
@@ -465,4 +491,23 @@ canvas{
     padding:14px;
   }
 
+}
+
+/* Aviso de Curva S gerada a partir do cronograma */
+
+.aviso-cronograma {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #b7e0dd;
+  border-left: 4px solid #007E7A;
+  border-radius: 10px;
+  background: #e6f7f5;
+  color: #0f3f3d;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.aviso-cronograma[hidden] {
+  display: none;
 }

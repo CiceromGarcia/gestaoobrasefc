@@ -11,7 +11,7 @@
    - Mantidos Contrato obrigatório, filtros por data e exportação PDF.
 ===================================================== */
 
-import { db } from "./firebaseConfig.js";
+import { db, storage } from "./firebaseConfig.js";
 
 import { protegerPagina } from "./authGuard.js";
 
@@ -23,8 +23,15 @@ import {
   where,
   doc,
   updateDoc,
+  deleteDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+import {
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.3/firebase-storage.js";
 
 /* =====================================================
    PDF.JS
@@ -115,7 +122,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     preencherDataAtual();
     renderizarTabelaMateriais();
     atualizarResumoCadastro();
-    atualizarVisaoUsuario();
     configurarVisibilidadeAprovacoes();
 
     atualizarStatusTela(
@@ -241,61 +247,22 @@ function usuarioPodeAprovarRegional(regionalRM) {
   return regionalUsuario === regionalDaRM;
 }
 
-function atualizarVisaoUsuario() {
-  const titulo = document.getElementById("tituloVisaoUsuario");
-  const descricao = document.getElementById("descricaoVisaoUsuario");
-  const resumoVisao = document.getElementById("resumoUsuarioVisao");
-
-  if (usuarioEhAdminGeral()) {
-    setTextoElemento(titulo, "Visão de Administrador Geral");
-
-    setTextoElemento(
-      descricao,
-      "Você tem acesso a todas as RMs, aprovações, custos por Regional e produtos aprovados."
-    );
-
-    setTextoElemento(resumoVisao, "Todas as RMs");
-    return;
-  }
-
-  if (usuarioEhAdminRegional()) {
-    const regional = obterRegionalUsuario() || "Regional não definida";
-
-    setTextoElemento(titulo, "Visão de Administrador Regional");
-
-    setTextoElemento(
-      descricao,
-      `Você aprova RMs da ${regional} e visualiza as RMs da sua área de aprovação.`
-    );
-
-    setTextoElemento(resumoVisao, regional);
-    return;
-  }
-
-  const email = obterEmailUsuario();
-
-  setTextoElemento(titulo, "Visão do Usuário");
-
-  setTextoElemento(
-    descricao,
-    `Você visualiza apenas as RMs cadastradas pelo seu usuário${email ? ` (${email})` : ""}.`
-  );
-
-  setTextoElemento(resumoVisao, "Minhas RMs");
-}
 
 function configurarVisibilidadeAprovacoes() {
-  const podeAprovar = usuarioPodeAprovarRM();
+  // Aprovações, Custos por Regional e Produtos com Mais Saída ficam
+  // restritos ao Administrador Geral — cada Regional só enxerga suas
+  // próprias RMs na aba "RMs Cadastradas".
+  const ehAdmin = usuarioEhAdminGeral();
 
   document.body.classList.toggle(
     "usuario-aprovador-rm",
-    podeAprovar
+    ehAdmin
   );
 
   document
     .querySelectorAll("[data-aprovacao-only]")
     .forEach((elemento) => {
-      elemento.style.display = podeAprovar ? "" : "none";
+      elemento.style.display = ehAdmin ? "" : "none";
     });
 }
 
@@ -313,9 +280,11 @@ function configurarAbas() {
     });
 }
 
+const ABAS_SOMENTE_ADMIN_GERAL = ["custos", "produtos", "aprovacoes"];
+
 function abrirAba(aba) {
-  if (aba === "aprovacoes" && !usuarioPodeAprovarRM()) {
-    alert("Você não possui permissão para acessar a aba de aprovações.");
+  if (ABAS_SOMENTE_ADMIN_GERAL.includes(aba) && !usuarioEhAdminGeral()) {
+    alert("Essa aba é exclusiva do Administrador Geral.");
     aba = "cadastradas";
   }
 
@@ -387,11 +356,9 @@ function configurarEventos() {
   const btnConfirmarSalvar = document.getElementById("btnConfirmarSalvar");
   const btnAtualizarListaRMs = document.getElementById("btnAtualizarListaRMs");
   const btnExportarRMsPDF = document.getElementById("btnExportarRMsPDF");
-  const filtroBuscaRM = document.getElementById("filtroBuscaRM");
   const filtroRegionalRM = document.getElementById("filtroRegionalRM");
   const filtroStatusAprovacaoRM = document.getElementById("filtroStatusAprovacaoRM");
-  const filtroDataInicioRM = document.getElementById("filtroDataInicioRM");
-  const filtroDataFimRM = document.getElementById("filtroDataFimRM");
+  const filtroAprovadorRM = document.getElementById("filtroAprovadorRM");
   const btnAtualizarProdutos = document.getElementById("btnAtualizarProdutos");
   const filtroBuscaProduto = document.getElementById("filtroBuscaProduto");
   const filtroRegionalProduto = document.getElementById("filtroRegionalProduto");
@@ -436,11 +403,9 @@ function configurarEventos() {
   btnAtualizarListaRMs?.addEventListener("click", carregarRMsCadastradas);
   btnExportarRMsPDF?.addEventListener("click", exportarRMsPDF);
 
-  filtroBuscaRM?.addEventListener("input", renderizarRMsCadastradas);
   filtroRegionalRM?.addEventListener("change", renderizarRMsCadastradas);
   filtroStatusAprovacaoRM?.addEventListener("change", renderizarRMsCadastradas);
-  filtroDataInicioRM?.addEventListener("change", renderizarRMsCadastradas);
-  filtroDataFimRM?.addEventListener("change", renderizarRMsCadastradas);
+  filtroAprovadorRM?.addEventListener("change", renderizarRMsCadastradas);
 
   btnAtualizarProdutos?.addEventListener("click", carregarRMsCadastradas);
   filtroBuscaProduto?.addEventListener("input", renderizarProdutosMaisSaida);
@@ -489,7 +454,10 @@ async function carregarRMsCadastradas() {
           ...docItem.data()
         });
       });
-    } else if (usuarioEhAdminRegional()) {
+    } else {
+      // Cada usuário vê todas as RMs da própria Regional (não só as que
+      // ele mesmo criou) — ver firestore.rules: donoDaRM() OR
+      // resource.data.regional == regionalUsuarioLogado().
       const regionalUsuario = obterRegionalUsuario();
 
       if (regionalUsuario) {
@@ -499,8 +467,8 @@ async function carregarRMsCadastradas() {
         );
       }
 
-      await carregarMinhasRMsNoMapa(mapa, ref);
-    } else {
+      // Rede de segurança: cobre RMs sem Regional preenchida (ou
+      // preenchida diferente) que o próprio usuário criou.
       await carregarMinhasRMsNoMapa(mapa, ref);
     }
 
@@ -509,8 +477,8 @@ async function carregarRMsCadastradas() {
 
     rmsJaCarregadas = true;
 
-    atualizarVisaoUsuario();
     configurarVisibilidadeAprovacoes();
+    popularFiltroAprovadores();
     renderizarTodasAsVisoes();
   } catch (error) {
     console.error("Erro ao carregar RMs cadastradas:", error);
@@ -573,14 +541,14 @@ function ordenarRMDecrescente(a, b) {
 }
 
 function atualizarTabelasCarregando() {
-  setTabelaMensagem("tbodyRMsCadastradas", 13, "Carregando RMs cadastradas...");
+  setTabelaMensagem("tbodyRMsCadastradas", 15, "Carregando RMs cadastradas...");
   setTabelaMensagem("tbodyCustosRegional", 5, "Carregando custos por regional...");
   setTabelaMensagem("tbodyProdutosMaisSaida", 9, "Carregando produtos com mais saída...");
   setTabelaMensagem("tbodyAprovacoes", 13, "Carregando aprovações...");
 }
 
 function mostrarErroTabelas(mensagem) {
-  setTabelaMensagem("tbodyRMsCadastradas", 13, mensagem);
+  setTabelaMensagem("tbodyRMsCadastradas", 15, mensagem);
   setTabelaMensagem("tbodyCustosRegional", 5, mensagem);
   setTabelaMensagem("tbodyProdutosMaisSaida", 9, mensagem);
   setTabelaMensagem("tbodyAprovacoes", 13, mensagem);
@@ -827,19 +795,9 @@ function obterContratoRM(item) {
 }
 
 function filtrarRMsCadastradas() {
-  const busca = normalizarTexto(getValor("filtroBuscaRM"));
   const regional = getValor("filtroRegionalRM");
   const statusFiltro = getValor("filtroStatusAprovacaoRM");
-
-  const dataInicio = dataInputParaDate(
-    getValor("filtroDataInicioRM"),
-    false
-  );
-
-  const dataFim = dataInputParaDate(
-    getValor("filtroDataFimRM"),
-    true
-  );
+  const aprovador = getValor("filtroAprovadorRM");
 
   return rmsCadastradas.filter((item) => {
     if (regional && String(item.regional || "") !== regional) {
@@ -850,42 +808,51 @@ function filtrarRMsCadastradas() {
       return false;
     }
 
-    const dataRM = obterDataPeriodoRM(item);
-
-    if (dataInicio && dataRM && dataRM < dataInicio) {
+    if (
+      aprovador &&
+      item.aprovadoPorNome !== aprovador &&
+      item.aprovadoPorEmail !== aprovador
+    ) {
       return false;
     }
 
-    if (dataFim && dataRM && dataRM > dataFim) {
-      return false;
-    }
-
-    if ((dataInicio || dataFim) && !dataRM) {
-      return false;
-    }
-
-    if (!busca) {
-      return true;
-    }
-
-    const textoBusca = normalizarTexto(
-      [
-        item.numeroRM,
-        item.numeroOM,
-        item.titulo,
-        obterContratoRM(item),
-        item.regional,
-        item.localidade,
-        item.centroCusto,
-        item.localRM,
-        item.solicitante,
-        item.criadoPor?.nome,
-        item.criadoPor?.email
-      ].join(" ")
-    );
-
-    return textoBusca.includes(busca);
+    return true;
   });
+}
+
+// Lista, no filtro "Aprovadores", quem já aprovou pelo menos uma RM
+// visível pro usuário atual — dá pra filtrar sem precisar de uma
+// consulta separada de quem é administrador.
+function popularFiltroAprovadores() {
+  const select = document.getElementById("filtroAprovadorRM");
+
+  if (!select) {
+    return;
+  }
+
+  const valorAtual = select.value;
+
+  const aprovadores = new Map();
+
+  rmsCadastradas.forEach((item) => {
+    const chave = item.aprovadoPorNome || item.aprovadoPorEmail;
+
+    if (chave && !aprovadores.has(chave)) {
+      aprovadores.set(chave, item.aprovadoPorNome || item.aprovadoPorEmail);
+    }
+  });
+
+  const opcoes = Array.from(aprovadores.entries())
+    .sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
+
+  select.innerHTML = `<option value="">Todos</option>` +
+    opcoes
+      .map(([valor, rotulo]) => `<option value="${escaparHTML(valor)}">${escaparHTML(rotulo)}</option>`)
+      .join("");
+
+  if (aprovadores.has(valorAtual)) {
+    select.value = valorAtual;
+  }
 }
 
 function renderizarRMsCadastradas() {
@@ -904,12 +871,14 @@ function renderizarRMsCadastradas() {
   if (!lista.length) {
     setTabelaMensagem(
       "tbodyRMsCadastradas",
-      13,
+      15,
       "Nenhuma RM encontrada para sua visão de acesso."
     );
 
     return;
   }
+
+  const podeExcluir = usuarioEhAdminGeral();
 
   lista.forEach((item) => {
     const materiais = Array.isArray(item.materiais)
@@ -918,6 +887,7 @@ function renderizarRMsCadastradas() {
 
     const status = obterStatusAprovacaoRM(item);
     const contrato = obterContratoRM(item) || "-";
+    const urlPdf = item.arquivo?.url || "";
 
     const tr = document.createElement("tr");
 
@@ -928,10 +898,6 @@ function renderizarRMsCadastradas() {
 
       <td>
         ${escaparHTML(item.numeroOM || "-")}
-      </td>
-
-      <td>
-        ${formatarDataBR(obterDataPeriodoRM(item))}
       </td>
 
       <td>
@@ -971,12 +937,41 @@ function renderizarRMsCadastradas() {
       </td>
 
       <td>
+        ${escaparHTML(item.aprovadoPorNome || item.aprovadoPorEmail || "-")}
+      </td>
+
+      <td>
         ${escaparHTML(item.criadoPor?.nome || item.criadoPor?.email || "-")}
+      </td>
+
+      <td>
+        ${
+          urlPdf
+            ? `<a href="${escaparHTML(urlPdf)}" target="_blank" rel="noopener noreferrer" class="btn-abrir-pdf-rm" title="Abrir PDF importado"><i class="fa-solid fa-file-pdf"></i></a>`
+            : "-"
+        }
+      </td>
+
+      <td>
+        ${
+          podeExcluir
+            ? `<button type="button" class="btn-excluir-rm" data-id="${escaparHTML(item.id)}" title="Excluir RM"><i class="fa-solid fa-trash-can"></i></button>`
+            : "-"
+        }
       </td>
     `;
 
     tbody.appendChild(tr);
   });
+
+  tbody
+    .querySelectorAll(".btn-excluir-rm")
+    .forEach((botao) => {
+      botao.addEventListener("click", (event) => {
+        event.stopPropagation();
+        excluirRM(botao.dataset.id);
+      });
+    });
 }
 
 function atualizarResumoRMs(lista) {
@@ -1031,16 +1026,8 @@ function exportarRMsPDF() {
   let y = 12;
 
   const regionalFiltro = getValor("filtroRegionalRM") || "Todas";
-
-  const dataInicioFiltro = getValor("filtroDataInicioRM")
-    ? formatarDataBR(dataInputParaDate(getValor("filtroDataInicioRM")))
-    : "-";
-
-  const dataFimFiltro = getValor("filtroDataFimRM")
-    ? formatarDataBR(dataInputParaDate(getValor("filtroDataFimRM")))
-    : "-";
-
   const statusFiltro = getValor("filtroStatusAprovacaoRM") || "Todos";
+  const aprovadorFiltro = getValor("filtroAprovadorRM") || "Todos";
 
   const valorTotal = lista.reduce((total, item) => {
     return total + obterValorRM(item);
@@ -1056,7 +1043,7 @@ function exportarRMsPDF() {
   pdf.setFontSize(9);
 
   pdf.text(
-    `Regional: ${regionalFiltro} | Período RM: ${dataInicioFiltro} até ${dataFimFiltro} | Status: ${statusFiltro}`,
+    `Regional: ${regionalFiltro} | Status: ${statusFiltro} | Aprovador: ${aprovadorFiltro}`,
     margem,
     y
   );
@@ -2064,6 +2051,45 @@ async function aprovarRM(id) {
   } catch (error) {
     console.error("Erro ao aprovar RM:", error);
     alert("Erro ao aprovar RM. Verifique as permissões do Firestore.");
+  }
+}
+
+/* =====================================================
+   EXCLUIR RM (somente Administrador Geral)
+===================================================== */
+
+async function excluirRM(id) {
+  if (!usuarioEhAdminGeral()) {
+    alert("A exclusão de RM é permitida somente para o Administrador Geral.");
+    return;
+  }
+
+  const item = rmsCadastradas.find((rm) => rm.id === id);
+
+  if (!item) {
+    alert("RM não encontrada.");
+    return;
+  }
+
+  const confirmar = confirm(
+    `Excluir definitivamente a RM ${item.numeroRM || ""}? Essa ação não pode ser desfeita.`
+  );
+
+  if (!confirmar) {
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, COLECAO_RMS, id));
+
+    alert("RM excluída com sucesso.");
+
+    rmsJaCarregadas = false;
+
+    await carregarRMsCadastradas();
+  } catch (error) {
+    console.error("Erro ao excluir RM:", error);
+    alert("Erro ao excluir RM. Verifique as permissões do Firestore.");
   }
 }
 
@@ -4162,6 +4188,39 @@ async function salvarRequisicao() {
         '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
     }
 
+    // Sobe o PDF original pro Storage, pra quem tem acesso à RM (o
+    // administrador, em especial) poder abrir e conferir todos os itens
+    // do jeito que foi importado — antes só o texto extraído ficava salvo.
+    let arquivoPdfInfo = null;
+
+    if (arquivoSelecionado) {
+
+      if (btnConfirmar) {
+        btnConfirmar.innerHTML =
+          '<i class="fa-solid fa-spinner fa-spin"></i> Enviando PDF...';
+      }
+
+      const nomeArquivoStorage =
+        `${Date.now()}_${arquivoSelecionado.name}`.replace(/[^\w.\-]/g, "_");
+
+      const caminhoStorage = `requisicoesPDF/${nomeArquivoStorage}`;
+
+      const referenciaStorage = storageRef(storage, caminhoStorage);
+
+      await uploadBytes(referenciaStorage, arquivoSelecionado);
+
+      arquivoPdfInfo = {
+        url: await getDownloadURL(referenciaStorage),
+        caminho: caminhoStorage
+      };
+
+      if (btnConfirmar) {
+        btnConfirmar.innerHTML =
+          '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+      }
+
+    }
+
     const payload = {
       numeroRM: getValor("numeroRM"),
       numeroOM: getValor("numeroOM"),
@@ -4200,7 +4259,10 @@ async function salvarRequisicao() {
           : "",
 
         paginas: totalPaginasPDF || 0,
-        mime: arquivoSelecionado?.type || ""
+        mime: arquivoSelecionado?.type || "",
+
+        url: arquivoPdfInfo?.url || "",
+        caminho: arquivoPdfInfo?.caminho || ""
       },
 
       materiais: materiaisExtraidos.map((item, index) => ({
@@ -4685,12 +4747,6 @@ function adicionarLog(tipo, mensagem) {
 function setTexto(id, valor) {
   const elemento = document.getElementById(id);
 
-  if (elemento) {
-    elemento.textContent = valor;
-  }
-}
-
-function setTextoElemento(elemento, valor) {
   if (elemento) {
     elemento.textContent = valor;
   }

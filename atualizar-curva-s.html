@@ -38,7 +38,7 @@
   <!-- CSS -->
   <link
     rel="stylesheet"
-    href="./atualizar-curva-s.css?v=008"
+    href="./atualizar-curva-s.css?v=014"
   >
 
   <!-- AJUSTE DO USUÁRIO LOGADO NO CABEÇALHO -->
@@ -131,8 +131,8 @@
         gap:2px !important;
       }
 
-      .page-header .usuario-logado-separador,
-      .page-header .sg-usuario-logado-separador{
+      .page-header .usuario-logado-info span.usuario-logado-separador,
+      .page-header .sg-usuario-logado-info span.sg-usuario-logado-separador{
         display:none !important;
       }
 
@@ -964,14 +964,38 @@
 
           <div class="campo-atualizacao">
 
+            <label for="responsabilidadeAnomalia">
+              Responsabilidade
+            </label>
+
+            <select id="responsabilidadeAnomalia">
+
+              <option value="">
+                Selecione
+              </option>
+
+              <option value="Vale">
+                Vale
+              </option>
+
+              <option value="Contratada">
+                Contratada
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="campo-atualizacao">
+
             <label for="responsavelAnomalia">
-              Responsável
+              Responsável pela Execução
             </label>
 
             <input
               type="text"
               id="responsavelAnomalia"
-              placeholder="Nome do responsável pela tratativa"
+              placeholder="Nome de quem irá executar a atividade"
               autocomplete="off"
             >
 
@@ -1051,7 +1075,7 @@
 
   <script
     type="module"
-    src="./atualizar-curva-s.js?v=008"
+    src="./atualizar-curva-s.js?v=009"
   ></script>
   <script src="./pwa-register.js"></script>
 

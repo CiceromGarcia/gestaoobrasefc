@@ -38,12 +38,17 @@
   <!-- Reaproveita o CSS do Gestão de Obras para manter a mesma identidade visual -->
   <link
     rel="stylesheet"
-    href="./gestaodeobras.css?v=315"
+    href="./gestaodeobras.css?v=318"
   >
 
   <link
     rel="stylesheet"
-    href="./detalhe-obra.css?v=7"
+    href="./detalhe-obra.css?v=8"
+  >
+
+  <link
+    rel="stylesheet"
+    href="./cronograma.css?v=002"
   >
 
   <link
@@ -219,6 +224,43 @@
       </section>
 
       <!-- =====================================
+           CRONOGRAMA
+      ====================================== -->
+
+      <section class="table-wrap" id="secaoCronograma">
+
+        <div class="table-header">
+
+          <div>
+
+            <h2>
+              <span class="titulo-numero">03</span>
+              Cronograma da Obra
+            </h2>
+
+            <span id="resumoCronogramaObra">
+              Atividades, predecessoras e pesos em dias úteis
+            </span>
+
+          </div>
+
+          <a
+            href="#"
+            id="linkEditarCronograma"
+            class="btn-link-cronograma"
+            style="display:none"
+          >
+            <i class="fa-solid fa-diagram-project"></i>
+            Abrir cronograma
+          </a>
+
+        </div>
+
+        <div class="cr-rolagem" id="ganttCronogramaObra"></div>
+
+      </section>
+
+      <!-- =====================================
            ANOMALIAS
       ====================================== -->
 
@@ -227,7 +269,7 @@
         <div class="table-header">
           <div>
             <h2>
-              <span class="titulo-numero">03</span>
+              <span class="titulo-numero">04</span>
               Anomalias Registradas
             </h2>
             <span>
@@ -254,7 +296,7 @@
         <div class="table-header">
           <div>
             <h2>
-              <span class="titulo-numero">04</span>
+              <span class="titulo-numero">05</span>
               Galeria de Fotos
             </h2>
             <span>
@@ -281,7 +323,7 @@
         <div class="table-header">
           <div>
             <h2>
-              <span class="titulo-numero">05</span>
+              <span class="titulo-numero">06</span>
               Histórico de Alterações
             </h2>
             <span>
@@ -305,7 +347,7 @@
 
   <script
     type="module"
-    src="./detalhe-obra.js?v=5"
+    src="./detalhe-obra.js?v=10"
   ></script>
   <script src="./pwa-register.js"></script>
 

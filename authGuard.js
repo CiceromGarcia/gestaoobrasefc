@@ -17,7 +17,8 @@ import {
 
 import {
   onAuthStateChanged,
-  signOut
+  signOut,
+  getIdTokenResult
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
 
 import {
@@ -810,6 +811,69 @@ function aplicarPermissoesVisuais(usuario) {
 }
 
 /* =====================================================
+   CLAIMS DO TOKEN (admin / perfilCurvaS)
+
+   A Cloud Function sincronizarClaimAdmin grava essas claims no Auth
+   sempre que usuariosSistema/{uid} muda, mas elas só valem a partir do
+   PRÓXIMO refresh do ID token — um usuário com sessão aberta antes da
+   mudança de perfil continua com claims antigas (ex.: sem
+   perfilCurvaS), e isso derruba silenciosamente qualquer upload pro
+   Storage protegido por podeEnviarFotoCurvaS() (storage.rules), com um
+   erro que parece de permissão mas na real é token desatualizado.
+   Aqui comparamos as claims atuais com o que o Firestore diz que
+   deveria ser e forçamos um refresh só quando estão divergentes.
+===================================================== */
+
+const PERFIS_COM_ACESSO_CURVA_S = [
+  "gestor",
+  "planejador",
+  "engenharia",
+  "editor"
+];
+
+async function garantirClaimsAtualizadas(user, usuarioSistema) {
+  if (!user) {
+    return;
+  }
+
+  try {
+    const perfilBanco =
+      normalizarTexto(usuarioSistema?.perfil);
+
+    const statusBanco =
+      normalizarTexto(usuarioSistema?.status);
+
+    const deveSerAdmin =
+      statusBanco === "ativo" &&
+      ["administrador", "admin", "adm"].includes(perfilBanco);
+
+    const devePerfilCurvaS =
+      statusBanco === "ativo" && PERFIS_COM_ACESSO_CURVA_S.includes(perfilBanco)
+      ? perfilBanco
+      : "";
+
+    const resultado =
+      await getIdTokenResult(user);
+
+    const claims =
+      resultado?.claims || {};
+
+    const claimsDivergentes =
+      Boolean(claims.admin) !== deveSerAdmin ||
+      (claims.perfilCurvaS || "") !== devePerfilCurvaS;
+
+    if (claimsDivergentes) {
+      await getIdTokenResult(user, true);
+    }
+  } catch (error) {
+    console.warn(
+      "Não foi possível verificar/atualizar as claims do token:",
+      error
+    );
+  }
+}
+
+/* =====================================================
    PROTEGER PÁGINA
 ===================================================== */
 
@@ -905,6 +969,11 @@ export function protegerPagina(opcoes = {}) {
             resolve(null);
             return;
           }
+
+          await garantirClaimsAtualizadas(
+            user,
+            usuarioSistema
+          );
 
           window.usuarioSistema =
             usuarioSistema;

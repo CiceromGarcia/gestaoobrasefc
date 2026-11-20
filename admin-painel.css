@@ -11,10 +11,16 @@
   font-family: 'Segoe UI', sans-serif;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   background: #f4f5f7;
   color: #1f2937;
   min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 /* =========================================

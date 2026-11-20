@@ -174,6 +174,9 @@ document.getElementById("descricaoAnomalia");
 const inputAcaoCorretivaAnomalia =
 document.getElementById("acaoCorretivaAnomalia");
 
+const selectResponsabilidadeAnomalia =
+document.getElementById("responsabilidadeAnomalia");
+
 const inputResponsavelAnomalia =
 document.getElementById("responsavelAnomalia");
 
@@ -2874,6 +2877,7 @@ function obterCamposAnomalia() {
     inputPrazoTratativaAnomalia,
     inputDescricaoAnomalia,
     inputAcaoCorretivaAnomalia,
+    selectResponsabilidadeAnomalia,
     inputResponsavelAnomalia
   ].filter(Boolean);
 
@@ -2927,6 +2931,7 @@ function limparCamposAnomalia() {
     inputPrazoTratativaAnomalia,
     inputDescricaoAnomalia,
     inputAcaoCorretivaAnomalia,
+    selectResponsabilidadeAnomalia,
     inputResponsavelAnomalia
   ]
     .filter(Boolean)
@@ -3060,6 +3065,11 @@ function obterDadosAnomalia() {
     ? acao
     : "",
 
+    responsabilidadeAnomalia:
+    houveAnomalia
+    ? selectResponsabilidadeAnomalia?.value || ""
+    : "",
+
     responsavelAnomalia:
     houveAnomalia
     ? responsavel
@@ -3122,6 +3132,11 @@ function preencherCamposAnomalia(realizado) {
   if (inputAcaoCorretivaAnomalia) {
     inputAcaoCorretivaAnomalia.value =
     realizado.acaoCorretivaAnomalia || "";
+  }
+
+  if (selectResponsabilidadeAnomalia) {
+    selectResponsabilidadeAnomalia.value =
+    realizado.responsabilidadeAnomalia || "";
   }
 
   if (inputResponsavelAnomalia) {

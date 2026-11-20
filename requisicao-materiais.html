@@ -38,7 +38,7 @@
   <!-- CSS -->
   <link
     rel="stylesheet"
-    href="./requisicao-materiais.css?v=011"
+    href="./requisicao-materiais.css?v=015"
   >
 
   <!-- AJUSTE DO USUÁRIO LOGADO NO CABEÇALHO -->
@@ -138,8 +138,8 @@
         gap:2px !important;
       }
 
-      .app-header .usuario-logado-separador,
-      .app-header .sg-usuario-logado-separador{
+      .app-header .usuario-logado-info span.usuario-logado-separador,
+      .app-header .sg-usuario-logado-info span.sg-usuario-logado-separador{
         display:none !important;
       }
 
@@ -300,6 +300,7 @@
         class="aba-btn"
         id="btnAbaCustos"
         data-aba="custos"
+        data-aprovacao-only
       >
 
         <i class="fa-solid fa-chart-pie"></i>
@@ -313,6 +314,7 @@
         class="aba-btn"
         id="btnAbaProdutos"
         data-aba="produtos"
+        data-aprovacao-only
       >
 
         <i class="fa-solid fa-ranking-star"></i>
@@ -334,41 +336,6 @@
         Aprovações
 
       </button>
-
-    </section>
-
-    <!-- =====================================
-         STATUS DA VISÃO DO USUÁRIO
-    ====================================== -->
-
-    <section
-      class="visao-card"
-      id="statusVisaoUsuario"
-    >
-
-      <div>
-
-        <strong id="tituloVisaoUsuario">
-          Carregando permissões...
-        </strong>
-
-        <span id="descricaoVisaoUsuario">
-          Aguarde enquanto o sistema identifica seu perfil de acesso.
-        </span>
-
-      </div>
-
-      <div>
-
-        <strong id="resumoUsuarioVisao">
-          -
-        </strong>
-
-        <span>
-          Visão atual
-        </span>
-
-      </div>
 
     </section>
 
@@ -1080,20 +1047,6 @@
 
           <div class="campo">
 
-            <label for="filtroBuscaRM">
-              Buscar
-            </label>
-
-            <input
-              type="text"
-              id="filtroBuscaRM"
-              placeholder="RM, OM, contrato, descrição, localidade..."
-            >
-
-          </div>
-
-          <div class="campo">
-
             <label for="filtroRegionalRM">
               Regional
             </label>
@@ -1154,27 +1107,17 @@
 
           <div class="campo">
 
-            <label for="filtroDataInicioRM">
-              Data Inicial da RM
+            <label for="filtroAprovadorRM">
+              Aprovadores
             </label>
 
-            <input
-              type="date"
-              id="filtroDataInicioRM"
-            >
+            <select id="filtroAprovadorRM">
 
-          </div>
+              <option value="">
+                Todos
+              </option>
 
-          <div class="campo">
-
-            <label for="filtroDataFimRM">
-              Data Final da RM
-            </label>
-
-            <input
-              type="date"
-              id="filtroDataFimRM"
-            >
+            </select>
 
           </div>
 
@@ -1242,7 +1185,6 @@
 
                 <th>RM</th>
                 <th>OM</th>
-                <th>Data RM</th>
                 <th>Regional</th>
                 <th>Localidade</th>
                 <th>Contrato</th>
@@ -1252,7 +1194,10 @@
                 <th>Status</th>
                 <th>Criado em</th>
                 <th>Aprovado em</th>
+                <th>Aprovado por</th>
                 <th>Criado por</th>
+                <th>Anexo</th>
+                <th>Ações</th>
 
               </tr>
 
@@ -2132,7 +2077,7 @@
   <!-- JS -->
   <script
     type="module"
-    src="./requisicao-materiais.js?v=014"
+    src="./requisicao-materiais.js?v=016"
   ></script>
   <script src="./pwa-register.js"></script>
 

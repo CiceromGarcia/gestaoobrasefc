@@ -5,7 +5,7 @@ import {
   collection,
   getDocs,
   doc,
-  updateDoc,
+  setDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
@@ -31,25 +31,13 @@ let realizados = [];
 let atualizacoes = [];
 let anomalias = [];
 
-let chartRegional = null;
-let chartCentroCusto = null;
-let chartStatus = null;
-
-let anomaliasRenderizadas = new Map();
-
-const ChartJS = window.Chart;
-
-if (ChartJS && window.ChartDataLabels) {
-  ChartJS.register(window.ChartDataLabels);
-}
-
 const moeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL"
 });
 
 const percentual = (valor) =>
-  `${Number(valor || 0).toFixed(1).replace(".", ",")}%`;
+  `${Number(valor || 0).toFixed(2).replace(".", ",")}%`;
 
 /* =========================================
    INICIALIZAÇÃO
@@ -60,11 +48,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     usuarioLogadoGlobal = await protegerPagina();
 
     configurarEventos();
-    configurarModalStatusAnomalia();
 
     await carregarDados();
+    await carregarManuaisSLA();
+    await carregarPesquisasRespostasSLA();
 
-    configurarFiltroCiclo();
     preencherFiltrosIniciais();
     atualizarDashboard();
 
@@ -85,10 +73,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 function configurarEventos() {
   [
     "filtroRegional",
-    "filtroCentroCusto",
     "filtroLocalidade",
-    "filtroStatus",
-    "filtroObra"
+    "filtroStatus"
   ].forEach((id) => {
     const elemento = document.getElementById(id);
 
@@ -97,29 +83,16 @@ function configurarEventos() {
     }
 
     elemento.addEventListener("change", () => {
-      if (id === "filtroRegional" || id === "filtroCentroCusto" || id === "filtroStatus") {
-        atualizarFiltrosDependentes("principal");
-      }
-
-      if (id === "filtroLocalidade") {
-        atualizarFiltrosDependentes("localidade");
+      if (id === "filtroRegional") {
+        atualizarFiltrosDependentes();
       }
 
       atualizarDashboard();
     });
   });
 
-  document.getElementById("filtroAnoCiclo")?.addEventListener("change", () => {
-    const numeroAtual = Number(getValor("filtroCiclo")) || 1;
-
-    popularSelectCiclo(getValor("filtroAnoCiclo"), numeroAtual);
-    aplicarCicloSelecionado();
-    atualizarDashboard();
-  });
-
-  document.getElementById("filtroCiclo")?.addEventListener("change", () => {
-    aplicarCicloSelecionado();
-    atualizarDashboard();
+  ["filtroInicio", "filtroFim"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("change", atualizarDashboard);
   });
 
   document.getElementById("btnLimparFiltros")?.addEventListener("click", () => {
@@ -130,138 +103,12 @@ function configurarEventos() {
       });
 
     preencherFiltrosIniciais();
-    configurarFiltroCiclo();
     atualizarDashboard();
-    limparTabelaAnomaliasSelecionada();
   });
 
   document.getElementById("btnExportar")?.addEventListener("click", () => {
     window.print();
   });
-}
-
-/* =========================================
-   MODAL STATUS ANOMALIA
-========================================= */
-
-function configurarModalStatusAnomalia() {
-  const modal = document.getElementById("modalStatusAnomalia");
-
-  document
-    .getElementById("btnFecharModalStatus")
-    ?.addEventListener("click", fecharModalStatusAnomalia);
-
-  document
-    .getElementById("btnCancelarStatusAnomalia")
-    ?.addEventListener("click", fecharModalStatusAnomalia);
-
-  document
-    .getElementById("btnSalvarStatusAnomalia")
-    ?.addEventListener("click", salvarStatusAnomalia);
-
-  modal?.addEventListener("click", (event) => {
-    if (event.target === modal) {
-      fecharModalStatusAnomalia();
-    }
-  });
-}
-
-function abrirModalStatusAnomalia(anomalia, novoStatus) {
-  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
-    alert("Apenas administradores podem alterar o status da anomalia.");
-    return;
-  }
-
-  if (!anomalia?.docId || !anomalia?.origem) {
-    alert("Não foi possível identificar o registro da anomalia no banco de dados.");
-    return;
-  }
-
-  setValor("modalAnomaliaDocId", anomalia.docId);
-  setValor("modalAnomaliaOrigem", anomalia.origem);
-  setValor("modalAnomaliaObraId", anomalia.obraId || "");
-  setValor("modalAnomaliaSemana", anomalia.semana || "");
-  setValor("modalObraAnomalia", anomalia.obraNome || "-");
-  setValor("modalTipoAnomalia", anomalia.tipo || "-");
-  setValor("modalStatusAtualAnomalia", anomalia.status || "-");
-  setValor("modalNovoStatusAnomalia", novoStatus || anomalia.status || "");
-  setValor("modalObservacaoStatusAnomalia", "");
-
-  const modal = document.getElementById("modalStatusAnomalia");
-
-  if (modal) {
-    modal.classList.add("ativo");
-    modal.setAttribute("aria-hidden", "false");
-  }
-}
-
-function fecharModalStatusAnomalia() {
-  const modal = document.getElementById("modalStatusAnomalia");
-
-  if (modal) {
-    modal.classList.remove("ativo");
-    modal.setAttribute("aria-hidden", "true");
-  }
-}
-
-async function salvarStatusAnomalia() {
-  if (!usuarioEhAdministrador(usuarioLogadoGlobal)) {
-    alert("Apenas administradores podem alterar o status da anomalia.");
-    return;
-  }
-
-  const docId = getValor("modalAnomaliaDocId");
-  const origem = getValor("modalAnomaliaOrigem");
-  const novoStatus = getValor("modalNovoStatusAnomalia");
-  const observacao = getValor("modalObservacaoStatusAnomalia");
-
-  if (!docId || !origem) {
-    alert("Registro da anomalia não identificado.");
-    return;
-  }
-
-  if (!novoStatus) {
-    alert("Selecione o novo status da anomalia.");
-    return;
-  }
-
-  const anomaliaAtual = [...anomaliasRenderizadas.values()].find((item) =>
-    item.docId === docId && item.origem === origem
-  );
-
-  try {
-    const textoConsolidado = montarTextoConsolidadoAnomalia({
-      ...(anomaliaAtual || {}),
-      status: novoStatus
-    });
-
-    await updateDoc(doc(db, origem, docId), {
-      statusAnomalia: novoStatus,
-      statusTratativa: novoStatus,
-      "anomalia.status": novoStatus,
-      anomalias: textoConsolidado,
-      observacaoStatusAnomalia: observacao || "",
-      statusAnomaliaAtualizadoPorUid: usuarioLogadoGlobal?.uid || "",
-      statusAnomaliaAtualizadoPorEmail:
-        usuarioLogadoGlobal?.email || usuarioLogadoGlobal?.emailAuth || "",
-      statusAnomaliaAtualizadoPorNome:
-        usuarioLogadoGlobal?.nome || usuarioLogadoGlobal?.displayName || "",
-      statusAnomaliaAtualizadoEm: serverTimestamp(),
-      atualizadoEm: serverTimestamp()
-    });
-
-    alert("Status da anomalia atualizado com sucesso!");
-
-    fecharModalStatusAnomalia();
-
-    await carregarDados();
-
-    preencherFiltrosIniciais();
-    atualizarDashboard();
-  } catch (erro) {
-    console.error("Erro ao atualizar status da anomalia:", erro);
-    alert("Erro ao atualizar o status da anomalia. Verifique suas permissões no Firestore.");
-  }
 }
 
 /* =========================================
@@ -440,11 +287,9 @@ function normalizarAnomalia(item, origem = "") {
     item.prazo ||
     "";
 
-  const responsavel = valorTexto(
-    item.responsavelAnomalia ||
-    mapa.responsavel ||
-    item.responsavel ||
-    item.responsavelTratativa ||
+  const responsabilidade = valorTexto(
+    item.responsabilidadeAnomalia ||
+    mapa.responsabilidade ||
     ""
   );
 
@@ -529,7 +374,7 @@ function normalizarAnomalia(item, origem = "") {
     impacto: impacto || "Não informado",
     status,
     prazoTratativa,
-    responsavel,
+    responsabilidade,
     descricao: descricao || "Sem descrição",
     acaoCorretiva,
 
@@ -606,153 +451,9 @@ function removerAnomaliasDuplicadas(lista) {
   return Array.from(mapa.values());
 }
 
-function montarTextoConsolidadoAnomalia(anomalia) {
-  const partes = [];
-
-  if (anomalia.tipo) {
-    partes.push(`Tipo: ${anomalia.tipo}`);
-  }
-
-  if (anomalia.criticidade) {
-    partes.push(`Criticidade: ${anomalia.criticidade}`);
-  }
-
-  if (anomalia.impacto) {
-    partes.push(`Impacto: ${anomalia.impacto}`);
-  }
-
-  if (anomalia.status) {
-    partes.push(`Status: ${anomalia.status}`);
-  }
-
-  if (anomalia.prazoTratativa) {
-    partes.push(`Prazo: ${formatarPrazo(anomalia.prazoTratativa)}`);
-  }
-
-  if (anomalia.responsavel) {
-    partes.push(`Responsável: ${anomalia.responsavel}`);
-  }
-
-  if (anomalia.descricao) {
-    partes.push(`Descrição: ${anomalia.descricao}`);
-  }
-
-  if (anomalia.acaoCorretiva) {
-    partes.push(`Ação: ${anomalia.acaoCorretiva}`);
-  }
-
-  return partes.join(" | ");
-}
-
 /* =========================================
    FILTROS
 ========================================= */
-
-/* =========================================
-   FILTRO DE CICLO (21 a 20 do mês seguinte)
-========================================= */
-
-function formatarDataISO(ano, mes, dia) {
-  return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
-}
-
-function formatarDataBRCurta(ano, mes, dia) {
-  return `${String(dia).padStart(2, "0")}/${String(mes).padStart(2, "0")}/${String(ano).slice(2)}`;
-}
-
-function obterCiclosDoAno(ano) {
-  const ciclos = [];
-
-  for (let numero = 1; numero <= 12; numero++) {
-    const mesInicio = numero === 1 ? 12 : numero - 1;
-    const anoInicio = numero === 1 ? ano - 1 : ano;
-
-    ciclos.push({
-      numero,
-      inicioISO: formatarDataISO(anoInicio, mesInicio, 21),
-      fimISO: formatarDataISO(ano, numero, 20),
-      label:
-        `Ciclo ${String(numero).padStart(2, "0")} – ` +
-        `${formatarDataBRCurta(anoInicio, mesInicio, 21)} a ${formatarDataBRCurta(ano, numero, 20)}`
-    });
-  }
-
-  return ciclos;
-}
-
-function obterCicloAtual(data = new Date()) {
-  const dia = data.getDate();
-  const mes = data.getMonth() + 1;
-  const anoAtual = data.getFullYear();
-
-  if (dia >= 21) {
-    return {
-      ano: mes === 12 ? anoAtual + 1 : anoAtual,
-      numero: mes === 12 ? 1 : mes + 1
-    };
-  }
-
-  return {
-    ano: anoAtual,
-    numero: mes
-  };
-}
-
-function popularSelectCiclo(ano, numeroSelecionado) {
-  const selectCiclo = document.getElementById("filtroCiclo");
-
-  if (!selectCiclo) {
-    return;
-  }
-
-  const ciclos = obterCiclosDoAno(Number(ano));
-
-  selectCiclo.innerHTML = ciclos
-    .map((ciclo) => {
-      const selecionado = ciclo.numero === Number(numeroSelecionado) ? "selected" : "";
-
-      return (
-        `<option value="${ciclo.numero}" data-inicio="${ciclo.inicioISO}" data-fim="${ciclo.fimISO}" ${selecionado}>` +
-        `${ciclo.label}</option>`
-      );
-    })
-    .join("");
-}
-
-function aplicarCicloSelecionado() {
-  const selectCiclo = document.getElementById("filtroCiclo");
-  const opcao = selectCiclo?.selectedOptions?.[0];
-
-  if (!opcao) {
-    return;
-  }
-
-  setValor("filtroInicio", opcao.dataset.inicio);
-  setValor("filtroFim", opcao.dataset.fim);
-}
-
-function configurarFiltroCiclo() {
-  const selectAno = document.getElementById("filtroAnoCiclo");
-
-  if (!selectAno) {
-    return;
-  }
-
-  const cicloAtual = obterCicloAtual();
-
-  const anos = [];
-
-  for (let ano = cicloAtual.ano - 3; ano <= cicloAtual.ano + 1; ano++) {
-    anos.push(ano);
-  }
-
-  selectAno.innerHTML = anos
-    .map((ano) => `<option value="${ano}" ${ano === cicloAtual.ano ? "selected" : ""}>${ano}</option>`)
-    .join("");
-
-  popularSelectCiclo(cicloAtual.ano, cicloAtual.numero);
-  aplicarCicloSelecionado();
-}
 
 function preencherFiltrosIniciais() {
   preencherSelect(
@@ -762,30 +463,32 @@ function preencherFiltrosIniciais() {
   );
 
   preencherSelect(
-    "filtroCentroCusto",
-    obras.map((obra) => obterCentroCustoObra(obra)),
-    "Todos"
-  );
-
-  preencherSelect(
     "filtroLocalidade",
     obras.map((obra) => obra.localidade),
     "Todas"
   );
 
-  preencherSelect(
-    "filtroObra",
-    obras.map((obra) => obterNomeObra(obra)),
-    "Todas"
-  );
+  // Data Fim sempre parte marcada com hoje, e Status sempre parte em
+  // "Em andamento" — tanto no primeiro carregamento quanto ao limpar
+  // os filtros.
+  setValor("filtroFim", obterDataHojeISO());
+  setValor("filtroStatus", "Em andamento");
 }
 
-function atualizarFiltrosDependentes(origem) {
+function obterDataHojeISO() {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoje.getDate()).padStart(2, "0");
+
+  return `${ano}-${mes}-${dia}`;
+}
+
+// Só a Localidade depende de outro filtro (Regional) — Obra e Centro
+// de Custo foram removidos da tela.
+function atualizarFiltrosDependentes() {
   const regionalSelecionada = getValor("filtroRegional");
-  const centroSelecionado = getValor("filtroCentroCusto");
   const localidadeSelecionada = getValor("filtroLocalidade");
-  const statusSelecionado = getValor("filtroStatus");
-  const obraSelecionada = getValor("filtroObra");
 
   let obrasBase = [...obras];
 
@@ -793,73 +496,20 @@ function atualizarFiltrosDependentes(origem) {
     obrasBase = obrasBase.filter((obra) => obra.regional === regionalSelecionada);
   }
 
-  if (centroSelecionado) {
-    obrasBase = obrasBase.filter((obra) =>
-      obterCentroCustoObra(obra) === centroSelecionado
-    );
-  }
-
-  if (origem === "principal") {
-    const localidadesPermitidas = [...new Set(
-      obrasBase
-        .map((obra) => obra.localidade)
-        .filter(Boolean)
-        .map((valor) => String(valor).trim())
-    )].sort((a, b) => a.localeCompare(b, "pt-BR"));
-
-    preencherSelect("filtroLocalidade", localidadesPermitidas, "Todas");
-
-    if (
-      localidadeSelecionada &&
-      !localidadesPermitidas.includes(localidadeSelecionada)
-    ) {
-      setValor("filtroLocalidade", "");
-    }
-  }
-
-  const localidadeAtual = getValor("filtroLocalidade");
-
-  if (localidadeAtual) {
-    obrasBase = obrasBase.filter((obra) => obra.localidade === localidadeAtual);
-  }
-
-  // O dropdown de Obra também respeita o Status selecionado: o status
-  // não é um campo fixo no cadastro, é calculado (físico x financeiro,
-  // igual ao resto do painel), então precisamos montar o resumo dessas
-  // obras candidatas pra saber o status real de cada uma antes de
-  // decidir quais aparecem na lista.
-  if (statusSelecionado) {
-    const planFiltrado = filtrarListaPorObrasEPeriodo(planejamentos, obrasBase);
-    const realFiltrado = filtrarListaPorObrasEPeriodo(realizados, obrasBase);
-    const anomFiltrado = filtrarListaPorObrasEPeriodo(anomalias, obrasBase);
-
-    const resumoBase = montarResumoObras(
-      obrasBase,
-      planFiltrado,
-      realFiltrado,
-      anomFiltrado
-    );
-
-    const nomesComStatus = new Set(
-      resumoBase
-        .filter((item) => statusEquivalente(item.status, statusSelecionado))
-        .map((item) => item.nome)
-    );
-
-    obrasBase = obrasBase.filter((obra) => nomesComStatus.has(obterNomeObra(obra)));
-  }
-
-  const obrasPermitidas = [...new Set(
+  const localidadesPermitidas = [...new Set(
     obrasBase
-      .map((obra) => obterNomeObra(obra))
+      .map((obra) => obra.localidade)
       .filter(Boolean)
       .map((valor) => String(valor).trim())
   )].sort((a, b) => a.localeCompare(b, "pt-BR"));
 
-  preencherSelect("filtroObra", obrasPermitidas, "Todas");
+  preencherSelect("filtroLocalidade", localidadesPermitidas, "Todas");
 
-  if (obraSelecionada && !obrasPermitidas.includes(obraSelecionada)) {
-    setValor("filtroObra", "");
+  if (
+    localidadeSelecionada &&
+    !localidadesPermitidas.includes(localidadeSelecionada)
+  ) {
+    setValor("filtroLocalidade", "");
   }
 }
 
@@ -917,43 +567,592 @@ function atualizarDashboard() {
     obrasFiltradasSemStatus
   );
 
-  const anomaliasFiltradas = filtrarListaPorObrasEPeriodo(
-    anomalias,
-    obrasFiltradasSemStatus
-  );
+  // Anomalias sempre completas, sem filtro nenhum (nem período, nem
+  // Regional/Localidade/Status/Obra) — cada anomalia continua sendo
+  // atribuída à obra certa dentro de montarResumoObras.
+  const anomaliasFiltradas = anomalias;
 
   const resumoSemStatus = montarResumoObras(
     obrasFiltradasSemStatus,
     planejamentosFiltrados,
     realizadosFiltrados,
-    anomaliasFiltradas
+    anomaliasFiltradas,
+    realizados,
+    planejamentos
   );
 
   const resumo = aplicarFiltroStatusResumo(resumoSemStatus);
 
-  atualizarKPIs(resumo);
-  atualizarGraficosDistribuicao(resumo);
-  atualizarRanking(resumo);
-  limparTabelaAnomaliasSelecionada();
+  renderizarTodasAnomalias(resumo);
+
+  atualizarDescricaoSLA();
+  renderizarTabelaObrasSLA(resumo);
+  atualizarIndicadoresSLA(resumo);
+}
+
+/* =========================================
+   SLA — PEQUENAS OBRAS
+
+   Indicadores extraídos do processo "Pequenas Obras" da planilha
+   SLA_Consolidado (aba SLA_EFC), excluindo o grupo "Qualidade" (ainda
+   não medido). Usa o MESMO "resumo" já calculado por montarResumoObras
+   pro restante da tela — os indicadores sempre respeitam os filtros
+   (Regional/Localidade/Status/Ciclo) aplicados no momento.
+========================================= */
+
+const MESES_PT = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+];
+
+function atualizarDescricaoSLA() {
+  const elemento = document.getElementById("slaDescricaoResumo");
+
+  if (!elemento) {
+    return;
+  }
+
+  const inicio = getValor("filtroInicio");
+  const fim = getValor("filtroFim");
+
+  const base =
+    "SLA — Pequenas Obras e Pragas e Vetores (Processo: Pequenas Obras)";
+
+  if (!inicio || !fim) {
+    elemento.textContent = base;
+    return;
+  }
+
+  const dataFim = normalizarData(fim);
+  const mesReferencia = dataFim
+    ? `${MESES_PT[dataFim.getMonth()]}/${dataFim.getFullYear()}`
+    : "-";
+
+  elemento.textContent =
+    `${base} · Período: ${formatarDataTabela(inicio)} a ${formatarDataTabela(fim)} · Mês de referência: ${mesReferencia}`;
+}
+
+function obterIdObraResumo(item) {
+  const obra = item.obraOriginal || {};
+
+  return (
+    obra.idProjeto ||
+    obra.idObra ||
+    obra.codigoObra ||
+    obra.id ||
+    "-"
+  );
+}
+
+function obterDataInicioResumo(item) {
+  const obra = item.obraOriginal || {};
+
+  return (
+    obra.dataInicio ||
+    obra.dataInicioPrevisto ||
+    obra.dataInicioObra ||
+    ""
+  );
+}
+
+function obterDataFimResumo(item) {
+  const obra = item.obraOriginal || {};
+
+  return (
+    obra.dataFim ||
+    obra.dataTerminoPrevisto ||
+    obra.dataFimPrevisto ||
+    obra.dataFimObra ||
+    ""
+  );
+}
+
+function renderizarTabelaObrasSLA(resumo) {
+  const corpo = document.getElementById("tabelaObrasSLA");
+
+  if (!corpo) {
+    return;
+  }
+
+  if (!resumo.length) {
+    corpo.innerHTML = `<tr><td colspan="11">Nenhuma obra encontrada para os filtros selecionados.</td></tr>`;
+    return;
+  }
+
+  corpo.innerHTML = resumo
+    .map((item) => {
+      const desvio = item.valorOrcado - item.financeiroReal;
+
+      return `
+        <tr>
+          <td>${obterIdObraResumo(item)}</td>
+          <td>${item.nome}</td>
+          <td>${item.localidade}</td>
+          <td>${formatarDataTabela(obterDataInicioResumo(item))}</td>
+          <td>${formatarDataTabela(obterDataFimResumo(item))}</td>
+          <td>${item.centroCusto}</td>
+          <td>${moeda.format(item.valorOrcado || 0)}</td>
+          <td>${moeda.format(item.financeiroReal || 0)}</td>
+          <td class="${desvio < 0 ? "td-negativo" : "td-positivo"}">${moeda.format(desvio || 0)}</td>
+          <td>${percentual(item.fisicoReal)}</td>
+          <td class="${Number(item.afo || 0) < 100 ? "afo-baixo" : "afo-ok"}">${percentual(item.afo)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+// Escala genérica (percentual -> pontuação 0 a 4) a partir de 4
+// limites ascendentes [l1,l2,l3,l4].
+function pontuarPercentualComLimites(valor, limites) {
+  if (valor >= limites[3]) return 4;
+  if (valor >= limites[2]) return 3;
+  if (valor >= limites[1]) return 2;
+  if (valor >= limites[0]) return 1;
+  return 0;
+}
+
+// Escala usada por ADFísico, IMC, AFO(%), ADFinanceiro, AFO(R$) e IQO
+// na planilha original: <75%:0 · 75-85%:1 · 85-95%:2 · 95-99%:3 · ≥99%:4.
+function pontuarIndicadorSLA(percentualValor) {
+  return pontuarPercentualComLimites(percentualValor, [75, 85, 95, 99]);
+}
+
+// Escala própria do AT (Atendimento de Pragas e Vetores): <80%:0 ·
+// 80-85%:1 · 85-90%:2 · 90-95%:3 · ≥95%:4.
+function pontuarAT(percentualValor) {
+  return pontuarPercentualComLimites(percentualValor, [80, 85, 90, 95]);
+}
+
+// QAO é por QUANTIDADE de anomalias (não percentual) e é invertido:
+// quanto menos anomalias, maior a pontuação. Escala da planilha:
+// 7+:0 · 6:1 · 5:2 · 4:3 · ≤3:4.
+function pontuarQAO(quantidade) {
+  if (quantidade <= 3) return 4;
+  if (quantidade === 4) return 3;
+  if (quantidade === 5) return 2;
+  if (quantidade === 6) return 1;
+  return 0;
+}
+
+function classificarSLA(percentualFinal) {
+  if (percentualFinal >= 90) {
+    return { label: "Bom", cor: "#16a34a" };
+  }
+
+  if (percentualFinal >= 80) {
+    return { label: "Aceitável", cor: "#2563eb" };
+  }
+
+  if (percentualFinal >= 75) {
+    return { label: "Regular", cor: "#f59e0b" };
+  }
+
+  return { label: "Péssimo", cor: "#ef4444" };
+}
+
+// Chave usada pra salvar os campos digitáveis do SLA — um documento
+// por período (Data Início/Fim) selecionado nos filtros. Sem período
+// selecionado, cai num período "geral" (histórico completo).
+function chaveCicloAtual() {
+  const inicio = getValor("filtroInicio") || "geral";
+  const fim = getValor("filtroFim") || "geral";
+
+  return `${inicio}_${fim}`;
+}
+
+// Indicadores sem fonte de dados própria no sistema — ficam digitáveis
+// e salvos por período em slaIndicadoresManuais/{inicio_fim}:
+//   at  -> Atendimento das OMs de Pragas e Vetores (AT), percentual
+//   imc -> Idade Média da Carteira (IMC), percentual
+//   qao -> Quantidade de Anomalias em Obra (QAO), quantidade (não %)
+// IQO deixou de ser digitável — agora vem das respostas reais da tela
+// de Avaliação de Qualidade da Obra (pesquisa.html), ver
+// carregarPesquisasRespostasSLA() logo abaixo.
+let manuaisSLACache = {};
+
+async function carregarManuaisSLA() {
+  try {
+    const snap = await getDocs(collection(db, "slaIndicadoresManuais"));
+
+    manuaisSLACache = {};
+
+    snap.forEach((documento) => {
+      manuaisSLACache[documento.id] = documento.data();
+    });
+  } catch (erro) {
+    console.warn("Não foi possível carregar os indicadores manuais do SLA:", erro);
+  }
+}
+
+// Respostas da pesquisa de satisfação (pesquisasRespostas) — usadas
+// pra calcular o IQO. A regra do Firestore já filtra por Regional
+// sozinha (mesma regra usada na tela de pesquisa), então aqui é só
+// ler a coleção sem filtro nenhum no client.
+let pesquisasRespostasCache = [];
+
+async function carregarPesquisasRespostasSLA() {
+  try {
+    const snap = await getDocs(collection(db, "pesquisasRespostas"));
+
+    pesquisasRespostasCache = snap.docs.map((documento) => documento.data());
+  } catch (erro) {
+    console.warn("Não foi possível carregar as respostas de qualidade do SLA:", erro);
+    pesquisasRespostasCache = [];
+  }
+}
+
+async function salvarCampoManualSLA(campo, valor) {
+  const chave = chaveCicloAtual();
+
+  manuaisSLACache[chave] = {
+    ...manuaisSLACache[chave],
+    [campo]: valor,
+    atualizadoEm: serverTimestamp()
+  };
+
+  try {
+    await setDoc(
+      doc(db, "slaIndicadoresManuais", chave),
+      { [campo]: valor, atualizadoEm: serverTimestamp() },
+      { merge: true }
+    );
+  } catch (erro) {
+    console.warn(`Não foi possível salvar o campo "${campo}" do SLA:`, erro);
+  }
+}
+
+// Pesos dos 3 grupos do SLA (somam 100%) e peso INTERNO de cada
+// indicador dentro do seu grupo (também somam 100% por grupo).
+const PESO_GRUPO_SLA = {
+  "Produtividade": 0.65,
+  "Custo": 0.15,
+  "Qualidade": 0.20
+};
+
+function atualizarIndicadoresSLA(resumo) {
+  const corposPorGrupo = {
+    "Produtividade": document.getElementById("tabelaIndicadoresProdutividade"),
+    "Custo": document.getElementById("tabelaIndicadoresCusto"),
+    "Qualidade": document.getElementById("tabelaIndicadoresQualidade")
+  };
+
+  const resultadoFinal = document.getElementById("slaResultadoFinal");
+
+  if (!corposPorGrupo.Produtividade || !corposPorGrupo.Custo || !corposPorGrupo.Qualidade || !resultadoFinal) {
+    return;
+  }
+
+  const somaFisicoReal = soma(resumo, "fisicoReal");
+  const somaFisicoPlanejado = soma(resumo, "fisicoPlanejado");
+  const somaExecutado = soma(resumo, "financeiroReal");
+  const somaFinanceiroPlanejadoAteSemana = soma(resumo, "financeiroPlanejadoAteSemanaReal");
+
+  // ADFísico: agregado — soma do físico real / soma do físico
+  // planejado de todas as obras do período (não é média das AFOs).
+  const adFisico = somaFisicoPlanejado > 0
+    ? limitarPercentual((somaFisicoReal / somaFisicoPlanejado) * 100)
+    : 0;
+
+  // AFO (%): média simples da AFO calculada obra a obra — é o mesmo
+  // valor exibido na coluna "AFO(%)" da Relação de Obras.
+  const afoFisicoMedia = resumo.length
+    ? resumo.reduce((total, item) => total + numero(item.afo), 0) / resumo.length
+    : 0;
+
+  // ADFinanceiro: valor gasto / valor planejado até a mesma semana do
+  // último lançamento, agregado (soma) entre todas as obras do
+  // período — não contra o orçado total, que penalizava qualquer obra
+  // ainda não concluída só por ainda ter orçamento a gastar no futuro.
+  // Sem limitarPercentual: um grupo que gastou mais do que o previsto
+  // até agora precisa aparecer acima de 100%, não travado nele.
+  const adFinanceiro = somaFinanceiroPlanejadoAteSemana > 0
+    ? (somaExecutado / somaFinanceiroPlanejadoAteSemana) * 100
+    : 0;
+
+  // AFO (R$): mesma lógica da AFO física, só que financeira — média,
+  // obra a obra, de (valor gasto / valor planejado até a mesma semana
+  // do último lançamento daquela obra). Sem limitarPercentual: uma
+  // obra que gastou mais do que deveria até agora precisa penalizar a
+  // média (ex.: acima de 100%), não ser travada nele.
+  const afoFinanceiroMedia = resumo.length
+    ? resumo.reduce((total, item) => {
+      const planejadoAteSemana = numero(item.financeiroPlanejadoAteSemanaReal);
+      const executado = numero(item.financeiroReal);
+      const razao = planejadoAteSemana > 0 ? (executado / planejadoAteSemana) * 100 : 0;
+      return total + razao;
+    }, 0) / resumo.length
+    : 0;
+
+  // QAO: mesma regra da Gestão de Anomalias — só conta anomalia com
+  // prazo de resolução VENCIDO e de responsabilidade da Contratada.
+  const qaoCalculado = resumo
+    .flatMap((item) => item.anomaliasLista || [])
+    .filter((anomalia) =>
+      anomalia.responsabilidade === "Contratada" &&
+      obterStatusPrazoAnomalia(anomalia) === "vencidas"
+    ).length;
+
+  // IQO: % de respostas "satisfatórias" (nota média 4 ou 5, numa
+  // escala de 1 a 5) da pesquisa de qualidade (pesquisa.html), só das
+  // obras que aparecem no resumo filtrado desta tela — mesma lógica
+  // de "Σ votos satisfatórios / Σ votos totalizados" da planilha
+  // original.
+  const idsObrasResumo = new Set(resumo.map((item) => item.id));
+
+  const respostasQualidade = pesquisasRespostasCache.filter((resposta) =>
+    idsObrasResumo.has(resposta.obraId)
+  );
+
+  const iqoCalculado = respostasQualidade.length
+    ? (respostasQualidade.filter((resposta) => numero(resposta.notaMedia) >= 4).length /
+        respostasQualidade.length) * 100
+    : null;
+
+  // AT e IMC não têm fonte de dados própria no sistema hoje (Pragas e
+  // Vetores não é controlado aqui; datas de visita/orçamento/aprovação
+  // por etapa também não) — ficam digitáveis e salvos por ciclo.
+  const manual = manuaisSLACache[chaveCicloAtual()] || {};
+
+  const obterManual = (campo) =>
+    manual[campo] !== undefined && manual[campo] !== null
+      ? Number(manual[campo])
+      : null;
+
+  const atValor = obterManual("at");
+  const imcValor = obterManual("imc");
+
+  const indicadores = [
+    {
+      id: "at",
+      numero: 6,
+      processo: "Pragas e Vetores",
+      nome: "Atendimento das OM's do grupo de planejamento de Pragas e Vetores dentro do Prazo (AT)",
+      grupo: "Produtividade",
+      pesoInterno: 0.25,
+      metrica: "Σ OMs concluídas dentro do prazo / Σ OMs planejadas no período",
+      resultado: atValor,
+      pontuacao: atValor !== null ? pontuarAT(atValor) : 0,
+      editavel: true,
+      escalaTexto: "<80%: 0 · 80-85%: 1 · 85-90%: 2 · 90-95%: 3 · ≥95%: 4"
+    },
+    {
+      id: "adfisico",
+      numero: 7,
+      processo: "Pequenas Obras",
+      nome: "Aderência Física Acumulada das Obras (ADFísico)",
+      grupo: "Produtividade",
+      pesoInterno: 0.25,
+      metrica: "Σ avanço físico real / Σ avanço físico previsto no período",
+      resultado: adFisico,
+      pontuacao: pontuarIndicadorSLA(adFisico),
+      editavel: false,
+      escalaTexto: "<75%: 0 · 75-85%: 1 · 85-95%: 2 · 95-99%: 3 · ≥99%: 4"
+    },
+    {
+      id: "imc",
+      numero: 8,
+      processo: "Pequenas Obras",
+      nome: "Idade Média da Carteira de Obras (IMC)",
+      grupo: "Produtividade",
+      pesoInterno: 0.25,
+      metrica: "Tempo de visita, orçamento, aprovação, planejamento e programação / SLA de cada etapa",
+      resultado: imcValor,
+      pontuacao: imcValor !== null ? pontuarIndicadorSLA(imcValor) : 0,
+      editavel: true,
+      escalaTexto: "<75%: 0 · 75-85%: 1 · 85-95%: 2 · 95-99%: 3 · ≥99%: 4"
+    },
+    {
+      id: "afoFisico",
+      numero: 9,
+      processo: "Pequenas Obras",
+      nome: "Aderência Física por Obra (AFO %)",
+      grupo: "Produtividade",
+      pesoInterno: 0.25,
+      metrica: "Média da AFO (avanço físico executado / previsto) de cada obra",
+      resultado: afoFisicoMedia,
+      pontuacao: pontuarIndicadorSLA(afoFisicoMedia),
+      editavel: false,
+      escalaTexto: "<75%: 0 · 75-85%: 1 · 85-95%: 2 · 95-99%: 3 · ≥99%: 4"
+    },
+    {
+      id: "adfinanceiro",
+      numero: 10,
+      processo: "Pequenas Obras",
+      nome: "Aderência Financeira Acumulada das Obras (ADFinanceiro)",
+      grupo: "Custo",
+      pesoInterno: 0.50,
+      metrica: "Σ valor gasto / Σ valor planejado até a mesma semana do último lançamento (não o orçado total)",
+      resultado: adFinanceiro,
+      pontuacao: pontuarIndicadorSLA(adFinanceiro),
+      editavel: false,
+      escalaTexto: "<75%: 0 · 75-85%: 1 · 85-95%: 2 · 95-99%: 3 · ≥99%: 4"
+    },
+    {
+      id: "afoFinanceiro",
+      numero: 11,
+      processo: "Pequenas Obras",
+      nome: "Aderência Financeira por Obra (AFO R$)",
+      grupo: "Custo",
+      pesoInterno: 0.50,
+      metrica: "Média, obra a obra, de (valor gasto / valor planejado até a mesma semana do último lançamento)",
+      resultado: afoFinanceiroMedia,
+      pontuacao: pontuarIndicadorSLA(afoFinanceiroMedia),
+      editavel: false,
+      escalaTexto: "<75%: 0 · 75-85%: 1 · 85-95%: 2 · 95-99%: 3 · ≥99%: 4"
+    },
+    {
+      id: "iqo",
+      numero: 14,
+      processo: "Pequenas Obras",
+      nome: "Índice de Qualidade de Entrega da Obra (IQO)",
+      grupo: "Qualidade",
+      pesoInterno: 0.50,
+      metrica: "Σ votos satisfatórios (nota 4 ou 5) / Σ votos totalizados na Avaliação de Qualidade da Obra",
+      resultado: iqoCalculado,
+      // Sem nenhuma avaliação no período, a empresa não é penalizada.
+      pontuacao: iqoCalculado !== null ? pontuarIndicadorSLA(iqoCalculado) : 4,
+      editavel: false,
+      escalaTexto: "<75%: 0 · 75-85%: 1 · 85-95%: 2 · 95-99%: 3 · ≥99%: 4"
+    },
+    {
+      id: "qao",
+      numero: 15,
+      processo: "Pequenas Obras",
+      nome: "Quantidade de Anomalias em Obra (QAO)",
+      grupo: "Qualidade",
+      pesoInterno: 0.50,
+      metrica: "Quantidade de anomalias vencidas de responsabilidade da Contratada (quanto menos, melhor)",
+      resultado: qaoCalculado,
+      pontuacao: pontuarQAO(qaoCalculado),
+      editavel: false,
+      unidade: "quantidade",
+      escalaTexto: "≥7: 0 · 6: 1 · 5: 2 · 4: 3 · ≤3: 4"
+    }
+  ];
+
+  const gruposOrdem = ["Produtividade", "Custo", "Qualidade"];
+
+  const pontuacaoPorGrupo = {};
+
+  gruposOrdem.forEach((grupo) => {
+    const itensGrupo = indicadores.filter((ind) => ind.grupo === grupo);
+    const somaPesoInterno = itensGrupo.reduce((total, ind) => total + ind.pesoInterno, 0);
+
+    pontuacaoPorGrupo[grupo] = somaPesoInterno > 0
+      ? itensGrupo.reduce((total, ind) => total + (ind.pontuacao * ind.pesoInterno), 0) / somaPesoInterno
+      : 0;
+  });
+
+  gruposOrdem.forEach((grupo) => {
+    const corpo = corposPorGrupo[grupo];
+    const itensGrupo = indicadores.filter((ind) => ind.grupo === grupo);
+
+    corpo.innerHTML = itensGrupo.map((ind) => {
+      const resultadoTexto = ind.resultado === null
+        ? ""
+        : ind.unidade === "quantidade"
+          ? String(ind.resultado)
+          : percentual(ind.resultado);
+
+      const celulaResultado = ind.editavel
+        ? `<input
+            type="number"
+            min="0"
+            ${ind.unidade === "quantidade" ? "" : "max=\"100\" step=\"0.1\""}
+            class="input-manual-sla"
+            data-campo="${ind.id}"
+            value="${ind.resultado ?? ""}"
+            placeholder="${ind.unidade === "quantidade" ? "Informar qtde." : "Informar %"}"
+          >`
+        : resultadoTexto;
+
+      return `
+        <tr>
+          <td>${ind.numero}</td>
+          <td><span class="processo-pill">${ind.processo}</span></td>
+          <td>${ind.nome}</td>
+          <td>${(ind.pesoInterno * 100).toFixed(0)}%</td>
+          <td class="celula-metrica">${ind.metrica}</td>
+          <td>${celulaResultado}</td>
+          <td>${ind.escalaTexto}</td>
+          <td class="celula-pontuacao">${ind.pontuacao}</td>
+        </tr>
+      `;
+    }).join("");
+
+    corpo.querySelectorAll(".input-manual-sla").forEach((input) => {
+      input.addEventListener("change", (evento) => {
+        const campo = evento.target.getAttribute("data-campo");
+        const valor = Number(evento.target.value);
+
+        salvarCampoManualSLA(campo, Number.isFinite(valor) ? valor : null);
+        atualizarIndicadoresSLA(resumo);
+      });
+    });
+
+  });
+
+  const pontuacaoFinal = gruposOrdem.reduce(
+    (total, grupo) => total + (pontuacaoPorGrupo[grupo] * PESO_GRUPO_SLA[grupo]),
+    0
+  );
+
+  const percentualFinal = (pontuacaoFinal / 4) * 100;
+  const classificacao = classificarSLA(percentualFinal);
+
+  // Percentual atingido de cada grupo (Produtividade/Custo/Qualidade),
+  // exibido ao lado direito do respectivo card no Resultado Final.
+  const linhaComPercentual = (pontuacaoGrupo) => {
+    const percentualGrupo = (pontuacaoGrupo / 4) * 100;
+    const corGrupo = classificarSLA(percentualGrupo).cor;
+
+    return `
+      <div class="sla-resultado-linha">
+        <strong>${pontuacaoGrupo.toFixed(2)} / 4,00</strong>
+        <strong class="sla-resultado-percentual" style="color:${corGrupo}">${percentual(percentualGrupo)}</strong>
+      </div>
+    `;
+  };
+
+  resultadoFinal.innerHTML = `
+    <div class="sla-resultado-item">
+      <span>Produtividade (65%)</span>
+      ${linhaComPercentual(pontuacaoPorGrupo.Produtividade)}
+    </div>
+    <div class="sla-resultado-item">
+      <span>Custo (15%)</span>
+      ${linhaComPercentual(pontuacaoPorGrupo.Custo)}
+    </div>
+    <div class="sla-resultado-item">
+      <span>Qualidade (20%)</span>
+      ${linhaComPercentual(pontuacaoPorGrupo.Qualidade)}
+    </div>
+    <div class="sla-resultado-item">
+      <span>Pontuação Final</span>
+      <strong>${pontuacaoFinal.toFixed(2)} / 4,00</strong>
+    </div>
+    <div class="sla-resultado-item">
+      <span>Resultado</span>
+      <strong>${percentual(percentualFinal)}</strong>
+    </div>
+    <div class="sla-resultado-item">
+      <span>Classificação</span>
+      <strong style="color:${classificacao.cor}">${classificacao.label}</strong>
+    </div>
+  `;
 }
 
 function obterObrasFiltradasSemStatus() {
   const inicio = getValor("filtroInicio");
   const fim = getValor("filtroFim");
   const regional = getValor("filtroRegional");
-  const centroCusto = getValor("filtroCentroCusto");
   const localidade = getValor("filtroLocalidade");
-  const obraSelecionada = getValor("filtroObra");
 
   return obras.filter((obra) => {
-    const nome = obterNomeObra(obra);
-    const centro = obterCentroCustoObra(obra);
-
     const passaFiltrosBasicos =
       (!regional || obra.regional === regional) &&
-      (!centroCusto || centro === centroCusto) &&
-      (!localidade || obra.localidade === localidade) &&
-      (!obraSelecionada || nome === obraSelecionada);
+      (!localidade || obra.localidade === localidade);
 
     if (!passaFiltrosBasicos) {
       return false;
@@ -1059,16 +1258,67 @@ function itemRespeitaPeriodo(item, filtroInicio, filtroFim) {
    RESUMO DAS OBRAS
 ========================================= */
 
-function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
+// realListaCompleta (opcional) é o histórico INTEIRO de realizados da
+// obra, sem o filtro de Ciclo — usado só para decidir o status
+// (Em andamento/Paralisada/Concluída). Sem isso, uma obra sem nenhum
+// lançamento no ciclo selecionado "sumia" da contagem de Em andamento
+// mesmo tendo avanço registrado em ciclos anteriores (o Dashboard,
+// que não tem filtro de período, continuava contando ela
+// corretamente — daí a divergência entre as duas telas). Os demais
+// valores (AFO, IPF, financeiro etc.) continuam refletindo só o
+// ciclo selecionado, que é o comportamento esperado pra essa tela.
+function montarResumoObras(obrasLista, planLista, realLista, anomLista, realListaCompleta, planListaCompleta) {
   return obrasLista.map((obra) => {
     const nome = obterNomeObra(obra);
 
-    const plan = planLista.filter((item) =>
+    let plan = planLista.filter((item) =>
       item.ativo !== false && pertenceAObra(item, obra)
     );
 
-    const real = realLista.filter((item) => pertenceAObra(item, obra));
+    let real = realLista.filter((item) => pertenceAObra(item, obra));
     const anom = anomLista.filter((item) => pertenceAObra(item, obra));
+
+    const realParaStatus = realListaCompleta
+      ? realListaCompleta.filter((item) => pertenceAObra(item, obra))
+      : real;
+
+    // Status (e os totais que o decidem) sempre sobre o histórico completo.
+    const fisicoRealTotal = obterValorAcumulado(
+      realParaStatus,
+      ["fisicoRealAcum", "fisicoAcum", "fisicoRealizadoAcum", "avancoFisicoAcumulado"],
+      ["fisicoReal", "avancoFisicoNovo", "avancoFisico"],
+      100,
+      false,
+      false
+    );
+
+    const financeiroRealTotal = obterValorAcumulado(
+      realParaStatus,
+      ["financeiroRealAcum", "financeiroAcum", "financeiroRealAcumulado", "financeiroAcumulado"],
+      ["financeiroReal", "valorExecutado", "executado", "investimentoNovo", "custoSemana", "custo", "financeiro"],
+      null,
+      true,
+      false
+    );
+
+    const statusCalculado = calcularStatusObraConsolidado(
+      obra,
+      fisicoRealTotal,
+      financeiroRealTotal
+    );
+
+    // Obra Concluída mostra os valores finais (histórico completo, igual
+    // ao Dashboard), mesmo que tenha sido concluída antes do período
+    // filtrado — senão apareceria com físico e executado zerados.
+    if (statusCalculado === "Concluído") {
+      real = realParaStatus;
+
+      if (planListaCompleta) {
+        plan = planListaCompleta.filter((item) =>
+          item.ativo !== false && pertenceAObra(item, obra)
+        );
+      }
+    }
 
     const fisicoPlanejado = obterValorAcumulado(
       plan,
@@ -1101,6 +1351,7 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
         "avancoFisico"
       ],
       100,
+      false,
       false
     );
 
@@ -1138,7 +1389,8 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
         "custo"
       ],
       null,
-      true
+      true,
+      false
     );
 
     const valorTotalObra = obterValorOrcadoObra(obra);
@@ -1156,8 +1408,23 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
 
     const saldo = valorOrcado - financeiroReal;
 
-    const afo = fisicoPlanejado > 0
-      ? limitarPercentual((fisicoReal / fisicoPlanejado) * 100)
+    const fisicoPlanejadoAfo = obterFisicoPlanejadoNaSemanaReal(
+      plan,
+      real,
+      fisicoPlanejado
+    );
+
+    const financeiroPlanejadoAteSemanaReal = obterFinanceiroPlanejadoNaSemanaReal(
+      plan,
+      real,
+      financeiroPlanejado
+    );
+
+    // Sem limitarPercentual aqui: o Dashboard também não limita a AFO em
+    // 100% — uma obra adiantada em relação ao planejado (ex.: 140%)
+    // precisa aparecer igual nas duas telas, não ser cortada em 100%.
+    const afo = fisicoPlanejadoAfo > 0
+      ? (fisicoReal / fisicoPlanejadoAfo) * 100
       : 0;
 
     const ipf = valorOrcado > 0
@@ -1173,12 +1440,6 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
     const gutScore = obterGutScoreObra(obra);
     const fatorGut = obterFatorGUT(gutScore);
     const pesoPonderado = obterPesoPonderadoObra(obra, valorOrcado);
-
-    const statusCalculado = calcularStatusObraConsolidado(
-      obra,
-      fisicoReal,
-      financeiroReal
-    );
 
     const saude = calcularSaudeObra(
       afo,
@@ -1198,6 +1459,7 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
       status: statusCalculado,
       valorOrcado,
       financeiroPlanejado: financeiroPlanejadoCorrigido,
+      financeiroPlanejadoAteSemanaReal,
       financeiroReal,
       saldo,
       fisicoPlanejado,
@@ -1220,12 +1482,22 @@ function montarResumoObras(obrasLista, planLista, realLista, anomLista) {
   });
 }
 
+// somarSemanais controla o que fazer quando NENHUM campo "Acum" existe
+// no registro e só sobra o campo semanal: true = trata como incremento
+// da semana e SOMA ao longo do tempo (planejamento: cada semana define
+// quanto é planejado incrementar); false = trata o próprio campo
+// semanal como já sendo o valor acumulado até aquela semana (é o caso
+// do realizado — "fisicoReal"/"avancoFisico"/"financeiroReal" já vêm
+// prontos como acumulado até a semana, então o valor certo é o da
+// semana MAIS RECENTE, nunca a soma de todas — somar inflava o total,
+// às vezes passando de 100% e fazendo a obra parecer "Concluída" à toa).
 function obterValorAcumulado(
   lista,
   camposAcumulados,
   camposSemanais,
   limitePercentual,
-  usarMoeda = false
+  usarMoeda = false,
+  somarSemanais = true
 ) {
   const ordenados = ordenarItensPorPeriodo(lista);
 
@@ -1243,8 +1515,12 @@ function obterValorAcumulado(
     const semanal = primeiroNumeroValido(item, camposSemanais, usarMoeda);
 
     if (semanal !== null) {
-      somaSemanal += semanal;
-      ultimoAcumulado = somaSemanal;
+      if (somarSemanais) {
+        somaSemanal += semanal;
+        ultimoAcumulado = somaSemanal;
+      } else {
+        ultimoAcumulado = semanal;
+      }
     }
   });
 
@@ -1259,606 +1535,192 @@ function obterValorAcumulado(
     : numero(valor);
 }
 
-/* =========================================
-   KPIS
-========================================= */
-
-function atualizarKPIs(resumo) {
-  const totalObras = resumo.length;
-  const orcado = soma(resumo, "valorOrcado");
-  const executado = soma(resumo, "financeiroReal");
-  const saldo = orcado - executado;
-
-  const afoMedio = mediaPonderada(
-    resumo.map((item) => ({
-      valor: item.afo,
-      peso: item.pesoPonderado
-    }))
-  );
-
-  const saudeMedia = mediaPonderada(
-    resumo.map((item) => ({
-      valor: item.saude,
-      peso: item.pesoPonderado
-    }))
-  );
-
-  const obrasCriticas = resumo.filter((item) =>
-    item.saude < 70 ||
-    item.afo < 90 ||
-    item.anomCriticas > 0 ||
-    item.anomVencidas > 0
-  ).length;
-
-  const percExecutado = orcado > 0 ? (executado / orcado) * 100 : 0;
-  const percSaldo = orcado > 0 ? (saldo / orcado) * 100 : 0;
-
-  setTexto("kpiTotalObras", totalObras);
-  setTexto("kpiOrcado", moeda.format(orcado));
-  setTexto("kpiExecutado", moeda.format(executado));
-  setTexto("kpiSaldo", moeda.format(saldo));
-  setTexto("kpiAFO", percentual(afoMedio));
-  setTexto("kpiSaude", percentual(saudeMedia));
-  setTexto("kpiObrasCriticas", obrasCriticas);
-  setTexto("kpiExecutadoPerc", `${percentual(percExecutado)} do orçado`);
-  setTexto("kpiSaldoPerc", `${percentual(percSaldo)} do orçado`);
-  setTexto("kpiAFOStatus", obterStatusAFO(afoMedio));
-  setTexto("kpiSaudeStatus", obterStatusSaude(saudeMedia));
-  setTexto("ipfFinanceiro", percentual(percExecutado));
-  setTexto("afoFisico", percentual(afoMedio));
-
-  aplicarCorIndicador("kpiAFO", afoMedio, afoMedio < 90);
-  aplicarCorIndicador("kpiSaude", saudeMedia, saudeMedia < 70);
-  aplicarCorIndicador("ipfFinanceiro", percExecutado, percExecutado > 100);
-  aplicarCorIndicador("afoFisico", afoMedio, afoMedio < 90);
+function numeroSemanaItem(item) {
+  return parseInt(String(item?.semana || "").replace(/\D/g, "")) || 0;
 }
 
-function obterStatusAFO(valor) {
-  if (!valor) {
-    return "Sem dados";
-  }
-
-  if (valor >= 95) {
-    return "Saudável";
-  }
-
-  if (valor >= 90) {
-    return "Atenção";
-  }
-
-  return "Crítico";
-}
-
-function obterStatusSaude(valor) {
-  if (!valor) {
-    return "Sem dados";
-  }
-
-  if (valor >= 85) {
-    return "Saudável";
-  }
-
-  if (valor >= 70) {
-    return "Atenção";
-  }
-
-  return "Crítico";
-}
-
-/* =========================================
-   GRÁFICOS ANALÍTICOS
-========================================= */
-
-function limitarTopItens(mapa, limite = 8) {
-  const entradas = Object
-    .entries(mapa || {})
-    .filter(([, valor]) => numero(valor) > 0)
-    .sort((a, b) => numero(b[1]) - numero(a[1]));
-
-  if (entradas.length <= limite) {
-    return Object.fromEntries(entradas);
-  }
-
-  const principais = entradas.slice(0, limite);
-
-  const outros = entradas
-    .slice(limite)
-    .reduce((somaTotal, [, valor]) => somaTotal + numero(valor), 0);
-
-  return Object.fromEntries([
-    ...principais,
-    ["Outros", outros]
-  ]);
-}
-
-function atualizarGraficosDistribuicao(resumo) {
-  const porRegional = limitarTopItens(
-    agruparSoma(resumo, "regional", "valorOrcado"),
-    6
+// Alinha o AFO(%) com a mesma lógica do Dashboard: compara o físico
+// realizado com o físico PLANEJADO ATÉ A MESMA SEMANA do último
+// realizado — não com o último planejamento dentro do período, que
+// pode ser de uma semana mais adiantada (planejamento lançado com
+// antecedência) e inflar o denominador, derrubando o AFO artificialmente
+// em relação ao que o Dashboard mostra.
+function obterFisicoPlanejadoNaSemanaReal(plan, real, fisicoPlanejadoFallback) {
+  const semanaUltimoReal = numeroSemanaItem(
+    ordenarItensPorPeriodo(real).slice(-1)[0]
   );
 
-  const porCentro = limitarTopItens(
-    agruparSoma(resumo, "centroCusto", "valorOrcado"),
-    8
-  );
-
-  const porStatus = agruparContagem(
-    resumo,
-    "status"
-  );
-
-  chartRegional = renderizarGraficoBarra(
-    chartRegional,
-    "chartRegional",
-    Object.keys(porRegional),
-    Object.values(porRegional),
-    true,
-    true
-  );
-
-  chartCentroCusto = renderizarGraficoBarra(
-    chartCentroCusto,
-    "chartCentroCusto",
-    Object.keys(porCentro),
-    Object.values(porCentro),
-    true,
-    true
-  );
-
-  chartStatus = renderizarGraficoPizza(
-    chartStatus,
-    "chartStatus",
-    Object.keys(porStatus),
-    Object.values(porStatus)
-  );
-
-  const saudaveis = resumo.filter((item) => item.afo >= 95).length;
-  const atencao = resumo.filter((item) => item.afo >= 90 && item.afo < 95).length;
-  const criticas = resumo.filter((item) => item.afo < 90).length;
-
-  setTexto("semSaudaveis", saudaveis);
-  setTexto("semAtencao", atencao);
-  setTexto("semCriticas", criticas);
-}
-
-function renderizarGraficoBarra(
-  instancia,
-  canvasId,
-  labels,
-  valores,
-  formatoMoeda = false,
-  horizontal = false
-) {
-  const ctx = document.getElementById(canvasId);
-
-  if (!ctx || !ChartJS) {
-    return instancia;
+  if (semanaUltimoReal <= 0) {
+    return fisicoPlanejadoFallback;
   }
 
-  if (instancia) {
-    instancia.destroy();
-  }
+  const ordenadosPlan = ordenarItensPorPeriodo(plan);
 
-  const cores = [
-    "#007E7A",
-    "#0ABB98",
-    "#2563EB",
-    "#16A34A",
-    "#F59E0B",
-    "#7C3AED",
-    "#EF4444",
-    "#0F766E",
-    "#64748B"
-  ];
+  let ultimoAcumulado = null;
+  let somaSemanal = 0;
+  let valorNaSemana = null;
 
-  return new ChartJS(ctx, {
-    type: "bar",
+  ordenadosPlan.forEach((item) => {
+    const acumulado = primeiroNumeroValido(
+      item,
+      ["fisicoAcum", "fisicoPlanejadoAcum", "fisicoPlanejadoAcumulado", "fisicoAcumulado"],
+      false
+    );
 
-    data: {
-      labels,
+    if (acumulado !== null) {
+      ultimoAcumulado = acumulado;
+    } else {
+      const semanal = primeiroNumeroValido(item, ["fisico", "fisicoPlanejado", "percentualFisico"], false);
 
-      datasets: [
-        {
-          label: formatoMoeda ? "Investimento Orçado" : "Quantidade",
-          data: valores,
-          backgroundColor: labels.map((_, index) => cores[index % cores.length]),
-          borderColor: labels.map((_, index) => cores[index % cores.length]),
-          borderWidth: 1,
-          borderRadius: 8,
-          maxBarThickness: 34
-        }
-      ]
-    },
-
-    options: {
-      indexAxis: horizontal ? "y" : "x",
-      responsive: true,
-      maintainAspectRatio: false,
-
-      layout: {
-        padding: {
-          top: 8,
-          right: horizontal ? 52 : 12,
-          bottom: 8,
-          left: 6
-        }
-      },
-
-      plugins: {
-        legend: {
-          display: false
-        },
-
-        tooltip: {
-          callbacks: {
-            label: (context) =>
-              formatoMoeda
-                ? moeda.format(numero(context.raw))
-                : String(numero(context.raw))
-          }
-        },
-
-        datalabels: {
-          display: true,
-          anchor: "end",
-          align: horizontal ? "right" : "top",
-          offset: 4,
-
-          formatter: (valor) =>
-            formatoMoeda
-              ? moedaCompacta(valor)
-              : valor,
-
-          color: "#0f172a",
-
-          font: {
-            size: 9,
-            weight: "bold"
-          },
-
-          clamp: true,
-          clip: false
-        }
-      },
-
-      scales: {
-        x: {
-          beginAtZero: true,
-
-          grid: {
-            color: "rgba(148, 163, 184, 0.18)"
-          },
-
-          ticks: {
-            color: "#475569",
-            font: {
-              size: 10,
-              weight: "600"
-            },
-
-            callback: (valor) =>
-              formatoMoeda
-                ? moedaCompacta(valor)
-                : valor
-          }
-        },
-
-        y: {
-          beginAtZero: true,
-
-          grid: {
-            display: !horizontal,
-            color: "rgba(148, 163, 184, 0.18)"
-          },
-
-          ticks: {
-            autoSkip: false,
-            color: "#334155",
-            font: {
-              size: 10,
-              weight: "700"
-            }
-          }
-        }
+      if (semanal !== null) {
+        somaSemanal += semanal;
+        ultimoAcumulado = somaSemanal;
       }
     }
-  });
-}
 
-function renderizarGraficoPizza(instancia, canvasId, labels, valores) {
-  const ctx = document.getElementById(canvasId);
-
-  if (!ctx || !ChartJS) {
-    return instancia;
-  }
-
-  if (instancia) {
-    instancia.destroy();
-  }
-
-  const cores = [
-    "#007E7A",
-    "#2563EB",
-    "#16A34A",
-    "#F59E0B",
-    "#EF4444",
-    "#7C3AED",
-    "#64748B"
-  ];
-
-  return new ChartJS(ctx, {
-    type: "doughnut",
-
-    data: {
-      labels,
-
-      datasets: [
-        {
-          data: valores,
-          backgroundColor: labels.map((_, index) => cores[index % cores.length]),
-          borderColor: "#ffffff",
-          borderWidth: 3,
-          hoverOffset: 8
-        }
-      ]
-    },
-
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: "62%",
-
-      plugins: {
-        legend: {
-          position: "bottom",
-          labels: {
-            boxWidth: 10,
-            padding: 12,
-            color: "#0f172a",
-            font: {
-              size: 10,
-              weight: "bold"
-            }
-          }
-        },
-
-        tooltip: {
-          callbacks: {
-            label: (context) => {
-              const total = context
-                .chart
-                .data
-                .datasets[0]
-                .data
-                .reduce((somaTotal, valor) => somaTotal + numero(valor), 0);
-
-              const valor = numero(context.raw);
-              const perc = total > 0 ? (valor / total) * 100 : 0;
-
-              return `${context.label}: ${valor} obra(s) | ${percentual(perc)}`;
-            }
-          }
-        },
-
-        datalabels: {
-          display: (context) => numero(context.raw) > 0,
-
-          formatter: (valor, context) => {
-            const total = context
-              .chart
-              .data
-              .datasets[0]
-              .data
-              .reduce((somaTotal, item) => somaTotal + numero(item), 0);
-
-            const perc = total > 0 ? (numero(valor) / total) * 100 : 0;
-
-            return [
-              String(valor),
-              percentual(perc)
-            ];
-          },
-
-          color: "#ffffff",
-
-          font: {
-            size: 10,
-            weight: "bold"
-          }
-        }
-      }
+    if (numeroSemanaItem(item) === semanaUltimoReal && ultimoAcumulado !== null) {
+      valorNaSemana = ultimoAcumulado;
     }
   });
+
+  return valorNaSemana !== null
+    ? valorNaSemana
+    : fisicoPlanejadoFallback;
+}
+
+// Mesma lógica de obterFisicoPlanejadoNaSemanaReal, só que pro
+// financeiro: compara o Executado(R$) com o PLANEJADO financeiro até a
+// mesma semana do último lançamento real — não com o orçado total, que
+// penaliza qualquer obra ainda não concluída só por ainda ter dinheiro
+// a gastar no futuro.
+function obterFinanceiroPlanejadoNaSemanaReal(plan, real, financeiroPlanejadoFallback) {
+  const semanaUltimoReal = numeroSemanaItem(
+    ordenarItensPorPeriodo(real).slice(-1)[0]
+  );
+
+  if (semanaUltimoReal <= 0) {
+    return financeiroPlanejadoFallback;
+  }
+
+  const ordenadosPlan = ordenarItensPorPeriodo(plan);
+
+  let ultimoAcumulado = null;
+  let somaSemanal = 0;
+  let valorNaSemana = null;
+
+  ordenadosPlan.forEach((item) => {
+    const acumulado = primeiroNumeroValido(
+      item,
+      ["financeiroAcum", "financeiroPlanejadoAcum", "financeiroPlanejadoAcumulado", "financeiroAcumulado"],
+      true
+    );
+
+    if (acumulado !== null) {
+      ultimoAcumulado = acumulado;
+    } else {
+      const semanal = primeiroNumeroValido(item, ["financeiro", "financeiroPlanejado", "valorPlanejado"], true);
+
+      if (semanal !== null) {
+        somaSemanal += semanal;
+        ultimoAcumulado = somaSemanal;
+      }
+    }
+
+    if (numeroSemanaItem(item) === semanaUltimoReal && ultimoAcumulado !== null) {
+      valorNaSemana = ultimoAcumulado;
+    }
+  });
+
+  return valorNaSemana !== null
+    ? numeroMoedaCadastro(valorNaSemana)
+    : financeiroPlanejadoFallback;
 }
 
 /* =========================================
-   RANKING E ANOMALIAS
+   ANOMALIAS
 ========================================= */
 
-function atualizarRanking(resumo) {
-  const tbody = document.getElementById("tabelaRanking");
-
-  if (!tbody) {
-    return;
-  }
-
-  if (resumo.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="16">Nenhuma obra encontrada para os filtros selecionados.</td>
-      </tr>
-    `;
-    return;
-  }
-
-  const ranking = [...resumo].sort((a, b) =>
-    obterPontuacaoCriticidade(b) - obterPontuacaoCriticidade(a)
-  );
-
-  tbody.innerHTML = ranking.map((obra, index) => `
-    <tr data-obra-id="${textoSeguro(obra.id)}">
-      <td>${index + 1}</td>
-      <td>${textoSeguro(obra.nome)}</td>
-      <td>${textoSeguro(obra.regional)}</td>
-      <td>${textoSeguro(obra.localidade)}</td>
-      <td>${textoSeguro(obra.centroCusto)}</td>
-      <td>
-        <span class="status-pill ${classeStatus(obra.status)}">
-          ${textoSeguro(obra.status)}
-        </span>
-      </td>
-      <td class="${obra.afo < 90 ? "td-negativo" : "td-positivo"}">${percentual(obra.afo)}</td>
-      <td>${percentual(obra.fisicoReal)}</td>
-      <td>${moeda.format(obra.valorOrcado)}</td>
-      <td>${moeda.format(obra.financeiroReal)}</td>
-      <td class="${obra.saldo < 0 ? "td-negativo" : "td-positivo"}">${moeda.format(obra.saldo)}</td>
-      <td>${obra.anomalias}</td>
-      <td>${obra.anomAbertas}</td>
-      <td class="${obra.anomCriticas > 0 ? "td-negativo" : ""}">${obra.anomCriticas}</td>
-      <td class="${obra.anomVencidas > 0 ? "td-negativo" : ""}">${obra.anomVencidas}</td>
-      <td class="${obra.saude < 70 ? "td-negativo" : "td-positivo"}">${percentual(obra.saude)}</td>
-    </tr>
-  `).join("");
-
-  tbody.querySelectorAll("tr[data-obra-id]").forEach((linha) => {
-    linha.addEventListener("click", () => {
-      tbody.querySelectorAll("tr").forEach((item) =>
-        item.classList.remove("selecionada")
-      );
-
-      linha.classList.add("selecionada");
-
-      const id = linha.getAttribute("data-obra-id");
-      const obraSelecionada = ranking.find((obra) => String(obra.id) === String(id));
-
-      if (obraSelecionada) {
-        renderizarAnomaliasObra(obraSelecionada);
-      }
-    });
-  });
-}
-
-function obterPontuacaoCriticidade(obra) {
-  const saudeInvertida = 100 - numero(obra.saude);
-  const afoInvertido = 100 - numero(obra.afo);
-  const pesoValor = Math.log10(Math.max(numero(obra.valorOrcado), 1));
-  const pesoGut = obterFatorGUT(obra.gutScore || 0);
-
-  return (
-    saudeInvertida * 2 +
-    afoInvertido * 1.5 +
-    obra.anomCriticas * 15 +
-    obra.anomVencidas * 12 +
-    obra.anomAbertas * 5 +
-    pesoValor * 4 +
-    pesoGut * 10
-  );
-}
-
-function renderizarAnomaliasObra(obra) {
-  const resumo = document.getElementById("anomaliasObraSelecionada");
+// Renderiza as LINHAS da tabela de anomalias (compartilhado entre a
+// visão "todas as obras" e a visão de uma obra específica) — cada
+// anomalia já precisa vir com "nomeObraExibicao" preenchido.
+// Tela apenas de VISUALIZAÇÃO: sem coluna de edição de status, sem
+// Ação Corretiva e sem coluna de Ação.
+function renderizarLinhasAnomalias(lista) {
   const tbody = document.getElementById("tabelaDescricaoAnomalias");
 
   if (!tbody) {
     return;
   }
 
-  const lista = obra.anomaliasLista || [];
-
-  if (resumo) {
-    resumo.className = "anomalias-obra-resumo";
-    resumo.innerHTML = `
-      <strong>${textoSeguro(obra.nome)}</strong>
-      <span>
-        ${lista.length} anomalia(s) | ${obra.anomCriticas} crítica(s) | ${obra.anomVencidas} vencida(s)
-      </span>
-    `;
-  }
-
   if (lista.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="12">Nenhuma anomalia registrada para esta obra.</td>
+        <td colspan="10">Nenhuma anomalia registrada.</td>
       </tr>
     `;
     return;
   }
 
-  anomaliasRenderizadas = new Map();
-
-  tbody.innerHTML = lista.map((anomalia, index) => {
-    const chave = criarChaveRenderizacaoAnomalia(anomalia, index);
-    anomaliasRenderizadas.set(chave, anomalia);
-
-    const podeEditar = usuarioEhAdministrador(usuarioLogadoGlobal);
+  tbody.innerHTML = lista.map((anomalia) => {
+    const vencida = obterStatusPrazoAnomalia(anomalia) === "vencidas";
 
     return `
       <tr>
+        <td>${textoSeguro(anomalia.nomeObraExibicao || "-")}</td>
         <td>${formatarDataTabela(anomalia.data)}</td>
         <td>${textoSeguro(anomalia.semana || "-")}</td>
         <td>${textoSeguro(anomalia.tipo || "-")}</td>
         <td>${textoSeguro(anomalia.criticidade || "-")}</td>
         <td>${textoSeguro(anomalia.impacto || "-")}</td>
         <td>
-          <span class="status-anomalia-pill ${classeStatusAnomalia(anomalia.status)}">
-            ${textoSeguro(anomalia.status || "Aberta")}
+          <span class="status-anomalia-pill ${vencida ? "anomalia-vencida" : classeStatusAnomalia(anomalia.status)}">
+            ${vencida ? "Vencida" : textoSeguro(anomalia.status || "Aberta")}
           </span>
         </td>
-        <td>
-          <select class="select-status-anomalia" data-chave="${textoSeguro(chave)}" ${podeEditar ? "" : "disabled"}>
-            <option value="Aberta" ${statusAnomaliaIgual(anomalia.status, "Aberta") ? "selected" : ""}>Aberta</option>
-            <option value="Em tratativa" ${statusAnomaliaIgual(anomalia.status, "Em tratativa") ? "selected" : ""}>Em tratativa</option>
-            <option value="Resolvida" ${statusAnomaliaIgual(anomalia.status, "Resolvida") ? "selected" : ""}>Resolvida</option>
-          </select>
-        </td>
         <td>${formatarPrazo(anomalia.prazoTratativa)}</td>
-        <td>${textoSeguro(anomalia.responsavel || "-")}</td>
+        <td>${textoSeguro(anomalia.responsabilidade || "-")}</td>
         <td>${textoSeguro(anomalia.descricao || "-")}</td>
-        <td>${textoSeguro(anomalia.acaoCorretiva || "-")}</td>
-        <td>
-          <button
-            type="button"
-            class="btn-alterar-status-anomalia"
-            data-chave="${textoSeguro(chave)}"
-            ${podeEditar ? "" : "disabled"}
-          >
-            Alterar
-          </button>
-        </td>
       </tr>
     `;
   }).join("");
-
-  tbody.querySelectorAll(".btn-alterar-status-anomalia").forEach((botao) => {
-    botao.addEventListener("click", () => {
-      const chave = botao.getAttribute("data-chave");
-      const anomalia = anomaliasRenderizadas.get(chave);
-      const select = tbody.querySelector(
-        `.select-status-anomalia[data-chave="${cssEscapeSafe(chave)}"]`
-      );
-      const novoStatus = select?.value || anomalia?.status || "";
-
-      abrirModalStatusAnomalia(anomalia, novoStatus);
-    });
-  });
 }
 
-function limparTabelaAnomaliasSelecionada() {
-  const resumo = document.getElementById("anomaliasObraSelecionada");
-  const tbody = document.getElementById("tabelaDescricaoAnomalias");
+// TODAS as anomalias das obras filtradas aparecem aqui de uma vez,
+// sem precisar selecionar nenhuma obra.
+function renderizarTodasAnomalias(resumo) {
+  const resumoElemento = document.getElementById("anomaliasObraSelecionada");
 
-  if (resumo) {
-    resumo.className = "anomalias-obra-vazio";
-    resumo.textContent = "Selecione uma obra no ranking para visualizar as anomalias registradas.";
-  }
+  const listaCompleta = resumo.flatMap((item) =>
+    (item.anomaliasLista || []).map((anomalia) => ({
+      ...anomalia,
+      nomeObraExibicao: item.nome
+    }))
+  );
 
-  if (tbody) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="12">Nenhuma obra selecionada.</td>
-      </tr>
+  // Só é contabilizada e imputada à Contratada a anomalia com prazo de
+  // resolução VENCIDO e cuja responsabilidade pela tratativa seja dela
+  // — as demais (no prazo, de responsabilidade da Vale ou já
+  // resolvidas) não entram nem na tabela nem nas contagens abaixo.
+  const lista = listaCompleta.filter((anomalia) =>
+    anomalia.responsabilidade === "Contratada" &&
+    obterStatusPrazoAnomalia(anomalia) === "vencidas"
+  );
+
+  // Todo item de "lista" já é vencido por definição do filtro acima,
+  // então só falta contar quantos são críticos.
+  const totalCriticas = lista.filter((anomalia) => ehCritica(anomalia.criticidade)).length;
+
+  if (resumoElemento) {
+    resumoElemento.className = "anomalias-obra-resumo";
+    resumoElemento.innerHTML = `
+      <strong>Todas as obras (${resumo.length})</strong>
+      <span>
+        ${lista.length} anomalia(s) vencida(s) | ${totalCriticas} crítica(s)
+      </span>
     `;
   }
+
+  renderizarLinhasAnomalias(lista);
 }
 
 /* =========================================
@@ -2552,38 +2414,8 @@ const formatarDataCurta = (data) =>
    MATEMÁTICA
 ========================================= */
 
-function agruparContagem(lista, campo) {
-  return lista.reduce((acc, item) => {
-    const chave = item[campo] || "Não informado";
-    acc[chave] = (acc[chave] || 0) + 1;
-    return acc;
-  }, {});
-}
-
-function agruparSoma(lista, campoGrupo, campoValor) {
-  return lista.reduce((acc, item) => {
-    const chave = item[campoGrupo] || "Não informado";
-    acc[chave] = (acc[chave] || 0) + numero(item[campoValor]);
-    return acc;
-  }, {});
-}
-
 function soma(lista, campo) {
   return lista.reduce((total, item) => total + numero(item[campo]), 0);
-}
-
-function mediaPonderada(lista) {
-  const validos = lista.filter((item) => numero(item.valor) > 0 && numero(item.peso) > 0);
-  const somaPesos = validos.reduce((total, item) => total + numero(item.peso), 0);
-
-  if (somaPesos <= 0) {
-    return 0;
-  }
-
-  return validos.reduce((total, item) =>
-    total + numero(item.valor) * numero(item.peso),
-    0
-  ) / somaPesos;
 }
 
 function numero(valor) {
@@ -2793,28 +2625,6 @@ function limitarEntre(valor, min, max) {
   return Math.min(Math.max(numero(valor), min), max);
 }
 
-function arredondar1(valor) {
-  return Number(numero(valor).toFixed(1));
-}
-
-function moedaCompacta(valor) {
-  const numeroValor = numero(valor);
-
-  if (Math.abs(numeroValor) >= 1000000000) {
-    return `R$ ${(numeroValor / 1000000000).toFixed(1).replace(".", ",")} bi`;
-  }
-
-  if (Math.abs(numeroValor) >= 1000000) {
-    return `R$ ${(numeroValor / 1000000).toFixed(1).replace(".", ",")} mi`;
-  }
-
-  if (Math.abs(numeroValor) >= 1000) {
-    return `R$ ${(numeroValor / 1000).toFixed(0).replace(".", ",")} mil`;
-  }
-
-  return moeda.format(numeroValor);
-}
-
 /* =========================================
    ANOMALIAS - APOIO
 ========================================= */
@@ -2849,25 +2659,6 @@ function ehResolvida(valor) {
     texto.includes("finalizada") ||
     texto.includes("encerrada")
   );
-}
-
-function statusAnomaliaIgual(valorAtual, valorComparado) {
-  const atual = normalizarTexto(valorAtual);
-  const comparado = normalizarTexto(valorComparado);
-
-  if (comparado.includes("tratativa")) {
-    return atual.includes("tratativa") || atual.includes("tratamento");
-  }
-
-  if (comparado.includes("resolvida")) {
-    return ehResolvida(atual);
-  }
-
-  if (comparado.includes("aberta")) {
-    return ehAberta(atual);
-  }
-
-  return atual === comparado;
 }
 
 function obterStatusPrazoAnomalia(anomalia) {
@@ -2905,41 +2696,9 @@ function formatarPrazo(valor) {
   return data ? data.toLocaleDateString("pt-BR") : "-";
 }
 
-function criarChaveRenderizacaoAnomalia(anomalia, index) {
-  return [
-    anomalia.origem,
-    anomalia.docId,
-    anomalia.obraId,
-    anomalia.semana,
-    index
-  ].join("_");
-}
-
 /* =========================================
    CLASSES E STATUS
 ========================================= */
-
-function classeStatus(status) {
-  const texto = normalizarTexto(status);
-
-  if (texto.includes("planejado")) {
-    return "status-planejado";
-  }
-
-  if (texto.includes("andamento") || texto.includes("execucao")) {
-    return "status-andamento";
-  }
-
-  if (texto.includes("concluido") || texto.includes("concluida")) {
-    return "status-concluido";
-  }
-
-  if (texto.includes("paralisado") || texto.includes("paralisada")) {
-    return "status-paralisado";
-  }
-
-  return "status-planejado";
-}
 
 function classeStatusAnomalia(status) {
   const texto = normalizarTexto(status);
@@ -3002,28 +2761,8 @@ function aplicarCorIndicador(id, valor, condicaoNegativa) {
 }
 
 /* =========================================
-   ADMIN / DOM / TEXTO
+   DOM / TEXTO
 ========================================= */
-
-function usuarioEhAdministrador(usuario) {
-  const perfil = normalizarTexto(
-    usuario?.perfil ||
-    usuario?.tipoUsuario ||
-    usuario?.nivelAcesso ||
-    usuario?.role ||
-    usuario?.acesso ||
-    usuario?.email ||
-    ""
-  );
-
-  return (
-    perfil.includes("administrador") ||
-    perfil.includes("admin") ||
-    usuario?.admin === true ||
-    usuario?.isAdmin === true ||
-    usuario?.administrador === true
-  );
-}
 
 function setTexto(id, valor) {
   const elemento = document.getElementById(id);
@@ -3071,12 +2810,3 @@ function normalizarTexto(valor) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function cssEscapeSafe(valor) {
-  if (window.CSS && typeof window.CSS.escape === "function") {
-    return window.CSS.escape(valor);
-  }
-
-  return String(valor || "")
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, "\\\"");
-}

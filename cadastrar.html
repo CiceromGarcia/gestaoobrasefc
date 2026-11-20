@@ -38,7 +38,7 @@
   <!-- CSS -->
   <link
     rel="stylesheet"
-    href="./cadastrar.css?v=005"
+    href="./cadastrar.css?v=009"
   >
 
 </head>
@@ -375,6 +375,96 @@
 
           </div>
 
+          <div class="form-group form-group-wide">
+
+            <label for="emailAvaliacaoQualidade">
+              E-mail para Avaliação de Qualidade
+            </label>
+
+            <input
+              type="email"
+              id="emailAvaliacaoQualidade"
+              placeholder="fiscal@empresa.com"
+            >
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- =========================
+           CLASSIFICAÇÃO DA DEMANDA (MATRIZ DOCAS)
+      ========================== -->
+
+      <div class="section">
+
+        <div class="section-title">
+          <span class="section-numero">03</span>
+          Classificação da Demanda
+        </div>
+
+        <div class="form-grid">
+
+          <div class="form-group">
+
+            <label for="complexidadeProjeto">
+              Complexidade de Projeto
+            </label>
+
+            <input
+              type="text"
+              id="complexidadeProjeto"
+              placeholder="Automático (Prioridade GUT)"
+              readonly
+            >
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="situacaoAtivo">
+              Situação do Ativo
+            </label>
+
+            <select id="situacaoAtivo">
+
+              <option value="">
+                Selecione
+              </option>
+
+              <option value="Existente">
+                Existente
+              </option>
+
+              <option value="Não existente">
+                Não existente
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="form-group">
+
+            <label>
+              Classificação (Matriz DOCAS)
+            </label>
+
+            <div class="gut-badge docas-badge">
+
+              <span id="docasScore">
+                --
+              </span>
+
+              <small id="docasNivel">
+                D/O/C/A/S
+              </small>
+
+            </div>
+
+          </div>
+
         </div>
 
       </div>
@@ -386,7 +476,7 @@
       <div class="section">
 
         <div class="section-title">
-          <span class="section-numero">03</span>
+          <span class="section-numero">04</span>
           Planejamento e Prioridade
         </div>
 
@@ -527,7 +617,7 @@
       <div class="section">
 
         <div class="section-title">
-          <span class="section-numero">04</span>
+          <span class="section-numero">05</span>
           Escopo da Obra
         </div>
 
@@ -576,7 +666,7 @@
 
   <script
     type="module"
-    src="./cadastrar.js?v=003"
+    src="./cadastrar.js?v=006"
   ></script>
   <script src="./pwa-register.js"></script>
 

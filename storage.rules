@@ -21,12 +21,7 @@ service firebase.storage {
       return ehAdmin()
         || (
           estaLogado()
-          && request.auth.token.perfilCurvaS in [
-            "gestor",
-            "planejador",
-            "engenharia",
-            "editor"
-          ]
+          && request.auth.token.perfilCurvaS == "planejador"
         );
     }
 

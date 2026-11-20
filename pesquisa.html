@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Avaliação de Qualidade da Obra
+  </title>
+
+  <link
+    rel="icon"
+    type="image/png"
+    href="./favicon.png"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="./apple-touch-icon.png"
+  >
+
+  <!-- PWA: permite "instalar" o sistema como app no celular -->
+  <link
+    rel="manifest"
+    href="./manifest.json"
+  >
+  <meta
+    name="theme-color"
+    content="#007E7A"
+  >
+
+  <!-- CSS -->
+  <link
+    rel="stylesheet"
+    href="pesquisa.css?v=008"
+  >
+
+  <!-- FONT AWESOME -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  >
+
+</head>
+
+<body>
+
+  <main class="main">
+
+    <!-- =====================================
+         TOPO
+    ====================================== -->
+
+    <header class="topbar topbar-compact">
+
+      <div class="title-area">
+
+        <a
+          href="dashboard.html"
+          class="btn-voltar"
+        >
+
+          <i class="fa-solid fa-arrow-left"></i>
+
+          Dashboard
+
+        </a>
+
+        <div class="title-text">
+
+          <h1>
+            Avaliação de Qualidade da Obra
+          </h1>
+
+          <p>
+            Pesquisa de satisfação usada no cálculo do IQO (Índice de Qualidade de Entrega da Obra)
+          </p>
+
+        </div>
+
+      </div>
+
+    </header>
+
+    <!-- =====================================
+         OBRA AVALIADA
+    ====================================== -->
+
+    <section class="card">
+
+      <div class="card-title">
+
+        <div>
+
+          <h2>
+            Obra Avaliada
+          </h2>
+
+          <span>
+            Selecione a obra que deseja avaliar.
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="campos-obra-filtro">
+
+        <div class="campo">
+
+          <label for="selectLocalidade">
+            Localidade
+          </label>
+
+          <select id="selectLocalidade">
+
+            <option value="">
+              Todas
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="campo">
+
+          <label for="selectObra">
+            Obra
+          </label>
+
+          <select id="selectObra">
+
+            <option value="">
+              Carregando obras...
+            </option>
+
+          </select>
+
+        </div>
+
+      </div>
+
+      <div
+        class="obra-detalhes"
+        id="obraDetalhes"
+      >
+
+        <div class="obra-detalhe-item">
+          <span>Regional</span>
+          <strong id="detalheRegional">-</strong>
+        </div>
+
+        <div class="obra-detalhe-item">
+          <span>Localidade</span>
+          <strong id="detalheLocalidade">-</strong>
+        </div>
+
+        <div class="obra-detalhe-item">
+          <span>Data Início</span>
+          <strong id="detalheDataInicio">-</strong>
+        </div>
+
+        <div class="obra-detalhe-item">
+          <span>Data Fim</span>
+          <strong id="detalheDataFim">-</strong>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- =====================================
+         PERGUNTAS
+    ====================================== -->
+
+    <section class="card">
+
+      <div class="card-title">
+
+        <div>
+
+          <h2>
+            Perguntas
+          </h2>
+
+          <span>
+            Dê uma nota de 1 a 5 estrelas para cada critério abaixo.
+          </span>
+
+        </div>
+
+      </div>
+
+      <div
+        class="lista-perguntas"
+        id="listaPerguntas"
+      ></div>
+
+    </section>
+
+    <!-- =====================================
+         COMENTÁRIO
+    ====================================== -->
+
+    <section class="card">
+
+      <div class="card-title">
+
+        <div>
+
+          <h2>
+            Comentário <small>(opcional)</small>
+          </h2>
+
+          <span>
+            Alguma observação adicional sobre a entrega da obra?
+          </span>
+
+        </div>
+
+      </div>
+
+      <textarea
+        id="comentario"
+        placeholder="Escreva aqui sua observação..."
+      ></textarea>
+
+    </section>
+
+    <button
+      type="button"
+      id="btnEnviar"
+      class="btn-enviar"
+    >
+
+      <i class="fa-solid fa-paper-plane"></i>
+
+      Enviar Avaliação
+
+    </button>
+
+    <!-- =====================================
+         PESQUISAS PENDENTES
+    ====================================== -->
+
+    <section
+      class="card secao-pendentes"
+      id="secaoPendentes"
+    >
+
+      <div class="card-title card-title-recolhivel" role="button" tabindex="0" title="Recolher/expandir">
+
+        <div>
+
+          <h2>
+            Pesquisas Pendentes
+          </h2>
+
+          <span>
+            Avaliações ainda não respondidas. Se a pessoa não estiver mais disponível, troque o e-mail abaixo — a pesquisa é reenviada automaticamente para o novo endereço.
+          </span>
+
+        </div>
+
+      </div>
+
+      <div
+        class="lista-pendentes"
+        id="listaPendentes"
+      >
+        Carregando pesquisas pendentes...
+      </div>
+
+    </section>
+
+    <!-- =====================================
+         PESQUISAS RESPONDIDAS
+    ====================================== -->
+
+    <section
+      class="card secao-pendentes"
+      id="secaoRespondidas"
+    >
+
+      <div class="card-title card-title-recolhivel" role="button" tabindex="0" title="Recolher/expandir">
+
+        <div>
+
+          <h2>
+            Pesquisas Respondidas
+          </h2>
+
+          <span>
+            Avaliações já recebidas — cada perfil vê apenas as obras da própria Regional.
+          </span>
+
+        </div>
+
+      </div>
+
+      <div
+        class="lista-respondidas"
+        id="listaRespondidas"
+      >
+        Carregando pesquisas respondidas...
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- JS -->
+  <script
+    type="module"
+    src="pesquisa.js?v=012"
+  ></script>
+  <script src="./pwa-register.js"></script>
+
+</body>
+
+</html>

@@ -12,7 +12,18 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
 
-import { protegerPagina } from "./authGuard.js";
+import {
+  protegerPagina,
+  usuarioEhAdministrador,
+  usuarioEhPlanejador
+} from "./authGuard.js";
+
+import {
+  calcularCronograma,
+  resumirCronograma,
+  montarGanttHTML,
+  formatarPeso
+} from "./cronograma-core.js?v=004";
 
 import {
   collection,
@@ -736,6 +747,84 @@ function obterStatusAnomaliaItem(item) {
   );
 }
 
+/* =========================
+   CRONOGRAMA (somente leitura)
+========================= */
+
+async function renderizarCronograma(obraId) {
+  const gantt = $("ganttCronogramaObra");
+  const resumoTexto = $("resumoCronogramaObra");
+  const link = $("linkEditarCronograma");
+
+  if (!gantt) {
+    return;
+  }
+
+  const podeEditar =
+    usuarioEhAdministrador(usuarioLogadoGlobal) ||
+    usuarioEhPlanejador(usuarioLogadoGlobal);
+
+  if (link) {
+    link.href = `cronograma.html?obraId=${encodeURIComponent(obraId)}`;
+    link.style.display = "";
+    link.lastChild.textContent = podeEditar ? " Editar cronograma" : " Abrir cronograma";
+  }
+
+  try {
+    const [snapCronograma, snapCalendario] = await Promise.all([
+      getDoc(doc(db, "cronogramasObra", obraId)),
+      getDoc(doc(db, "configuracoesSistema", "calendario"))
+    ]);
+
+    const calendario = snapCalendario.exists()
+      ? {
+          sabado: Boolean(snapCalendario.data().sabado),
+          feriados: snapCalendario.data().feriados || []
+        }
+      : { sabado: false, feriados: [] };
+
+    if (!snapCronograma.exists()) {
+      gantt.innerHTML = montarGanttHTML(
+        { inicio: "2000-01-01", tasks: [] },
+        calendario,
+        {
+          vazioTitulo: "Esta obra ainda não tem cronograma",
+          vazioTexto: podeEditar ? " Use “Editar cronograma” para montar." : ""
+        }
+      );
+      return;
+    }
+
+    const dados = snapCronograma.data();
+
+    const estadoCronograma = {
+      inicio: dados.inicio,
+      tasks: Array.isArray(dados.tasks) ? dados.tasks : [],
+      sabados: Array.isArray(dados.sabados) ? dados.sabados : []
+    };
+
+    const resumo = resumirCronograma(
+      estadoCronograma,
+      calendario,
+      calcularCronograma(estadoCronograma, calendario)
+    );
+
+    if (resumoTexto && resumo.quantidade) {
+      resumoTexto.textContent =
+        `${resumo.quantidade} atividades · ${formatarData(resumo.primeiro)} a ${formatarData(resumo.ultimo)} · ` +
+        `${resumo.diasUteis} dias úteis · peso total ${formatarPeso(resumo.somaPesos)} · avanço ${Math.round(resumo.avanco)}%`;
+    }
+
+    gantt.innerHTML = montarGanttHTML(estadoCronograma, calendario, {
+      vazioTitulo: "Cronograma sem atividades"
+    });
+  } catch (erro) {
+    console.error("Erro ao carregar o cronograma da obra:", erro);
+    gantt.innerHTML =
+      '<div class="cr-vazio">Não foi possível carregar o cronograma desta obra.</div>';
+  }
+}
+
 function renderizarAnomalias(realizados) {
   if (!listaAnomalias || !semAnomalias) {
     return;
@@ -848,6 +937,10 @@ function renderizarHistorico(obra) {
 
     if (item.localidadeAnterior !== undefined && item.localidadeAnterior !== item.localidadeNova) {
       campos.push(`<div class="campo-alterado">Localidade: <strong>${textoSeguro(item.localidadeAnterior || "-")}</strong> → <strong>${textoSeguro(item.localidadeNova || "-")}</strong></div>`);
+    }
+
+    if (item.centroCustoAnterior !== undefined && item.centroCustoAnterior !== item.centroCustoNovo) {
+      campos.push(`<div class="campo-alterado">Centro de Custo: <strong>${textoSeguro(item.centroCustoAnterior || "-")}</strong> → <strong>${textoSeguro(item.centroCustoNovo || "-")}</strong></div>`);
     }
 
     if (item.valorOrcadoAnterior !== undefined && item.valorOrcadoAnterior !== item.valorOrcadoNovo) {
@@ -984,6 +1077,7 @@ async function carregarFichaDaObra() {
   renderizarIdentificacao(obra, statusFinal);
   renderizarResumo(orcado, executado, fisicoAtual, afo);
   renderizarCurvaS(semanasFinal);
+  await renderizarCronograma(id);
   renderizarAnomalias(realizados);
   renderizarFotos(realizados);
   renderizarHistorico(obra);

@@ -38,7 +38,7 @@
   <!-- CSS -->
   <link
     rel="stylesheet"
-    href="./dashboard.css?v=012"
+    href="./dashboard.css?v=018"
   />
 
   <!-- FONT AWESOME -->
@@ -161,6 +161,16 @@
 
         </a>
 
+        <a href="./cronograma.html">
+
+          <i class="fa-solid fa-diagram-project"></i>
+
+          <span>
+            Cronograma da Obra
+          </span>
+
+        </a>
+
         <a href="./atualizar-curva-s.html">
 
           <i class="fa-solid fa-chart-line"></i>
@@ -176,7 +186,17 @@
           <i class="fa-solid fa-chart-simple"></i>
 
           <span>
-            Indicadores Estratégicos
+            SLA
+          </span>
+
+        </a>
+
+        <a href="./pesquisa.html">
+
+          <i class="fa-solid fa-star"></i>
+
+          <span>
+            Avaliação de Qualidade
           </span>
 
         </a>
@@ -342,7 +362,7 @@
            FILTROS
       ====================================== -->
 
-      <div class="card">
+      <div class="card" id="cardFiltrosDashboard">
 
         <div class="filters">
 
@@ -489,6 +509,16 @@
         </div>
 
       </section>
+
+      <!-- Cabeçalho grande usado apenas na impressão/exportação quando
+           uma obra específica está com o detalhamento aberto -->
+      <div
+        class="cabecalho-impressao-obra"
+        id="cabecalhoImpressaoObra"
+      >
+        <span id="cabecalhoImpressaoObraId"></span>
+        <span id="cabecalhoImpressaoObraNome"></span>
+      </div>
 
       <!-- =====================================
            RESUMO EXECUTIVO
@@ -714,7 +744,7 @@
 
   <script
     type="module"
-    src="./dashboard.js?v=013"
+    src="./dashboard.js?v=016"
   ></script>
   <script src="./pwa-register.js"></script>
 

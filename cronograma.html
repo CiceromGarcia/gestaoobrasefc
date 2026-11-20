@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Cronograma da Obra
+  </title>
+
+  <link
+    rel="icon"
+    type="image/png"
+    href="./favicon.png"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="./apple-touch-icon.png"
+  >
+
+  <!-- PWA: permite "instalar" o sistema como app no celular -->
+  <link
+    rel="manifest"
+    href="./manifest.json"
+  >
+  <meta
+    name="theme-color"
+    content="#007E7A"
+  >
+
+  <!-- CSS -->
+  <link
+    rel="stylesheet"
+    href="cronograma-pagina.css?v=008"
+  >
+
+  <link
+    rel="stylesheet"
+    href="cronograma.css?v=002"
+  >
+
+  <!-- FONT AWESOME -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  >
+
+</head>
+
+<body>
+
+  <main class="main">
+
+    <!-- =====================================
+         TOPO
+    ====================================== -->
+
+    <header class="topbar">
+
+      <div class="title-area">
+
+        <a
+          href="dashboard.html"
+          class="btn-voltar"
+        >
+
+          <i class="fa-solid fa-arrow-left"></i>
+
+          Dashboard
+
+        </a>
+
+        <div class="title-text">
+
+          <h1>
+            Cronograma da Obra
+          </h1>
+
+          <p>
+            Atividades, predecessoras, pesos e linha do tempo em dias úteis
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="top-actions">
+
+        <button
+          type="button"
+          class="btn"
+          id="btnCalendario"
+          hidden
+        >
+          <i class="fa-solid fa-calendar-check"></i>
+          Calendário padrão
+        </button>
+
+        <button
+          type="button"
+          class="btn"
+          id="btnCsv"
+        >
+          <i class="fa-solid fa-file-csv"></i>
+          Exportar CSV
+        </button>
+
+        <button
+          type="button"
+          class="btn"
+          id="btnImprimir"
+        >
+          <i class="fa-solid fa-print"></i>
+          Imprimir
+        </button>
+
+      </div>
+
+    </header>
+
+    <!-- =====================================
+         OBRA
+    ====================================== -->
+
+    <section class="card">
+
+      <div class="campos-obra">
+
+        <div class="campo">
+
+          <label for="selectLocalidade">
+            Localidade
+          </label>
+
+          <select id="selectLocalidade">
+
+            <option value="">
+              Todas
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="campo campo-obra">
+
+          <label for="selectObra">
+            Obra
+          </label>
+
+          <select id="selectObra">
+
+            <option value="">
+              Carregando obras...
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="campo">
+
+          <label for="inicioObra">
+            Início do cronograma
+          </label>
+
+          <input
+            type="date"
+            id="inicioObra"
+            disabled
+          >
+
+        </div>
+
+      </div>
+
+      <label class="marcar marcar-pequeno">
+        <input
+          type="checkbox"
+          id="mostrarConcluidos"
+        >
+        Mostrar também as obras com cronograma 100% executado
+      </label>
+
+      <p
+        class="dica"
+        id="dicaCronograma"
+      >
+        Selecione uma obra para ver ou montar o cronograma.
+      </p>
+
+    </section>
+
+    <!-- =====================================
+         RESUMO
+    ====================================== -->
+
+    <section
+      class="cards-resumo"
+      aria-label="Resumo do cronograma"
+    >
+
+      <div class="card-resumo">
+        <span>Atividades</span>
+        <strong id="resumoAtividades">0</strong>
+      </div>
+
+      <div class="card-resumo">
+        <span>Conclusão prevista</span>
+        <strong id="resumoConclusao">—</strong>
+      </div>
+
+      <div class="card-resumo">
+        <span>Dias úteis</span>
+        <strong id="resumoDiasUteis">0</strong>
+      </div>
+
+      <div class="card-resumo" id="cardPesos">
+        <span>Soma dos pesos</span>
+        <strong id="resumoPesos">0%</strong>
+      </div>
+
+      <div class="card-resumo">
+        <span>Avanço geral</span>
+        <strong id="resumoAvanco">0%</strong>
+      </div>
+
+    </section>
+
+    <!-- =====================================
+         ATIVIDADES E LINHA DO TEMPO
+    ====================================== -->
+
+    <section class="card workspace">
+
+      <div class="workspace-topo">
+
+        <div>
+
+          <h2>
+            Atividades e linha do tempo
+          </h2>
+
+          <p id="textoPeriodo">
+            As datas são recalculadas ao editar atividades ou predecessoras.
+          </p>
+
+        </div>
+
+        <div class="workspace-acoes">
+
+          <div
+            class="segmentado"
+            aria-label="Largura dos dias no Gantt"
+          >
+
+            <button
+              type="button"
+              id="escalaDia"
+              class="ativo"
+            >
+              Ampliado
+            </button>
+
+            <button
+              type="button"
+              id="escalaSemana"
+            >
+              Compacto
+            </button>
+
+          </div>
+
+          <button
+            type="button"
+            class="btn primario"
+            id="btnAtividade"
+            hidden
+            disabled
+          >
+            <i class="fa-solid fa-plus"></i>
+            Atividade
+          </button>
+
+          <button
+            type="button"
+            class="btn"
+            id="btnGerarCurvaS"
+            hidden
+            disabled
+            title="Preenche o Planejamento da Curva S com o físico deste cronograma"
+          >
+            <i class="fa-solid fa-chart-line"></i>
+            Gerar Curva S planejada
+          </button>
+
+          <button
+            type="button"
+            class="btn primario"
+            id="btnSalvar"
+            hidden
+            disabled
+          >
+            <i class="fa-solid fa-floppy-disk"></i>
+            Salvar cronograma
+          </button>
+
+        </div>
+
+      </div>
+
+      <div
+        class="cr-rolagem"
+        id="gantt"
+      ></div>
+
+      <div class="cr-legenda">
+
+        <span>
+          <span class="cr-legenda-ponto"></span>Planejado
+          <span class="cr-legenda-ponto cr-laranja"></span>Atividade atrasada
+        </span>
+
+        <span>
+          A atividade seguinte começa no próximo dia útil após o término da predecessora.
+        </span>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- =====================================
+       DIÁLOGO: ATIVIDADE
+  ====================================== -->
+
+  <dialog
+    class="dialogo"
+    id="dialogoAtividade"
+  >
+
+    <header>
+
+      <h2 id="tituloAtividade">
+        Nova atividade
+      </h2>
+
+      <button
+        type="button"
+        class="cr-icone-fechar"
+        id="fecharAtividade"
+        aria-label="Fechar"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+    </header>
+
+    <form id="formAtividade">
+
+      <div
+        class="erro"
+        id="erroAtividade"
+        role="alert"
+      ></div>
+
+      <div
+        class="guia-atividade"
+        aria-live="polite"
+      >
+
+        <div class="guia-item">
+          <span>Peso distribuído</span>
+          <strong class="guia-valor" id="guiaPeso">100%</strong>
+          <div class="guia-barra"><i id="guiaPesoBarra"></i></div>
+          <small id="guiaPesoDetalhe"></small>
+        </div>
+
+        <div class="guia-item">
+          <span>Prazo da obra</span>
+          <strong class="guia-valor" id="guiaPrazoObra">—</strong>
+          <small>Data Início a Data Fim cadastradas</small>
+        </div>
+
+        <div class="guia-item">
+          <span>Conclusão do cronograma</span>
+          <strong class="guia-valor" id="guiaPrazo">—</strong>
+          <small id="guiaPrazoDetalhe"></small>
+        </div>
+
+      </div>
+
+      <div class="form-grade">
+
+        <label class="campo largo">
+          Atividade
+          <input
+            id="atividadeNome"
+            required
+            maxlength="90"
+            placeholder="Ex.: Execução do radier"
+          >
+        </label>
+
+        <label class="campo largo">
+          Predecessora
+          <select id="atividadePredecessora">
+            <option value="">Sem predecessora</option>
+          </select>
+          <small
+            class="dica-campo"
+            id="dicaPredecessora"
+          ></small>
+        </label>
+
+        <label class="campo">
+          Início
+          <input
+            id="atividadeInicio"
+            type="date"
+          >
+        </label>
+
+        <label class="campo">
+          Fim
+          <input
+            id="atividadeFim"
+            type="date"
+          >
+        </label>
+
+        <p
+          class="dica-campo largo"
+          id="dicaDatas"
+        >
+          O início e o fim são calculados pela predecessora e pela duração. Alterar o Início define “não começa antes de”; alterar o Fim recalcula a duração em dias úteis.
+        </p>
+
+        <div class="campo-linha-3 largo">
+
+          <label class="campo">
+            Duração em dias úteis
+            <input
+              id="atividadeDuracao"
+              type="number"
+              min="1"
+              max="1000"
+              step="1"
+              required
+              value="5"
+            >
+          </label>
+
+          <label class="campo">
+            Peso na obra (%)
+            <input
+              id="atividadePeso"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              required
+              value="0"
+            >
+          </label>
+
+          <label class="campo">
+            Avanço (%)
+            <input
+              id="atividadeAvanco"
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              required
+              value="0"
+            >
+          </label>
+
+        </div>
+
+      </div>
+
+      <footer>
+
+        <button
+          type="button"
+          class="btn"
+          id="cancelarAtividade"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="submit"
+          class="btn primario"
+        >
+          Salvar atividade
+        </button>
+
+      </footer>
+
+    </form>
+
+  </dialog>
+
+  <!-- =====================================
+       DIÁLOGO: CALENDÁRIO PADRÃO
+  ====================================== -->
+
+  <dialog
+    class="dialogo"
+    id="dialogoCalendario"
+  >
+
+    <header>
+
+      <h2>
+        Calendário padrão do sistema
+      </h2>
+
+      <button
+        type="button"
+        class="cr-icone-fechar"
+        id="fecharCalendario"
+        aria-label="Fechar"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+    </header>
+
+    <div class="corpo-dialogo">
+
+      <p>
+        Vale para todos os cronogramas. Domingos nunca são dias úteis e, por padrão, sábados também não. Informe os feriados e dias sem expediente, um por linha, como AAAA-MM-DD ou DD/MM/AAAA.
+      </p>
+
+      <label class="marcar">
+        <input
+          type="checkbox"
+          id="calendarioSabado"
+        >
+        Trabalhar aos sábados
+      </label>
+
+      <label class="campo">
+        Feriados e dias sem expediente
+        <textarea
+          id="calendarioFeriados"
+          placeholder="2026-10-12&#10;2026-12-25"
+        ></textarea>
+      </label>
+
+      <div
+        class="erro"
+        id="erroCalendario"
+        role="alert"
+      ></div>
+
+      <footer>
+
+        <button
+          type="button"
+          class="btn"
+          id="cancelarCalendario"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          class="btn primario"
+          id="salvarCalendario"
+        >
+          Salvar calendário
+        </button>
+
+      </footer>
+
+    </div>
+
+  </dialog>
+
+  <div
+    class="aviso-toast"
+    id="toast"
+    role="status"
+  ></div>
+
+  <!-- JS -->
+  <script
+    type="module"
+    src="cronograma.js?v=011"
+  ></script>
+  <script src="./pwa-register.js"></script>
+
+</body>
+
+</html>

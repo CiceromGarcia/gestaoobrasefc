@@ -1,4 +1,4 @@
-// index.js — Cloud Functions v2 (Node 20)
+// index.js — Cloud Functions v2 (Node 22)
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 
@@ -209,12 +209,22 @@ async function enviarWhatsAppCallMeBot(texto) {
 
   const resposta = await fetch(url);
   const corpo = await resposta.text();
+  // O CallMeBot devolve HTML; tira as tags pra deixar o log legível.
+  const corpoTexto = String(corpo || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
   if (!resposta.ok) {
-    throw new Error(`CallMeBot respondeu ${resposta.status}: ${corpo}`);
+    throw new Error(`CallMeBot respondeu ${resposta.status}: ${corpoTexto}`);
   }
 
-  return { ok: true, corpo };
+  // O CallMeBot costuma responder HTTP 200 mesmo quando falha (API Key
+  // inválida/expirada, número não autorizado, etc.), colocando o erro no
+  // corpo. Sem esta checagem a falha era contada como "enviada".
+  if (/error|erro|invalid|inv[aá]lid|not\s+(valid|authori[sz]ed|allowed|registered)|blocked|bloquead|expired|expirad|denied/i.test(corpoTexto)) {
+    throw new Error(`CallMeBot recusou a mensagem: ${corpoTexto.slice(0, 300)}`);
+  }
+
+  logger.info(`enviarWhatsAppCallMeBot: resposta do CallMeBot: ${corpoTexto.slice(0, 200)}`);
+  return { ok: true, corpo: corpoTexto };
 }
 
 const aguardarMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -1588,49 +1598,64 @@ exports.enviarResumoObrasEmAndamentoSemanal = onSchedule(
     timeZone: "America/Sao_Paulo"
   },
   async () => {
-    const transport = buildTransport();
-
-    if (!transport) {
-      logger.warn("enviarResumoObrasEmAndamentoSemanal: SMTP não configurado, e-mail não enviado.");
-      return;
-    }
-
-    const destinatarios = destinatariosResumoObrasAndamento();
-
-    if (!destinatarios.length) {
-      logger.warn("enviarResumoObrasEmAndamentoSemanal: nenhum destinatário configurado.");
-      return;
-    }
+    // E-mail e WhatsApp agora são independentes: falha (ou falta de
+    // configuração) em um não impede o envio do outro.
+    let lista;
+    let paralisadas;
 
     try {
-      const lista = await calcularResumoObrasEmAndamento();
-      const paralisadas = await calcularResumoObrasParalisadas();
-      const html = montarHtmlResumoObrasEmAndamento(lista, paralisadas);
+      lista = await calcularResumoObrasEmAndamento();
+      paralisadas = await calcularResumoObrasParalisadas();
+    } catch (e) {
+      logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao calcular resumo:", e);
+      return;
+    }
 
-      await transport.sendMail({
-        from: smtp.user,
-        to: destinatarios.join(","),
-        subject: `Resumo Semanal — ${lista.length} Obra(s) em Andamento`,
-        html
-      });
+    // ----- E-mail -----
+    try {
+      const transport = buildTransport();
+      const destinatarios = destinatariosResumoObrasAndamento();
 
-      logger.info(
-        `[enviarResumoObrasEmAndamentoSemanal] E-mail enviado. obras=${lista.length} destinatarios=${destinatarios.length}`
-      );
+      if (!transport) {
+        logger.warn("enviarResumoObrasEmAndamentoSemanal: SMTP não configurado, e-mail não enviado.");
+      } else if (!destinatarios.length) {
+        logger.warn("enviarResumoObrasEmAndamentoSemanal: nenhum destinatário configurado.");
+      } else {
+        const html = montarHtmlResumoObrasEmAndamento(lista, paralisadas);
 
-      try {
-        const partesWhatsApp = montarPartesResumoObrasEmAndamento(lista, paralisadas);
-        const resultadosWhatsApp = await enviarWhatsAppCallMeBotEmPartes(partesWhatsApp);
-        const enviados = resultadosWhatsApp.filter((r) => r.ok).length;
+        await transport.sendMail({
+          from: smtp.user,
+          to: destinatarios.join(","),
+          subject: `Resumo Semanal — ${lista.length} Obra(s) em Andamento`,
+          html
+        });
 
+        logger.info(
+          `[enviarResumoObrasEmAndamentoSemanal] E-mail enviado. obras=${lista.length} destinatarios=${destinatarios.length}`
+        );
+      }
+    } catch (eEmail) {
+      logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao enviar e-mail:", eEmail);
+    }
+
+    // ----- WhatsApp -----
+    try {
+      const partesWhatsApp = montarPartesResumoObrasEmAndamento(lista, paralisadas);
+      const resultadosWhatsApp = await enviarWhatsAppCallMeBotEmPartes(partesWhatsApp);
+      const enviados = resultadosWhatsApp.filter((r) => r.ok).length;
+      const falhas = resultadosWhatsApp.filter((r) => !r.ok).map((r) => r.motivo);
+
+      if (enviados === partesWhatsApp.length) {
         logger.info(
           `[enviarResumoObrasEmAndamentoSemanal] WhatsApp: ${enviados}/${partesWhatsApp.length} parte(s) enviada(s)`
         );
-      } catch (eWhatsApp) {
-        logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao enviar WhatsApp:", eWhatsApp);
+      } else {
+        logger.error(
+          `[enviarResumoObrasEmAndamentoSemanal] WhatsApp: só ${enviados}/${partesWhatsApp.length} parte(s) enviada(s). Motivos: ${falhas.join(" | ")}`
+        );
       }
-    } catch (e) {
-      logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao gerar/enviar resumo:", e);
+    } catch (eWhatsApp) {
+      logger.error("[enviarResumoObrasEmAndamentoSemanal] Falha ao enviar WhatsApp:", eWhatsApp);
     }
   }
 );
@@ -1751,6 +1776,14 @@ exports.testarResumoObrasWhatsApp = onRequest(
 
       const resultados = await enviarWhatsAppCallMeBotEmPartes(partes);
       const enviados = resultados.filter((r) => r.ok).length;
+      const falhas = resultados.filter((r) => !r.ok).map((r) => r.motivo);
+
+      if (enviados < partes.length) {
+        logger.error(`[testarResumoObrasWhatsApp] Falhas: ${falhas.join(" | ")}`);
+        return res.status(502).send(
+          `FALHA: ${enviados}/${partes.length} mensagem(ns) enviada(s). Motivo(s): ${falhas.join(" | ")}`
+        );
+      }
 
       logger.info(
         `[testarResumoObrasWhatsApp] Teste enviado por ${decoded.email || decoded.uid}. obras=${lista.length} partes=${enviados}/${partes.length}`
@@ -1773,7 +1806,7 @@ exports.testarResumoObrasWhatsApp = onRequest(
    4) Motor de Indicadores - Rollups por ciclo
 =================================================================== */
 
-async function normalizeWeeklyDoc(projId, semId, data) {
+async function normalizeWeeklyDoc(projId, semId, data, podeGravar = true) {
   const projSnap = await db.collection("projetos").doc(projId).get();
   const p = projSnap.exists ? projSnap.data() : {};
 
@@ -1807,7 +1840,9 @@ async function normalizeWeeklyDoc(projId, semId, data) {
     "obraCanon"
   ].some((k) => data[k] === undefined);
 
-  if (needUpdate) {
+  // podeGravar=false quando o documento foi EXCLUÍDO: sem isso o set()
+  // abaixo recriava o documento apagado com só esses campos.
+  if (needUpdate && podeGravar) {
     await db
       .collection("projetos")
       .doc(projId)
@@ -1956,7 +1991,7 @@ exports.rollupCronogramaSemanalV2 = onDocumentWritten(
     }
 
     try {
-      const { ano, ciclo, meta } = await normalizeWeeklyDoc(projId, semId, base);
+      const { ano, ciclo, meta } = await normalizeWeeklyDoc(projId, semId, base, !!after);
       await recomputeRollupForCycle(projId, ano, ciclo, meta);
 
       logger.info(`[rollup] OK projeto=${projId} ciclo=${ano}-${ciclo}`);
@@ -2459,6 +2494,13 @@ function gerarChavesObra(dados = {}, entrada = {}) {
    validado e conferido contra o cadastro em usuariosSistema.
 =================================================================== */
 
+// Mesma regra do firestore.rules (ehAdministradorGeral): valores
+// comparados exatamente como salvos, sem apelidos antigos ("admin", "adm").
+function usuarioEhAdminAtivo(dadosUsuario) {
+  return dadosUsuario?.perfil === "administrador" &&
+    dadosUsuario?.status === "ativo";
+}
+
 async function exigirAdminHttp(req) {
   const authHeader = String(req.headers.authorization || "");
   const match = authHeader.match(/^Bearer (.+)$/i);
@@ -2497,13 +2539,7 @@ async function exigirAdminHttp(req) {
     throw erro;
   }
 
-  const usuario = usuarioSnap.data() || {};
-  const perfil = canonical(usuario.perfil || usuario.role || usuario.tipo || "");
-  const status = canonical(usuario.status || "");
-  const ativo = status === "ativo";
-  const admin_ = perfil === "administrador" || perfil === "admin" || perfil === "adm";
-
-  if (!ativo || !admin_) {
+  if (!usuarioEhAdminAtivo(usuarioSnap.data())) {
     const erro = new Error("Apenas administrador ativo pode executar esta operação.");
     erro.statusCode = 403;
     throw erro;
@@ -2538,20 +2574,7 @@ async function usuarioCallableEhAdmin(auth) {
     );
   }
 
-  const usuario = usuarioSnap.data() || {};
-  const perfil = canonical(usuario.perfil || usuario.role || usuario.tipo || "");
-  const status = canonical(usuario.status || "");
-
-  const ativo = status === "ativo";
-
-  const admin =
-    perfil === "administrador" ||
-    perfil === "admin" ||
-    perfil === "adm" ||
-    usuario.admin === true ||
-    usuario.isAdmin === true;
-
-  if (!ativo || !admin) {
+  if (!usuarioEhAdminAtivo(usuarioSnap.data())) {
     throw new HttpsError(
       "permission-denied",
       "Apenas administrador ativo pode excluir obra completa."
@@ -2853,15 +2876,13 @@ async function apagarEmLotes(refs) {
    `getIdToken(true)` após detectar mudança de perfil).
 =================================================================== */
 
-// Perfis que podem enviar foto na Curva S — usado pelo storage.rules via
-// a claim perfilCurvaS, sem precisar consultar o Firestore a partir do
-// Storage (recurso cross-service que exige permissão de IAM extra e não
-// é confiável logo após o Storage ser criado no projeto).
+// Perfis (além do admin) que podem enviar foto na Curva S — usado pelo
+// storage.rules via a claim perfilCurvaS, sem precisar consultar o
+// Firestore a partir do Storage (recurso cross-service que exige
+// permissão de IAM extra e não é confiável logo após o Storage ser
+// criado no projeto). Igual ao firestore.rules: só "planejador".
 const PERFIS_COM_ACESSO_CURVA_S = [
-  "gestor",
-  "planejador",
-  "engenharia",
-  "editor"
+  "planejador"
 ];
 
 // Extraído pra ser reaproveitado tanto pelo trigger (dispara a cada
@@ -2870,13 +2891,10 @@ const PERFIS_COM_ACESSO_CURVA_S = [
 // que só seriam sincronizados na próxima vez que o cadastro deles fosse
 // editado — o que pode nunca acontecer).
 async function calcularESincronizarClaims(uid, dadosUsuario) {
-  const perfil = canonical(dadosUsuario.perfil || dadosUsuario.role || dadosUsuario.tipo || "");
-  const status = canonical(dadosUsuario.status || "");
-  const ativo = status === "ativo";
+  const perfil = dadosUsuario.perfil;
+  const ativo = dadosUsuario.status === "ativo";
 
-  const deveSerAdmin =
-    ativo &&
-    (perfil === "administrador" || perfil === "admin" || perfil === "adm");
+  const deveSerAdmin = usuarioEhAdminAtivo(dadosUsuario);
 
   const devePerfilCurvaS =
     ativo && PERFIS_COM_ACESSO_CURVA_S.includes(perfil)
@@ -3322,4 +3340,4 @@ exports.excluirUsuarioCompleto = onCall(
       );
     }
   }
-);
+);

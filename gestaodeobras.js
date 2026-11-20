@@ -92,6 +92,7 @@ const editObraNome = $("editObraNome");
 const editCodigoObra = $("editCodigoObra");
 const editStatusObra = $("editStatusObra");
 const editRegionalObra = $("editRegionalObra");
+const editCentroCusto = $("editCentroCusto");
 const editLocalidadeObra = $("editLocalidadeObra");
 const editDataInicioAtual = $("editDataInicioAtual");
 const editDataFimAtual = $("editDataFimAtual");
@@ -2157,6 +2158,14 @@ function abrirModalEdicaoDatas(obra) {
     editRegionalObra.value = obra.regional || "-";
   }
 
+  if (editCentroCusto) {
+    editCentroCusto.value =
+      obra.centroCusto ||
+      obra.centroDeCusto ||
+      obra.numeroOM ||
+      "";
+  }
+
   if (editLocalidadeObra) {
     preencherSelectLocalidades(editLocalidadeObra, obra.localidade || "");
   }
@@ -2270,6 +2279,7 @@ async function salvarEdicaoDatas(event) {
 
   const novoNome = String(editObraNome?.value || "").trim();
   const novaLocalidade = String(editLocalidadeObra?.value || "").trim();
+  const novoCentroCusto = String(editCentroCusto?.value || "").trim();
   const novoValorOrcadoNumero = numeroBRL(editValorOrcado?.value || 0);
   const novoValorOrcadoFormatado = moeda(novoValorOrcadoNumero);
 
@@ -2325,6 +2335,11 @@ async function salvarEdicaoDatas(event) {
 
   const nomeAnterior = obraSelecionada.nomeObraTela || "";
   const localidadeAnterior = obraSelecionada.localidade || "";
+  const centroCustoAnterior =
+    obraSelecionada.centroCusto ||
+    obraSelecionada.centroDeCusto ||
+    obraSelecionada.numeroOM ||
+    "";
   const valorOrcadoAnteriorNumero = numeroBRL(
     obraSelecionada.investimento ??
     obraSelecionada.valorObra ??
@@ -2339,12 +2354,14 @@ async function salvarEdicaoDatas(event) {
 
   const nomeAlterado = novoNome !== nomeAnterior;
   const localidadeAlterada = novaLocalidade !== localidadeAnterior;
+  const centroCustoAlterado = novoCentroCusto !== centroCustoAnterior;
   const valorAlterado = novoValorOrcadoNumero !== valorOrcadoAnteriorNumero;
 
   if (
     !datasAlteradas &&
     !nomeAlterado &&
     !localidadeAlterada &&
+    !centroCustoAlterado &&
     !valorAlterado
   ) {
     alert("Nenhuma alteração foi identificada.");
@@ -2424,6 +2441,7 @@ async function salvarEdicaoDatas(event) {
       datasAlteradas ? "datas" : null,
       nomeAlterado ? "nome" : null,
       localidadeAlterada ? "localidade" : null,
+      centroCustoAlterado ? "centroCusto" : null,
       valorAlterado ? "orcamento" : null
     ].filter(Boolean),
 
@@ -2432,6 +2450,9 @@ async function salvarEdicaoDatas(event) {
 
     localidadeAnterior,
     localidadeNova: novaLocalidade,
+
+    centroCustoAnterior,
+    centroCustoNovo: novoCentroCusto,
 
     valorOrcadoAnterior: moeda(valorOrcadoAnteriorNumero),
     valorOrcadoNovo: novoValorOrcadoFormatado,
@@ -2460,6 +2481,8 @@ async function salvarEdicaoDatas(event) {
 
     localidade: novaLocalidade,
     regional: regionalNova,
+
+    centroCusto: novoCentroCusto,
 
     valorObra: novoValorOrcadoFormatado,
     investimento: novoValorOrcadoFormatado,
@@ -3101,7 +3124,7 @@ async function excluirObraCompleta(event) {
     // Admin SDK — evita manter duas implementações do mesmo apagamento
     // em massa divergindo com o tempo.
     const excluirObraCallable =
-      httpsCallable(functions, "excluirObraCompleta");
+      httpsCallable(functions, "excluirObraCompleta", { timeout: 300000 });
 
     const resultado = await excluirObraCallable({
       obraDocId: obraId,

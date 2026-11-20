@@ -1,0 +1,307 @@
+/* =========================================
+   CRONOGRAMA — GANTT COMPARTILHADO
+   Arquivo: cronograma.css
+   Usado em cronograma.html e detalhe-obra.html. Todas as classes
+   têm prefixo "cr-" e não há nenhuma regra global, pra não
+   interferir no resto de cada tela.
+========================================= */
+
+.cr-rolagem {
+  --cr-primario: #007E7A;
+  --cr-primario-suave: #a7d8d5;
+  --cr-atraso: #c77838;
+  --cr-atraso-suave: #f6d6b8;
+  --cr-borda: #edf1f4;
+  --cr-texto: #17354d;
+  --cr-muted: #657c8e;
+
+  overflow: auto;
+  max-height: min(70vh, 840px);
+  color: var(--cr-texto);
+  font-size: 12px;
+}
+
+.cr-tabela {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: max-content;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.cr-tabela th,
+.cr-tabela td {
+  height: 42px;
+  border-bottom: 1px solid var(--cr-borda);
+  text-align: left;
+  padding: 0 9px;
+  background: #ffffff;
+}
+
+.cr-tabela th {
+  height: 44px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #f8fbfc;
+  color: #587184;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.cr-tabela tbody tr:hover td {
+  background: #f8fbfd;
+}
+
+.cr-tabela .cr-fixa {
+  position: sticky;
+  z-index: 3;
+}
+
+.cr-tabela th.cr-fixa {
+  z-index: 7;
+}
+
+.cr-col-id {
+  left: 0;
+  width: 46px;
+  text-align: center !important;
+  color: #8697a2;
+}
+
+.cr-col-nome {
+  left: 46px;
+  width: 250px;
+  max-width: 250px;
+  box-shadow: 2px 0 5px rgba(22, 61, 80, 0.06);
+}
+
+.cr-col-duracao { width: 76px; }
+.cr-col-data { width: 96px; }
+.cr-col-dep { width: 64px; text-align: center !important; }
+.cr-col-peso { width: 76px; }
+.cr-col-avanco { width: 108px; }
+.cr-col-acao { width: 84px; }
+
+.cr-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.cr-nome {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #173b54;
+}
+
+.cr-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  color: #8293a0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cr-barra-avanco {
+  width: 52px;
+  height: 6px;
+  border-radius: 8px;
+  background: #dce9ee;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.cr-barra-avanco i {
+  display: block;
+  height: 100%;
+  background: var(--cr-primario);
+}
+
+.cr-avanco-texto {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cr-icone {
+  background: transparent;
+  border: 0;
+  color: var(--cr-primario);
+  padding: 5px 6px;
+  font-size: 12px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.cr-icone:hover {
+  background: #e6f7f5;
+}
+
+.cr-icone.cr-perigo {
+  color: #aa4a42;
+}
+
+.cr-icone.cr-perigo:hover {
+  background: #fdeceb;
+}
+
+/* Linha do tempo */
+
+.cr-tabela .cr-linha-tempo {
+  padding: 0 !important;
+}
+
+.cr-dias {
+  display: flex;
+  align-items: stretch;
+}
+
+.cr-dia {
+  flex: 0 0 32px;
+  text-align: center;
+  border-left: 1px solid #ebf0f3;
+  padding-top: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #567084;
+  height: 44px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.cr-dia b {
+  display: block;
+  font-size: 10px;
+  color: #2c5066;
+}
+
+.cr-dia.cr-fimsemana,
+.cr-grade-dia.cr-fimsemana {
+  background: #f2f5f6;
+}
+
+.cr-dia.cr-feriado,
+.cr-grade-dia.cr-feriado {
+  background: #fff1e7;
+}
+
+.cr-gantt {
+  position: relative;
+  height: 42px;
+  display: flex;
+}
+
+.cr-grade-dia {
+  flex: 0 0 32px;
+  border-left: 1px solid #f1f4f6;
+  height: 42px;
+}
+
+.cr-barra {
+  position: absolute;
+  top: 12px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--cr-primario-suave);
+  overflow: hidden;
+  min-width: 6px;
+  box-shadow: 0 1px 2px rgba(0, 90, 86, 0.2);
+}
+
+.cr-barra > i {
+  display: block;
+  height: 100%;
+  background: var(--cr-primario);
+}
+
+.cr-barra.cr-atrasada {
+  background: var(--cr-atraso-suave);
+}
+
+.cr-barra.cr-atrasada > i {
+  background: var(--cr-atraso);
+}
+
+.cr-hoje {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e58657;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.cr-vazio {
+  padding: 48px 24px;
+  text-align: center;
+  color: #6d8190;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cr-vazio strong {
+  display: block;
+  color: #173b54;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.cr-legenda {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  flex-wrap: wrap;
+  padding: 12px 4px 0;
+  color: #607989;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cr-legenda-ponto {
+  display: inline-block;
+  height: 9px;
+  width: 9px;
+  border-radius: 2px;
+  background: #007E7A;
+  margin-right: 5px;
+}
+
+.cr-legenda-ponto.cr-laranja {
+  background: #c77838;
+  margin-left: 13px;
+}
+
+@media print {
+  .cr-rolagem {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .cr-tabela {
+    width: auto;
+  }
+
+  .cr-tabela .cr-fixa,
+  .cr-tabela th {
+    position: static;
+  }
+
+  .cr-tabela .cr-linha-tempo {
+    max-width: 300px;
+    overflow: hidden;
+  }
+
+  .cr-col-acao {
+    display: none;
+  }
+}

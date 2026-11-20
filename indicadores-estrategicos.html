@@ -11,7 +11,7 @@
   >
 
   <title>
-    Indicadores Estratégicos de Obras
+    SLA de Pequenas Obras
   </title>
 
   <link
@@ -38,7 +38,7 @@
   <!-- CSS -->
   <link
     rel="stylesheet"
-    href="indicadores-estrategicos.css?v=408"
+    href="indicadores-estrategicos.css?v=429"
   >
 
   <!-- FONT AWESOME -->
@@ -46,12 +46,6 @@
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
   >
-
-  <!-- CHART JS -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- CHART DATA LABELS -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
 </head>
 
@@ -81,11 +75,11 @@
         <div class="title-text">
 
           <h1>
-            Indicadores Estratégicos de Obras
+            SLA de Pequenas Obras
           </h1>
 
           <p>
-            Visão executiva física, financeira, GUT, status e saúde das obras
+            Relação de obras e indicadores de SLA — Pequenas Obras e Pragas e Vetores
           </p>
 
         </div>
@@ -119,26 +113,23 @@
 
     <section class="filters filters-principais">
 
-      <input type="hidden" id="filtroInicio">
-      <input type="hidden" id="filtroFim">
-
       <div class="field">
 
-        <label for="filtroAnoCiclo">
-          Ano
+        <label for="filtroInicio">
+          Data Início
         </label>
 
-        <select id="filtroAnoCiclo"></select>
+        <input type="date" id="filtroInicio">
 
       </div>
 
       <div class="field">
 
-        <label for="filtroCiclo">
-          Ciclo
+        <label for="filtroFim">
+          Data Fim
         </label>
 
-        <select id="filtroCiclo"></select>
+        <input type="date" id="filtroFim">
 
       </div>
 
@@ -168,38 +159,6 @@
 
           <option value="">
             Todas
-          </option>
-
-        </select>
-
-      </div>
-
-      <div class="field field-obra">
-
-        <label for="filtroObra">
-          Obra
-        </label>
-
-        <select id="filtroObra">
-
-          <option value="">
-            Todas
-          </option>
-
-        </select>
-
-      </div>
-
-      <div class="field">
-
-        <label for="filtroCentroCusto">
-          Centro de Custo
-        </label>
-
-        <select id="filtroCentroCusto">
-
-          <option value="">
-            Todos
           </option>
 
         </select>
@@ -271,648 +230,357 @@
     </section>
 
     <!-- =====================================
-         KPIS EXECUTIVOS
+         RELAÇÃO DE OBRAS
     ====================================== -->
 
-    <section class="kpis kpis-compact kpis-one-line">
+    <section class="card table-card">
 
-      <div class="kpi-card">
-
-        <div class="kpi-icon">
-
-          <i class="fa-solid fa-building"></i>
-
-        </div>
-
-        <div class="kpi-info">
-
-          <span>
-            Total de Obras
-          </span>
-
-          <strong
-            id="kpiTotalObras"
-            class="valor-kpi"
-          >
-            0
-          </strong>
-
-          <small>
-            Obras filtradas
-          </small>
-
-        </div>
-
-      </div>
-
-      <div class="kpi-card">
-
-        <div class="kpi-icon">
-
-          <i class="fa-solid fa-coins"></i>
-
-        </div>
-
-        <div class="kpi-info">
-
-          <span>
-            Investimento Orçado
-          </span>
-
-          <strong
-            id="kpiOrcado"
-            class="valor-kpi"
-          >
-            R$ 0,00
-          </strong>
-
-          <small>
-            Valor previsto
-          </small>
-
-        </div>
-
-      </div>
-
-      <div class="kpi-card">
-
-        <div class="kpi-icon">
-
-          <i class="fa-solid fa-money-bill-trend-up"></i>
-
-        </div>
-
-        <div class="kpi-info">
-
-          <span>
-            Investimento Executado
-          </span>
-
-          <strong
-            id="kpiExecutado"
-            class="valor-kpi"
-          >
-            R$ 0,00
-          </strong>
-
-          <small id="kpiExecutadoPerc">
-            0% do orçado
-          </small>
-
-        </div>
-
-      </div>
-
-      <div class="kpi-card">
-
-        <div class="kpi-icon">
-
-          <i class="fa-solid fa-wallet"></i>
-
-        </div>
-
-        <div class="kpi-info">
-
-          <span>
-            Saldo a Executar
-          </span>
-
-          <strong
-            id="kpiSaldo"
-            class="valor-kpi"
-          >
-            R$ 0,00
-          </strong>
-
-          <small id="kpiSaldoPerc">
-            0% do orçado
-          </small>
-
-        </div>
-
-      </div>
-
-      <div class="kpi-card">
-
-        <div class="kpi-icon">
-
-          <i class="fa-solid fa-gauge-high"></i>
-
-        </div>
-
-        <div class="kpi-info">
-
-          <span>
-            AFO Médio
-          </span>
-
-          <strong
-            id="kpiAFO"
-            class="valor-kpi indicador-status"
-          >
-            0%
-          </strong>
-
-          <small id="kpiAFOStatus">
-            Sem dados
-          </small>
-
-        </div>
-
-      </div>
-
-      <div class="kpi-card">
-
-        <div class="kpi-icon">
-
-          <i class="fa-solid fa-heart-pulse"></i>
-
-        </div>
-
-        <div class="kpi-info">
-
-          <span>
-            Índice de Saúde
-          </span>
-
-          <strong
-            id="kpiSaude"
-            class="valor-kpi indicador-status"
-          >
-            0%
-          </strong>
-
-          <small id="kpiSaudeStatus">
-            Sem dados
-          </small>
-
-        </div>
-
-      </div>
-
-      <div class="kpi-card danger">
-
-        <div class="kpi-icon">
-
-          <i class="fa-solid fa-triangle-exclamation"></i>
-
-        </div>
-
-        <div class="kpi-info">
-
-          <span>
-            Obras Críticas
-          </span>
-
-          <strong
-            id="kpiObrasCriticas"
-            class="valor-kpi indicador-alerta"
-          >
-            0
-          </strong>
-
-          <small>
-            Baixa saúde
-          </small>
-
-        </div>
-
-      </div>
-
-    </section>
-
-    <!-- =====================================
-         PAINEL ANALÍTICO
-    ====================================== -->
-
-    <section class="painel-bloco">
-
-      <div class="painel-bloco-titulo">
+      <div class="card-title">
 
         <div>
 
           <h2>
-            Painel Analítico das Obras
+            Relação de Obras
           </h2>
 
-          <p>
-            Distribuição do investimento e status consolidado das obras.
-          </p>
-
-        </div>
-
-        <div class="semaforo-lista semaforo-lista-topo">
-
-          <div class="semaforo-item green">
-
-            <strong id="semSaudaveis">
-              0
-            </strong>
-
-            <div>
-
-              <span>
-                Saudáveis
-              </span>
-
-              <small>
-                AFO ≥ 95%
-              </small>
-
-            </div>
-
-          </div>
-
-          <div class="semaforo-item yellow">
-
-            <strong id="semAtencao">
-              0
-            </strong>
-
-            <div>
-
-              <span>
-                Atenção
-              </span>
-
-              <small>
-                90% ≤ AFO &lt; 95%
-              </small>
-
-            </div>
-
-          </div>
-
-          <div class="semaforo-item red">
-
-            <strong id="semCriticas">
-              0
-            </strong>
-
-            <div>
-
-              <span>
-                Críticas
-              </span>
-
-              <small>
-                AFO &lt; 90%
-              </small>
-
-            </div>
-
-          </div>
+          <span>
+            Obras consideradas no período selecionado
+          </span>
 
         </div>
 
       </div>
 
-      <section class="grid grid-indicadores">
+      <div class="table-wrapper">
 
-        <div class="card chart-mini-card">
+        <table>
 
-          <div class="card-title simple">
+          <thead>
 
-            <h2>
-              Investimento por Regional
-            </h2>
+            <tr>
 
-          </div>
+              <th>ID</th>
+              <th>Nome Obra</th>
+              <th>Localidade</th>
+              <th>Dt Início</th>
+              <th>Dt Conclusão</th>
+              <th>Centro Custo</th>
+              <th>Orçado(R$)</th>
+              <th>Executado(R$)</th>
+              <th>Desvio(R$)</th>
+              <th>Físico(%)</th>
+              <th>AFO(%)</th>
 
-          <canvas id="chartRegional"></canvas>
+            </tr>
 
-        </div>
+          </thead>
 
-        <div class="card chart-mini-card">
+          <tbody id="tabelaObrasSLA">
 
-          <div class="card-title simple">
+            <tr>
+              <td colspan="11">Carregando obras...</td>
+            </tr>
 
-            <h2>
-              Status das Obras
-            </h2>
+          </tbody>
 
-          </div>
+        </table>
 
-          <canvas id="chartStatus"></canvas>
-
-        </div>
-
-      </section>
+      </div>
 
     </section>
 
     <!-- =====================================
-         RANKING E ANOMALIAS
+         DESCRIÇÃO DO SLA (aparece também na impressão)
     ====================================== -->
 
-    <section class="grid grid-bottom">
+    <section class="periodo-info sla-descricao-info">
 
-      <div class="card table-card">
+      <div>
 
-        <div class="card-title">
+        <i class="fa-solid fa-file-contract"></i>
 
-          <div>
-
-            <h2>
-              Ranking de Obras por Criticidade
-            </h2>
-
-            <span>
-              Priorização baseada em saúde, AFO, anomalias, custo e GUT
-            </span>
-
-          </div>
-
-        </div>
-
-        <div class="table-wrapper">
-
-          <table>
-
-            <thead>
-
-              <tr>
-
-                <th>#</th>
-                <th>Obra</th>
-                <th>Regional</th>
-                <th>Localidade</th>
-                <th>Centro de Custo</th>
-                <th>Status</th>
-                <th>AFO</th>
-                <th>Avanço</th>
-                <th>Orçado</th>
-                <th>Executado</th>
-                <th>Saldo</th>
-                <th>Anomalias</th>
-                <th>Abertas</th>
-                <th>Críticas</th>
-                <th>Vencidas</th>
-                <th>Saúde</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody id="tabelaRanking">
-
-              <tr>
-
-                <td colspan="16">
-                  Carregando dados das obras...
-                </td>
-
-              </tr>
-
-            </tbody>
-
-          </table>
-
-        </div>
-
-      </div>
-
-      <div class="card anomalias-obra-card">
-
-        <div class="card-title">
-
-          <div>
-
-            <h2>
-              Gestão de Anomalias da Obra
-            </h2>
-
-            <span>
-              Selecione uma obra no ranking para visualizar as tratativas
-            </span>
-
-          </div>
-
-        </div>
-
-        <div
-          id="anomaliasObraSelecionada"
-          class="anomalias-obra-vazio"
-        >
-          Selecione uma obra no ranking para visualizar as anomalias registradas.
-        </div>
-
-        <div class="table-wrapper anomalias-descricao-wrapper">
-
-          <table class="tabela-anomalias-descricao">
-
-            <thead>
-
-              <tr>
-
-                <th>Data</th>
-                <th>Semana</th>
-                <th>Tipo</th>
-                <th>Criticidade</th>
-                <th>Impacto</th>
-                <th>Status Atual</th>
-                <th>Novo Status</th>
-                <th>Prazo</th>
-                <th>Responsável</th>
-                <th>Descrição</th>
-                <th>Ação Corretiva</th>
-                <th>Ação</th>
-
-              </tr>
-
-            </thead>
-
-            <tbody id="tabelaDescricaoAnomalias">
-
-              <tr>
-
-                <td colspan="12">
-                  Nenhuma obra selecionada.
-                </td>
-
-              </tr>
-
-            </tbody>
-
-          </table>
-
-        </div>
+        <span id="slaDescricaoResumo">
+          SLA — Pequenas Obras e Pragas e Vetores (Processo: Pequenas Obras)
+        </span>
 
       </div>
 
     </section>
 
+    <section class="card table-card sla-grupo-card sla-grupo-produtividade">
+
+      <div class="card-title">
+
+        <div>
+
+          <h2>
+            Produtividade <small>(peso 65% do SLA)</small>
+          </h2>
+
+          <span>
+            Pragas e Vetores + Pequenas Obras. Campos digitáveis ficam com fundo destacado.
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="table-wrapper">
+
+        <table class="tabela-sla">
+
+          <thead>
+
+            <tr>
+
+              <th>#</th>
+              <th>Processo</th>
+              <th>Indicador</th>
+              <th>Peso</th>
+              <th>Métrica</th>
+              <th>Resultado</th>
+              <th>Escala (0 a 4)</th>
+              <th>Pontuação</th>
+
+            </tr>
+
+          </thead>
+
+          <tbody id="tabelaIndicadoresProdutividade">
+
+            <tr>
+              <td colspan="8">Carregando indicadores...</td>
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+    <section class="card table-card sla-grupo-card sla-grupo-custo">
+
+      <div class="card-title">
+
+        <div>
+
+          <h2>
+            Custo <small>(peso 15% do SLA)</small>
+          </h2>
+
+          <span>
+            Aderência financeira das obras.
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="table-wrapper">
+
+        <table class="tabela-sla">
+
+          <thead>
+
+            <tr>
+
+              <th>#</th>
+              <th>Processo</th>
+              <th>Indicador</th>
+              <th>Peso</th>
+              <th>Métrica</th>
+              <th>Resultado</th>
+              <th>Escala (0 a 4)</th>
+              <th>Pontuação</th>
+
+            </tr>
+
+          </thead>
+
+          <tbody id="tabelaIndicadoresCusto">
+
+            <tr>
+              <td colspan="8">Carregando indicadores...</td>
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+    <section class="card table-card sla-grupo-card sla-grupo-qualidade">
+
+      <div class="card-title">
+
+        <div>
+
+          <h2>
+            Qualidade <small>(peso 20% do SLA)</small>
+          </h2>
+
+          <span>
+            IQO é calculado a partir da Avaliação de Qualidade da Obra; QAO é calculado a partir das anomalias vencidas da Contratada.
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="table-wrapper">
+
+        <table class="tabela-sla">
+
+          <thead>
+
+            <tr>
+
+              <th>#</th>
+              <th>Processo</th>
+              <th>Indicador</th>
+              <th>Peso</th>
+              <th>Métrica</th>
+              <th>Resultado</th>
+              <th>Escala (0 a 4)</th>
+              <th>Pontuação</th>
+
+            </tr>
+
+          </thead>
+
+          <tbody id="tabelaIndicadoresQualidade">
+
+            <tr>
+              <td colspan="8">Carregando indicadores...</td>
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+    <section class="card sla-resultado-card">
+
+      <div class="card-title">
+
+        <div>
+
+          <h2>
+            Resultado Final do SLA
+          </h2>
+
+          <span>
+            Pontuação ponderada de Produtividade, Custo e Qualidade
+          </span>
+
+        </div>
+
+        <div class="sla-legenda-classificacao">
+
+          <span><strong style="color:#16a34a">≥ 90%</strong> Bom</span>
+          <span><strong style="color:#2563eb">≥ 80%</strong> Aceitável</span>
+          <span><strong style="color:#f59e0b">≥ 75%</strong> Regular</span>
+          <span><strong style="color:#ef4444">&lt; 75%</strong> Péssimo</span>
+
+        </div>
+
+      </div>
+
+      <div
+        class="sla-resultado-final"
+        id="slaResultadoFinal"
+      ></div>
+
+    </section>
+
+    <!-- =====================================
+         ANOMALIAS
+    ====================================== -->
+
+    <section class="card anomalias-obra-card">
+
+      <div class="card-title">
+
+        <div>
+
+          <h2>
+            Gestão de Anomalias
+          </h2>
+
+          <span>
+            Anomalias vencidas de responsabilidade da Contratada — somente visualização.
+          </span>
+
+        </div>
+
+      </div>
+
+      <div
+        id="anomaliasObraSelecionada"
+        class="anomalias-obra-vazio"
+      >
+        Carregando anomalias...
+      </div>
+
+      <div class="table-wrapper anomalias-descricao-wrapper">
+
+        <table class="tabela-anomalias-descricao">
+
+          <thead>
+
+            <tr>
+
+              <th>Obra</th>
+              <th>Data</th>
+              <th>Semana</th>
+              <th>Tipo</th>
+              <th>Criticidade</th>
+              <th>Impacto</th>
+              <th>Status Atual</th>
+              <th>Prazo</th>
+              <th>Responsabilidade</th>
+              <th>Descrição</th>
+
+            </tr>
+
+          </thead>
+
+          <tbody id="tabelaDescricaoAnomalias">
+
+            <tr>
+
+              <td colspan="10">
+                Carregando anomalias...
+              </td>
+
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+    <p class="nota-anomalias">
+      <i class="fa-solid fa-circle-info"></i>
+      Observação: apenas as anomalias com prazo de resolução vencido e cuja responsabilidade pela tratativa seja da Contratada são contabilizadas e imputadas a ela.
+    </p>
+
   </main>
-
-  <!-- =====================================
-       MODAL - ALTERAR STATUS DA ANOMALIA
-  ====================================== -->
-
-  <div
-    class="modal-status-anomalia"
-    id="modalStatusAnomalia"
-    aria-hidden="true"
-  >
-
-    <div class="modal-status-conteudo">
-
-      <div class="modal-status-header">
-
-        <h3>
-          Alterar Status da Anomalia
-        </h3>
-
-        <button
-          type="button"
-          id="btnFecharModalStatus"
-          class="btn-fechar-modal"
-        >
-
-          <i class="fa-solid fa-xmark"></i>
-
-        </button>
-
-      </div>
-
-      <input
-        type="hidden"
-        id="modalAnomaliaDocId"
-      >
-
-      <input
-        type="hidden"
-        id="modalAnomaliaOrigem"
-      >
-
-      <input
-        type="hidden"
-        id="modalAnomaliaObraId"
-      >
-
-      <input
-        type="hidden"
-        id="modalAnomaliaSemana"
-      >
-
-      <div class="modal-grid">
-
-        <div class="field">
-
-          <label for="modalObraAnomalia">
-            Obra
-          </label>
-
-          <input
-            type="text"
-            id="modalObraAnomalia"
-            readonly
-          >
-
-        </div>
-
-        <div class="field">
-
-          <label for="modalTipoAnomalia">
-            Tipo
-          </label>
-
-          <input
-            type="text"
-            id="modalTipoAnomalia"
-            readonly
-          >
-
-        </div>
-
-      </div>
-
-      <div class="modal-grid">
-
-        <div class="field">
-
-          <label for="modalStatusAtualAnomalia">
-            Status Atual
-          </label>
-
-          <input
-            type="text"
-            id="modalStatusAtualAnomalia"
-            readonly
-          >
-
-        </div>
-
-        <div class="field">
-
-          <label for="modalNovoStatusAnomalia">
-            Novo Status
-          </label>
-
-          <select id="modalNovoStatusAnomalia">
-
-            <option value="">
-              Selecione
-            </option>
-
-            <option value="Aberta">
-              Aberta
-            </option>
-
-            <option value="Em tratativa">
-              Em tratativa
-            </option>
-
-            <option value="Resolvida">
-              Resolvida
-            </option>
-
-          </select>
-
-        </div>
-
-      </div>
-
-      <div class="field">
-
-        <label for="modalObservacaoStatusAnomalia">
-          Observação da Alteração
-        </label>
-
-        <textarea
-          id="modalObservacaoStatusAnomalia"
-          placeholder="Informe uma observação sobre a alteração do status"
-        ></textarea>
-
-      </div>
-
-      <div class="modal-actions">
-
-        <button
-          type="button"
-          id="btnCancelarStatusAnomalia"
-          class="btn-modal-cancelar"
-        >
-          Cancelar
-        </button>
-
-        <button
-          type="button"
-          id="btnSalvarStatusAnomalia"
-          class="btn-modal-salvar"
-        >
-          Salvar Status
-        </button>
-
-      </div>
-
-    </div>
-
-  </div>
 
   <!-- JS -->
   <script
     type="module"
-    src="indicadores-estrategicos.js?v=408"
+    src="indicadores-estrategicos.js?v=437"
   ></script>
   <script src="./pwa-register.js"></script>
 

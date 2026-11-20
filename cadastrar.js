@@ -10,6 +10,7 @@
 ===================================================== */
 
 import {
+  app,
   db
 } from "./firebaseConfig.js";
 
@@ -23,6 +24,14 @@ import {
   getDocs,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+import {
+  getFunctions,
+  httpsCallable
+} from "https://www.gstatic.com/firebasejs/10.12.3/firebase-functions.js";
+
+const functions =
+  getFunctions(app, "us-central1");
 
 /* =========================================
    USUÁRIO LOGADO
@@ -63,6 +72,30 @@ const gutBadge =
 
 const investimento =
   document.getElementById("investimento");
+
+const areaM2 =
+  document.getElementById("areaM2");
+
+const dataInicioPrevisto =
+  document.getElementById("dataInicioPrevisto");
+
+const dataTerminoPrevisto =
+  document.getElementById("dataTerminoPrevisto");
+
+const complexidadeProjeto =
+  document.getElementById("complexidadeProjeto");
+
+const situacaoAtivo =
+  document.getElementById("situacaoAtivo");
+
+const docasScore =
+  document.getElementById("docasScore");
+
+const docasNivel =
+  document.getElementById("docasNivel");
+
+const docasBadge =
+  document.querySelector(".docas-badge");
 
 const btnVoltar =
   document.getElementById("btnVoltar");
@@ -242,6 +275,34 @@ function configurarRegionalAutomatica() {
 }
 
 /* =========================================
+   COMPLEXIDADE AUTOMÁTICA (A PARTIR DA PRIORIDADE GUT)
+   A Matriz DOCAS pede uma Complexidade de Projeto Baixa/Média/Alta.
+   Em vez de pedir de novo pro usuário, aproveitamos o nível de
+   prioridade que a matriz GUT já calculou (Baixa/Moderada/Alta/
+   Crítica), mapeando Crítica para Alta (não existe um 4º nível na
+   Matriz DOCAS).
+========================================= */
+
+function mapearComplexidadeDaPrioridade(nivelGut) {
+  if (nivelGut === "Baixa") {
+    return "Baixa";
+  }
+
+  if (nivelGut === "Moderada") {
+    return "Média";
+  }
+
+  if (
+    nivelGut === "Alta" ||
+    nivelGut === "Crítica"
+  ) {
+    return "Alta";
+  }
+
+  return "";
+}
+
+/* =========================================
    CALCULAR GUT
 ========================================= */
 
@@ -273,6 +334,13 @@ function calcularGUT() {
 
     gutBadge.style.color =
       "#fff";
+
+    if (complexidadeProjeto) {
+      complexidadeProjeto.value =
+        "";
+    }
+
+    calcularClassificacaoDocas();
 
     return;
   }
@@ -335,6 +403,13 @@ function calcularGUT() {
 
   gutNivel.style.color =
     "#fff";
+
+  if (complexidadeProjeto) {
+    complexidadeProjeto.value =
+      mapearComplexidadeDaPrioridade(nivel);
+  }
+
+  calcularClassificacaoDocas();
 }
 
 /* =========================================
@@ -358,6 +433,268 @@ function configurarEventosGUT() {
   );
 
   calcularGUT();
+}
+
+/* =========================================
+   CLASSIFICAR DEMANDA — MATRIZ DOCAS
+   Pontua Duração/Orçamento/Complexidade/Área/Situação do ativo
+   (1 a 3 pontos cada, Situação do ativo até 2 pontos) e classifica
+   a demanda como Manutenção (total <= 5), Pequena obra/Reforma
+   (total 6 a 10) ou Obra (total > 10) — mesma lógica da planilha
+   "Anexo V - Matriz DOCAS".
+========================================= */
+
+function calcularDuracaoDias() {
+  const inicio =
+    obterValorCampo("dataInicioPrevisto");
+
+  const fim =
+    obterValorCampo("dataTerminoPrevisto");
+
+  if (
+    !dataValida(inicio) ||
+    !dataValida(fim)
+  ) {
+    return null;
+  }
+
+  const dataInicio =
+    new Date(inicio);
+
+  const dataFim =
+    new Date(fim);
+
+  const diffMs =
+    dataFim - dataInicio;
+
+  if (diffMs < 0) {
+    return null;
+  }
+
+  return Math.round(
+    diffMs / (1000 * 60 * 60 * 24)
+  );
+}
+
+function pontuarDuracaoDocas(dias) {
+  if (dias <= 30) {
+    return 1;
+  }
+
+  if (dias <= 90) {
+    return 2;
+  }
+
+  return 3;
+}
+
+function pontuarOrcamentoDocas(valor) {
+  if (valor <= 100000) {
+    return 1;
+  }
+
+  if (valor <= 600000) {
+    return 2;
+  }
+
+  return 3;
+}
+
+function pontuarAreaDocas(area) {
+  if (area <= 100) {
+    return 1;
+  }
+
+  if (area <= 200) {
+    return 2;
+  }
+
+  return 3;
+}
+
+function pontuarComplexidadeDocas(complexidade) {
+  if (complexidade === "Baixa") {
+    return 1;
+  }
+
+  if (complexidade === "Média") {
+    return 2;
+  }
+
+  if (complexidade === "Alta") {
+    return 3;
+  }
+
+  return null;
+}
+
+function pontuarSituacaoAtivoDocas(situacao) {
+  if (situacao === "Existente") {
+    return 1;
+  }
+
+  if (situacao === "Não existente") {
+    return 2;
+  }
+
+  return null;
+}
+
+function classificarTotalDocas(total) {
+  if (total <= 5) {
+    return "Manutenção";
+  }
+
+  if (total <= 10) {
+    return "Pequena obra/Reforma";
+  }
+
+  return "Obra";
+}
+
+function calcularClassificacaoDocas() {
+  if (
+    !docasScore ||
+    !docasNivel ||
+    !docasBadge
+  ) {
+    return null;
+  }
+
+  const dias =
+    calcularDuracaoDias();
+
+  const valor =
+    converterMoedaParaNumero(
+      investimento?.value || ""
+    );
+
+  const area =
+    Number(areaM2?.value);
+
+  const complexidade =
+    complexidadeProjeto?.value || "";
+
+  const situacao =
+    situacaoAtivo?.value || "";
+
+  const camposCompletos =
+    dias !== null &&
+    valor > 0 &&
+    areaM2?.value !== "" &&
+    !isNaN(area) &&
+    complexidade !== "" &&
+    situacao !== "";
+
+  if (!camposCompletos) {
+    docasScore.textContent =
+      "--";
+
+    docasNivel.textContent =
+      "D/O/C/A/S";
+
+    docasBadge.style.background =
+      "#007E7A";
+
+    docasScore.style.color =
+      "#fff";
+
+    docasNivel.style.color =
+      "#fff";
+
+    return null;
+  }
+
+  const d =
+    pontuarDuracaoDocas(dias);
+
+  const o =
+    pontuarOrcamentoDocas(valor);
+
+  const c =
+    pontuarComplexidadeDocas(complexidade);
+
+  const a =
+    pontuarAreaDocas(area);
+
+  const s =
+    pontuarSituacaoAtivoDocas(situacao);
+
+  const total =
+    d + o + c + a + s;
+
+  const classificacao =
+    classificarTotalDocas(total);
+
+  docasScore.textContent =
+    String(total);
+
+  docasNivel.textContent =
+    classificacao;
+
+  let cor =
+    "#007E7A";
+
+  if (classificacao === "Manutenção") {
+    cor =
+      "#ef4444";
+  } else if (classificacao === "Pequena obra/Reforma") {
+    cor =
+      "#22c55e";
+  } else if (classificacao === "Obra") {
+    cor =
+      "#f59e0b";
+  }
+
+  docasBadge.style.background =
+    cor;
+
+  docasScore.style.color =
+    "#fff";
+
+  docasNivel.style.color =
+    "#fff";
+
+  return {
+    duracaoDias: dias,
+    valorOrcamento: valor,
+    area,
+    complexidade,
+    situacaoAtivo: situacao,
+    d,
+    o,
+    c,
+    a,
+    s,
+    total,
+    classificacao
+  };
+}
+
+function configurarEventosDocas() {
+  [
+    situacaoAtivo,
+    dataInicioPrevisto,
+    dataTerminoPrevisto,
+    areaM2
+  ].forEach((campo) => {
+    campo?.addEventListener(
+      "change",
+      calcularClassificacaoDocas
+    );
+
+    campo?.addEventListener(
+      "input",
+      calcularClassificacaoDocas
+    );
+  });
+
+  investimento?.addEventListener(
+    "input",
+    calcularClassificacaoDocas
+  );
+
+  calcularClassificacaoDocas();
 }
 
 /* =========================================
@@ -562,6 +899,60 @@ function validarFormulario() {
     return false;
   }
 
+  if (!situacaoAtivo?.value) {
+    alert(
+      "⚠️ Selecione a Situação do Ativo para calcular a Classificação da Demanda (Matriz DOCAS)."
+    );
+
+    situacaoAtivo?.focus();
+
+    return false;
+  }
+
+  const classificacaoDocas =
+    calcularClassificacaoDocas();
+
+  if (!classificacaoDocas) {
+    alert(
+      "⚠️ Não foi possível calcular a Classificação da Demanda (Matriz DOCAS). Confira Área, Valor da Obra e as datas de início/término."
+    );
+
+    return false;
+  }
+
+  if (classificacaoDocas.classificacao === "Manutenção") {
+    alert(
+      [
+        "⚠️ Esta demanda foi classificada como MANUTENÇÃO pela Matriz DOCAS.",
+        "",
+        `Pontuação: ${classificacaoDocas.total} (Duração ${classificacaoDocas.d} + Orçamento ${classificacaoDocas.o} + Complexidade ${classificacaoDocas.c} + Área ${classificacaoDocas.a} + Situação do ativo ${classificacaoDocas.s})`,
+        "",
+        "Demandas de manutenção não são cadastradas aqui — siga o fluxo de manutenção."
+      ].join("\n")
+    );
+
+    return false;
+  }
+
+  if (classificacaoDocas.classificacao === "Obra") {
+    const desejaContinuar =
+      confirm(
+        [
+          "⚠️ Esta demanda foi classificada como OBRA pela Matriz DOCAS (não Pequena obra/Reforma).",
+          "",
+          `Pontuação: ${classificacaoDocas.total} (Duração ${classificacaoDocas.d} + Orçamento ${classificacaoDocas.o} + Complexidade ${classificacaoDocas.c} + Área ${classificacaoDocas.a} + Situação do ativo ${classificacaoDocas.s})`,
+          "",
+          "Mesmo assim, deseja seguir com o planejamento desta obra?",
+          "",
+          "Se confirmar, uma mensagem de aviso será enviada por WhatsApp para os números cadastrados no sistema."
+        ].join("\n")
+      );
+
+    if (!desejaContinuar) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -672,6 +1063,16 @@ async function montarDadosObra() {
       obterValorCampo("aprovacaoCliente"),
 
     /* =====================================
+       AVALIAÇÃO DE QUALIDADE (envio automático
+       do pedido de pesquisa quando a obra for
+       concluída — ver Cloud Function
+       sendSurveyOnObraCompleted)
+    ===================================== */
+
+    emailAvaliacaoQualidade:
+      obterValorCampo("emailAvaliacaoQualidade").toLowerCase(),
+
+    /* =====================================
        DATAS
     ===================================== */
 
@@ -714,6 +1115,22 @@ async function montarDadosObra() {
 
     gutNivel:
       gutNivel?.textContent || "",
+
+    /* =====================================
+       CLASSIFICAÇÃO DA DEMANDA (MATRIZ DOCAS)
+    ===================================== */
+
+    complexidadeProjeto:
+      complexidadeProjeto?.value || "",
+
+    situacaoAtivo:
+      situacaoAtivo?.value || "",
+
+    docasPontuacao:
+      docasScore?.textContent || "",
+
+    classificacaoDocas:
+      docasNivel?.textContent || "",
 
     /* =====================================
        AVANÇO E STATUS
@@ -819,6 +1236,42 @@ async function salvarObra(event) {
       dadosObra
     );
 
+    // Toda obra cadastrada avisa por WhatsApp os números configurados
+    // no sistema — falha aqui não deve travar o cadastro, que já foi
+    // salvo com sucesso.
+    const classificacaoAtual =
+      calcularClassificacaoDocas();
+
+    try {
+      const notificarObraCadastrada =
+        httpsCallable(
+          functions,
+          "notificarObraCadastrada"
+        );
+
+      await notificarObraCadastrada({
+        nomeObra: dadosObra.nomeProjeto,
+        codigoObra: dadosObra.idProjeto,
+        localidade: dadosObra.localidade,
+        regional: dadosObra.regional,
+        valorObra: dadosObra.valorObra,
+        classificacaoDocas:
+          classificacaoAtual?.classificacao || "",
+        pontuacao:
+          classificacaoAtual?.total ?? "",
+        solicitante:
+          usuarioLogadoGlobal?.nome ||
+          usuarioLogadoGlobal?.displayName ||
+          usuarioLogadoGlobal?.email ||
+          ""
+      });
+    } catch (erroNotificacao) {
+      console.error(
+        "Erro ao notificar via WhatsApp sobre nova obra cadastrada:",
+        erroNotificacao
+      );
+    }
+
     const desejaPlanejar =
       confirm(
         `✅ Obra cadastrada com sucesso!\n\nID: ${dadosObra.idProjeto}\n\nDeseja realizar o planejamento desta obra agora?`
@@ -877,6 +1330,8 @@ function configurarEventos() {
   configurarRegionalAutomatica();
 
   configurarEventosGUT();
+
+  configurarEventosDocas();
 
   configurarMoeda();
 

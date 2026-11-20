@@ -527,3 +527,33 @@
     padding:14px 18px;
   }
 }
+
+/* =========================
+   CRONOGRAMA (link da seção)
+========================= */
+
+.btn-link-cronograma{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:8px 12px;
+
+  border-radius:10px;
+  background:#007E7A;
+  color:#ffffff;
+
+  font-size:12px;
+  font-weight:800;
+  text-decoration:none;
+  white-space:nowrap;
+}
+
+.btn-link-cronograma:hover{
+  background:#006a66;
+}
+
+@media print{
+  .btn-link-cronograma{
+    display:none !important;
+  }
+}

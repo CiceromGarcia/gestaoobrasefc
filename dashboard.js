@@ -76,6 +76,11 @@ let graficoFinanceiro = null;
 
 let usuarioLogadoGlobal = null;
 
+// Obra cujo detalhamento (Curva S) está aberto na tela — usada para
+// restringir a impressão/exportação a apenas essa obra, em vez de
+// imprimir todas as obras listadas no Resumo Executivo.
+let obraDetalhadaAtual = null;
+
 /* =====================================================
    ELEMENTOS
 ===================================================== */
@@ -103,6 +108,15 @@ document.getElementById("detalhamentoPlanejamento");
 
 const btnExportarPDF =
 document.getElementById("btnExportarPDF");
+
+const cabecalhoImpressaoObra =
+document.getElementById("cabecalhoImpressaoObra");
+
+const cabecalhoImpressaoObraId =
+document.getElementById("cabecalhoImpressaoObraId");
+
+const cabecalhoImpressaoObraNome =
+document.getElementById("cabecalhoImpressaoObraNome");
 
 const cardEmAndamento =
 document.getElementById("cardEmAndamento");
@@ -1661,6 +1675,9 @@ function adicionarOption(select, valor, texto = valor) {
 
 function limparDetalhamento() {
 
+  obraDetalhadaAtual =
+  null;
+
   if (detalhamentoPlanejamento) {
     detalhamentoPlanejamento.style.display =
     "none";
@@ -2689,6 +2706,9 @@ function renderTabela() {
     const tr =
     document.createElement("tr");
 
+    tr.dataset.firebaseId =
+    item.firebaseId;
+
     tr.addEventListener(
       "click",
       () => {
@@ -2936,6 +2956,9 @@ function abrirPlanejamento(firebaseId) {
   if (!obra) {
     return;
   }
+
+  obraDetalhadaAtual =
+  obra;
 
   if (detalhamentoPlanejamento) {
 
@@ -3575,8 +3598,7 @@ function criarOpcoesGraficoPercentual() {
       y: {
 
         beginAtZero: true,
-        suggestedMax: 100,
-        max: 110,
+        max: 100,
 
         ticks: {
 
@@ -3586,9 +3608,105 @@ function criarOpcoesGraficoPercentual() {
 
       }
 
+    },
+
+    layout: {
+
+      padding: {
+        top: 24
+      }
+
     }
 
   };
+
+}
+
+/* =====================================================
+   RESTRINGIR TABELA À OBRA DETALHADA (IMPRESSÃO/EXPORTAÇÃO)
+   Quando o usuário abriu o detalhamento (Curva S) de uma obra
+   específica, a impressão/exportação deve mostrar só essa obra no
+   Resumo Executivo — não todas as obras do filtro atual.
+===================================================== */
+
+function restringirTabelaParaImpressao() {
+
+  if (
+    !obraDetalhadaAtual ||
+    !tbodyObras
+  ) {
+    return false;
+  }
+
+  const linhas =
+  Array.from(
+    tbodyObras.querySelectorAll("tr")
+  );
+
+  let encontrou =
+  false;
+
+  linhas.forEach((linha) => {
+
+    if (linha.dataset.firebaseId === obraDetalhadaAtual.firebaseId) {
+
+      encontrou =
+      true;
+
+    } else {
+
+      linha.classList.add(
+        "linha-oculta-impressao"
+      );
+
+    }
+
+  });
+
+  if (
+    encontrou &&
+    cabecalhoImpressaoObra
+  ) {
+
+    if (cabecalhoImpressaoObraId) {
+      cabecalhoImpressaoObraId.textContent =
+      obraDetalhadaAtual.idProjeto || "";
+    }
+
+    if (cabecalhoImpressaoObraNome) {
+      cabecalhoImpressaoObraNome.textContent =
+      obraDetalhadaAtual.nomeProjeto || "";
+    }
+
+    cabecalhoImpressaoObra.classList.add(
+      "mostrar"
+    );
+
+  }
+
+  return encontrou;
+
+}
+
+function restaurarTabelaAposImpressao() {
+
+  if (tbodyObras) {
+
+    tbodyObras
+      .querySelectorAll(".linha-oculta-impressao")
+      .forEach((linha) => {
+
+        linha.classList.remove(
+          "linha-oculta-impressao"
+        );
+
+      });
+
+  }
+
+  cabecalhoImpressaoObra?.classList.remove(
+    "mostrar"
+  );
 
 }
 
@@ -3628,6 +3746,8 @@ function configurarExportarPDF() {
           setTimeout(resolve, 250)
         );
 
+        restringirTabelaParaImpressao();
+
         redimensionarGraficos();
 
         await new Promise((resolve) =>
@@ -3651,6 +3771,8 @@ function configurarExportarPDF() {
         );
 
       } finally {
+
+        restaurarTabelaAposImpressao();
 
         document.body.classList.remove(
           "exportando-pdf"
@@ -3720,6 +3842,18 @@ function configurarEventosFiltros() {
 window.addEventListener(
   "resize",
   redimensionarGraficos
+);
+
+// Cobre também a impressão nativa do navegador (Ctrl+P), não só o
+// botão "Exportar PDF".
+window.addEventListener(
+  "beforeprint",
+  restringirTabelaParaImpressao
+);
+
+window.addEventListener(
+  "afterprint",
+  restaurarTabelaAposImpressao
 );
 
 /* =====================================================

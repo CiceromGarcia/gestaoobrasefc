@@ -13,8 +13,29 @@ import { db } from "./firebaseConfig.js";
 import { protegerPagina } from "./authGuard.js";
 
 import {
+  calcularCronograma,
+  resumirCronograma,
+  fisicoAcumuladoPorData,
+  paraISO
+} from "./cronograma-core.js?v=004";
+
+/* =========================
+   ORIGEM: CRONOGRAMA DA OBRA
+   (cronograma.html?... → planejamento.html?obraId=X&origem=cronograma)
+   Preenche as semanas com o físico do cronograma e o financeiro
+   proporcional ao físico; tudo continua editável e passa pelas
+   mesmas validações e pelo mesmo fluxo de salvar/replanejar.
+========================= */
+
+const parametrosUrl = new URLSearchParams(window.location.search);
+const obraIdCronograma = parametrosUrl.get("obraId") || "";
+const origemCronograma =
+  parametrosUrl.get("origem") === "cronograma" && Boolean(obraIdCronograma);
+
+import {
   collection,
   getDocs,
+  getDoc,
   doc,
   writeBatch,
   serverTimestamp
@@ -632,11 +653,24 @@ async function carregarObras() {
           obraTratada
         );
 
+      const substituirPeloCronograma =
+        origemCronograma &&
+        docItem.id === obraIdCronograma;
+
       if (
         possuiCurva &&
-        !obraTemReplanejamento
+        !obraTemReplanejamento &&
+        !substituirPeloCronograma
       ) {
         return;
+      }
+
+      if (
+        possuiCurva &&
+        substituirPeloCronograma
+      ) {
+        obraTratada.replanejamentoNecessario = true;
+        obraTratada.reprogramacaoNecessaria = true;
       }
 
       obraTratada.possuiCurvaAtiva =
@@ -1468,7 +1502,9 @@ async function salvarPlanejamento() {
             "",
 
           motivoSubstituicao:
-            "Replanejamento gerado após alteração das datas da obra."
+            origemCronograma
+              ? "Replanejamento gerado a partir do cronograma da obra."
+              : "Replanejamento gerado após alteração das datas da obra."
         }
       );
     });
@@ -1896,6 +1932,167 @@ function criarGraficoFinanceiro(
 }
 
 /* =========================
+   APLICAR O CRONOGRAMA NO PLANEJAMENTO
+========================= */
+
+function mostrarAvisoCronograma(mensagem) {
+  const aviso = document.getElementById("avisoCronograma");
+
+  if (!aviso) {
+    return;
+  }
+
+  aviso.textContent = mensagem;
+  aviso.hidden = false;
+}
+
+async function aplicarCronogramaNoPlanejamento() {
+  const obra =
+    obrasCadastradas.find((item) => item.id === obraIdCronograma);
+
+  if (!obra) {
+    alert(
+      "Esta obra não está disponível para planejamento com o seu perfil (verifique a Regional)."
+    );
+
+    return;
+  }
+
+  let cronograma;
+  let calendario = { sabado: false, feriados: [] };
+
+  try {
+    const [snapCronograma, snapCalendario] =
+      await Promise.all([
+        getDoc(doc(db, "cronogramasObra", obra.id)),
+        getDoc(doc(db, "configuracoesSistema", "calendario"))
+      ]);
+
+    if (
+      !snapCronograma.exists() ||
+      !Array.isArray(snapCronograma.data().tasks) ||
+      snapCronograma.data().tasks.length === 0
+    ) {
+      alert(
+        "Esta obra ainda não tem um cronograma salvo com atividades."
+      );
+
+      return;
+    }
+
+    cronograma = snapCronograma.data();
+
+    if (snapCalendario.exists()) {
+      calendario = {
+        sabado: Boolean(snapCalendario.data().sabado),
+        feriados: snapCalendario.data().feriados || []
+      };
+    }
+  } catch (error) {
+    console.error("Erro ao ler o cronograma:", error);
+
+    alert(
+      "Não foi possível ler o cronograma desta obra."
+    );
+
+    return;
+  }
+
+  const estadoCronograma = {
+    inicio: cronograma.inicio,
+    tasks: cronograma.tasks,
+    sabados: Array.isArray(cronograma.sabados) ? cronograma.sabados : []
+  };
+
+  let resumo;
+
+  try {
+    resumo = resumirCronograma(
+      estadoCronograma,
+      calendario,
+      calcularCronograma(estadoCronograma, calendario)
+    );
+  } catch (error) {
+    alert(error.message);
+    return;
+  }
+
+  const inicioCadastro = formatarDataInput(obra.dataInicio);
+  const fimCadastro = formatarDataInput(obra.dataFim);
+
+  selectObra.value = obra.id;
+  preencherDadosObra();
+
+  dataInicio.value = paraISO(resumo.primeiro);
+  dataFim.value = paraISO(resumo.ultimo);
+
+  gerarPlanejamento();
+
+  if (semanasGeradas.length === 0) {
+    return;
+  }
+
+  const acumulados =
+    fisicoAcumuladoPorData(
+      estadoCronograma,
+      calendario,
+      semanasGeradas.map((semana) => formatarDataInput(semana.fim))
+    );
+
+  const totalCentavos =
+    Math.round(moedaParaNumero(valorTotal?.value) * 100);
+
+  const inputsFisico =
+    tbody.querySelectorAll(".input-fisico");
+
+  const inputsFinanceiro =
+    tbody.querySelectorAll(".input-financeiro");
+
+  let fisicoAnterior = 0;
+  let centavosAnterior = 0;
+
+  semanasGeradas.forEach((semana, indice) => {
+    const ultima =
+      indice === semanasGeradas.length - 1;
+
+    const fisicoAcumulado =
+      ultima
+        ? 100
+        : Math.round(acumulados[indice] * 100) / 100;
+
+    const centavosAcumulados =
+      ultima
+        ? totalCentavos
+        : Math.round(totalCentavos * fisicoAcumulado / 100);
+
+    inputsFisico[indice].value =
+      (Math.round((fisicoAcumulado - fisicoAnterior) * 100) / 100).toFixed(2);
+
+    inputsFinanceiro[indice].value =
+      moeda((centavosAcumulados - centavosAnterior) / 100);
+
+    fisicoAnterior = fisicoAcumulado;
+    centavosAnterior = centavosAcumulados;
+  });
+
+  atualizarTabela();
+
+  const mudouDatas =
+    inicioCadastro !== dataInicio.value ||
+    fimCadastro !== dataFim.value;
+
+  mostrarAvisoCronograma(
+    "Curva S gerada a partir do cronograma: o físico vem das atividades e pesos, e o financeiro está proporcional ao físico. " +
+    "Ajuste o que precisar e clique em Salvar Planejamento." +
+    (
+      mudouDatas
+        ? ` As datas da obra serão atualizadas para ${formatarData(criarDataLocal(dataInicio.value))} a ${formatarData(criarDataLocal(dataFim.value))} (cadastro atual: ${formatarData(criarDataLocal(inicioCadastro))} a ${formatarData(criarDataLocal(fimCadastro))}).`
+        : ""
+    )
+  );
+}
+
+/* =========================
    EVENTOS
 ========================= */
 
@@ -1920,6 +2117,10 @@ document.addEventListener(
       configurarEventos();
 
       await carregarObras();
+
+      if (origemCronograma) {
+        await aplicarCronogramaNoPlanejamento();
+      }
     } catch (error) {
       console.error(
         "Erro ao iniciar planejamento:",
